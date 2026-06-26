@@ -65,19 +65,15 @@ SentinelAI therefore separates workloads according to their data characteristics
 ```mermaid
 flowchart TD
 
-Backend
+BackendServices
 
-Backend --> PostgreSQL
-
-Backend --> Neo4j
-
-Backend --> VectorDB
+BackendServices --> PostgreSQL
+BackendServices --> Neo4j
+BackendServices --> VectorDB
 
 PostgreSQL --> StructuredData
-
 Neo4j --> GraphKnowledge
-
-VectorDB --> SemanticMemory
+VectorDB --> SemanticEmbeddings
 ```
 
 ---
@@ -144,15 +140,16 @@ Every domain object should have a clearly defined primary storage location.
 This prevents duplicated ownership and inconsistent updates.
 
 | Domain Object | Primary Storage |
-|--------------|-----------------|
-| Investigation | PostgreSQL |
-| Evidence | PostgreSQL |
-| Finding | PostgreSQL |
-| Task | PostgreSQL |
-| Report | PostgreSQL |
-| Entity | Neo4j |
-| Relationship | Neo4j |
-| Memory Item | Vector Database |
+| ------------- | --------------- |
+| Investigation | PostgreSQL      |
+| Evidence      | PostgreSQL      |
+| Finding       | PostgreSQL      |
+| Task          | PostgreSQL      |
+| Report        | PostgreSQL      |
+| Entity        | Neo4j           |
+| Relationship  | Neo4j           |
+| Memory Item   | PostgreSQL      |
+
 
 The primary storage location owns the lifecycle of each object.
 
@@ -178,6 +175,10 @@ The synchronization process should satisfy the following principles:
 - deterministic updates
 
 No synchronization process should modify the authoritative source directly.
+
+Synchronization should be idempotent.
+
+Repeated synchronization attempts should always produce the same resulting state.
 
 ---
 
@@ -240,14 +241,16 @@ Graph updates should preserve graph integrity and entity identity.
 
 ---
 
-## Vector Database Owns
+## Vector Database Stores
 
 - Embeddings
 - Semantic Indexes
 
-The Vector Database stores representations rather than authoritative business objects.
+The Vector Database stores vector representations of Memory Items.
 
-It should never become the primary source of organizational knowledge.
+It should not own the Memory Item lifecycle.
+
+Embeddings are synchronized from the authoritative storage.
 
 ---
 
@@ -278,6 +281,8 @@ Optimized for:
 - shortest paths
 - relationship discovery
 - neighborhood exploration
+
+Graph traversal depth should remain configurable to balance investigation quality and query performance.
 
 ---
 
@@ -376,6 +381,23 @@ This approach was selected.
 
 ---
 
+## Document Database
+
+Advantages:
+
+- flexible schema
+- simple object storage
+
+Disadvantages:
+
+- weak relationship analysis
+- limited transactional capabilities
+- inefficient graph traversal
+
+This approach was rejected.
+
+---
+
 # 13. Data Access Principles
 
 Backend services should access data through clearly defined ownership boundaries.
@@ -399,6 +421,8 @@ Read operations should remain optimized for investigation workflows.
 Write operations should always target the authoritative storage layer.
 
 Derived storage layers should be updated through synchronization rather than direct modification.
+
+Services should never bypass ownership rules by writing directly to secondary storage layers.
 
 ---
 
@@ -524,6 +548,12 @@ Future improvements may include:
 Future technologies should integrate without changing architectural responsibilities.
 
 The architecture should remain implementation-independent.
+
+Future evolution should prioritize architectural stability over technology replacement.
+
+Implementation technologies may change.
+
+Data ownership responsibilities should remain stable.
 
 ---
 
