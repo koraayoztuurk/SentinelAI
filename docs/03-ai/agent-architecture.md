@@ -351,6 +351,108 @@ It communicates existing findings clearly.
 
 ---
 
+## Decision Engine
+
+The Decision Engine is not an independent agent.
+
+It is an Intelligence Layer component responsible for synthesizing investigation findings produced by specialized agents.
+
+The Decision Engine executes within the AI Runtime after the Planner Agent determines that sufficient evidence has been collected.
+
+---
+
+### Responsibilities
+
+The Decision Engine is responsible for:
+
+- combining findings produced by specialized agents
+- identifying conflicting conclusions
+- estimating overall investigation confidence
+- generating a structured investigation recommendation
+
+The Decision Engine performs synthesis rather than specialized analysis.
+
+Domain-specific analysis remains the responsibility of individual agents.
+
+---
+
+### Inputs
+
+The Decision Engine receives:
+
+- validated agent findings
+- investigation context
+- investigation objectives
+
+---
+
+### Output
+
+The Decision Engine produces a structured InvestigationOutcome.
+
+This output is consumed by downstream components responsible for investigation lifecycle management and report generation.
+
+---
+
+### Human Oversight
+
+The Decision Engine provides recommendations.
+
+Final operational decisions always remain the responsibility of the human analyst.
+
+---
+
+# 6a. AI Runtime
+
+The AI Runtime hosts all AI execution within SentinelAI.
+
+It belongs to the Intelligence Layer and is independent of backend services.
+
+Backend services manage business data and persistence.
+
+The AI Runtime performs reasoning.
+
+---
+
+## Responsibilities
+
+The AI Runtime is responsible for:
+
+- hosting agent execution
+- hosting the Decision Engine
+- coordinating the RAG pipeline
+- interacting with language model providers
+- interacting with embedding providers
+
+---
+
+## Service Interaction
+
+The AI Runtime retrieves and updates business information exclusively through backend services.
+
+It never bypasses service boundaries or accesses persistence technologies directly.
+
+---
+
+## Provider Interfaces
+
+The AI Runtime exposes replaceable interfaces for:
+
+- language model providers
+- embedding providers
+
+This preserves technology independence throughout the platform.
+
+---
+
+## Design Principle
+
+Replacing an AI provider should not require modifications to agent logic or backend services.
+
+Likewise, backend service evolution should not affect AI execution behavior.
+
+---
+
 # 7. Agent Responsibilities
 
 Every agent should explicitly define its operational boundaries.
