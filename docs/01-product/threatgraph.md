@@ -724,7 +724,9 @@ Generating analyst reports remains the responsibility of the Report Agent.
 
 ThreatGraph provides investigation intelligence.
 
-Operational decisions remain the responsibility of the Planner and the human analyst.
+Investigation outcome synthesis — combining findings, resolving conflicts and producing a recommendation — is the responsibility of the Decision Engine.
+
+Operational decisions, including whether to act on a recommendation, always remain the responsibility of the human analyst.
 
 ---
 
