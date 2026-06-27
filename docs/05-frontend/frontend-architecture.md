@@ -378,6 +378,8 @@ Recommendations should never appear as unexplained AI outputs.
 
 The Investigation Workspace represents the primary operating environment.
 
+The Investigation Dashboard forms the summary layer of the Investigation Workspace and provides analysts with an overview of the current investigation.
+
 Rather than opening many unrelated pages, analysts should remain within a single investigation workspace whenever practical.
 
 Supporting panels may expose:
@@ -453,11 +455,15 @@ Pages represent complete business capabilities.
 
 Examples include:
 
-- Dashboard
 - Investigation Workspace
 - Investigation History
 - Reports
+- Administration
 - Settings
+
+The Investigation Workspace serves as the primary operational environment for analyst activities.
+
+Within the workspace, the Investigation Dashboard provides a high-level summary of the current investigation before analysts transition into detailed workspace regions.
 
 Pages coordinate sections but should avoid implementing reusable business logic.
 
@@ -529,106 +535,75 @@ The frontend should never treat all application data as a single shared state.
 
 ## State Categories
 
-The frontend architecture distinguishes the following state categories:
-
-- UI State
-- View State
-- Session State
-- Server State
-- Investigation Context
-
-Each category should evolve independently according to its own responsibility.
-
----
-
-## UI State
-
-UI State controls temporary interface behavior.
-
-Examples include:
-
-- active tabs
-- expanded panels
-- dialog visibility
-- selected graph node
-- selected timeline event
-- active filters
-- sorting preferences
-
-UI State belongs entirely to the frontend.
-
-It should never be persisted as investigation data.
-
----
-
-## View State
-
-View State represents temporary information required to render the current page.
-
-Examples include:
-
-- loading indicators
-- pagination
-- search queries
-- temporary selections
-- visualization preferences
-
-View State exists only while the current page remains active.
-
----
-
-## Session State
-
-Session State represents information associated with the authenticated analyst.
-
-Examples include:
-
-- authentication status
-- current user
-- permissions
-- preferred language
-- UI preferences
-- notification preferences
-
-Session State may survive page navigation but should remain independent from investigation data.
-
----
-
-## Server State
-
-Server State represents information owned by backend services.
-
-Examples include:
-
-- investigations
-- evidence
-- findings
-- reports
-- memory items
-- graph data
-
-Although cached locally, Server State remains owned by backend services.
-
-The frontend should never become the authoritative owner of business data.
+The frontend architecture distinguishes four primary categories of state.
 
 ---
 
 ## Investigation Context
 
-The Investigation Context represents the active investigation currently being explored.
+Represents the shared operational context of the current investigation.
 
-It provides shared context for multiple frontend modules.
-
-Typical context includes:
+Examples include:
 
 - investigation identifier
-- selected entities
+- selected entity
 - selected evidence
+- selected finding
 - active timeline position
-- current recommendation
-- investigation status
+- investigation objectives
+- shared investigation filters
+- analyst focus
 
-Maintaining Investigation Context improves navigation while reducing unnecessary backend requests.
+The Investigation Context coordinates behavior across the Investigation Workspace.
+
+---
+
+## View State
+
+Represents temporary presentation information owned by an individual workspace region.
+
+Examples include:
+
+- panel visibility
+- expanded sections
+- active tabs
+- sorting preferences
+- local view filters
+
+View State affects presentation only and does not alter investigation semantics.
+
+---
+
+## Session State
+
+Session State represents information associated with the analyst rather than a specific investigation.
+
+Examples include:
+
+- preferred language
+- theme
+- UI preferences
+- notification preferences
+- workspace personalization
+
+Session State should remain independent of investigation-specific state.
+
+---
+
+## Derived State
+
+Derived State is calculated from existing authoritative frontend state.
+
+Examples include:
+
+- dashboard summaries
+- visualization highlights
+- aggregated investigation statistics
+- filtered investigation results
+
+Derived State should always be reproducible and should never become an authoritative source of information.
+
+The detailed ownership, synchronization and lifecycle of frontend state are defined in the **UI State Management** document.
 
 ---
 
@@ -1086,12 +1061,14 @@ The workspace should preserve context while analysts switch between different in
 
 Context includes:
 
+- investigation identifier
 - selected evidence
 - selected entity
 - selected finding
 - graph position
 - timeline position
-- active filters
+- shared investigation filters
+- analyst focus
 
 Changing views should not unnecessarily reset investigation context.
 

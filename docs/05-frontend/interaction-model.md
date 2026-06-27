@@ -131,8 +131,6 @@ Examples include:
 
 Selections should update the shared Investigation Context.
 
-Focus should be temporary and should not replace the current investigation selection unless explicitly confirmed by the analyst.
-
 ---
 
 ## Focus
@@ -140,6 +138,8 @@ Focus should be temporary and should not replace the current investigation selec
 Focus temporarily emphasizes a specific investigation artifact without changing investigation ownership.
 
 Focus assists analysts in narrowing attention while preserving the broader investigation context.
+
+Focus should be temporary and should not replace the current investigation selection unless explicitly confirmed by the analyst.
 
 ---
 
@@ -280,6 +280,8 @@ Interaction consistency should be preserved across:
 The Interaction Model defines interaction semantics rather than presentation behavior.
 
 Individual workspace regions may present interactions differently, but the resulting Investigation Context should remain consistent throughout the platform.
+
+Interaction consistency should be preserved regardless of the workspace region from which an interaction originates.
 
 ---
 

@@ -241,11 +241,11 @@ This architectural model minimizes coupling while ensuring consistent analyst ex
 
 ---
 
-# 8. Interaction Model
+# 8. Visualization Interaction
 
 Visualizations are designed to support interactive investigation rather than passive information presentation.
 
-Interactions should assist analysts in exploring investigation data while preserving a consistent investigation workflow.
+The interaction behaviors described in this section complement the architectural principles defined in the Interaction Model document while focusing specifically on visualization behavior.
 
 Common visualization interactions include:
 
@@ -266,7 +266,7 @@ Visualization interactions should remain predictable across all visualization ty
 
 Analysts should not be required to learn different interaction models for different visual representations.
 
-Interaction behavior should remain independent of visualization technology or rendering implementation.
+General interaction semantics, lifecycle and context propagation are defined in the Interaction Model document.
 
 ---
 

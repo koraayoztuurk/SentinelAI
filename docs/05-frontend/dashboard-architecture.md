@@ -18,7 +18,7 @@ The Investigation Dashboard provides analysts with a high-level operational view
 
 Rather than serving as a detailed analysis interface, the dashboard summarizes investigation progress, highlights significant findings and presents information that supports rapid situational awareness.
 
-The dashboard enables analysts to quickly understand the current state of an investigation before exploring individual evidence, relationships or AI-generated insights.
+The dashboard enables analysts to quickly understand the current state of an investigation before transitioning to detailed workspace regions such as evidence exploration, relationship analysis or AI-generated insights.
 
 It complements the Investigation Workspace by providing an overview of investigation activity while preserving a consistent investigation context.
 
@@ -77,6 +77,8 @@ The dashboard should support future investigation metrics, analytical summaries 
 # 3. Architectural Role
 
 The Investigation Dashboard serves as the primary summary layer within the Investigation Workspace.
+
+The dashboard acts as the primary entry point into detailed investigation workflows but does not replace specialized workspace regions.
 
 It consolidates investigation information from multiple workspace regions into a coherent operational overview while remaining independent of business logic and AI reasoning.
 
@@ -160,10 +162,10 @@ Communicates the operational state of the investigation.
 
 Examples include:
 
-- active investigation
+- in progress
 - awaiting validation
-- completed investigation
-- investigation paused
+- completed
+- paused
 
 ---
 
