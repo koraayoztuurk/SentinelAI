@@ -507,17 +507,17 @@ Planner --> Graph
 
 Planner --> Memory
 
-Timeline --> Decision
+Timeline --> Validation
 
-ThreatIntel --> Decision
+ThreatIntel --> Validation
 
-Graph --> Decision
+Graph --> Validation
 
-Memory --> Decision
+Memory --> Validation
 
-Decision --> Validation
+Validation --> Decision
 
-Validation --> Report
+Decision --> Report
 ```
 
 ---
@@ -833,9 +833,9 @@ B --> I{Enough Evidence?}
 
 I -->|No| C
 
-I -->|Yes| J[Decision Engine]
+I -->|Yes| J[Validation]
 
-J --> K[Validation]
+J --> K[Decision Engine]
 
 K --> L[Report]
 ```
