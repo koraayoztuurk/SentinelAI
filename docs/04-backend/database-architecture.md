@@ -441,21 +441,22 @@ Databases should remain responsible for storage rather than orchestration.
 ```mermaid
 flowchart TD
 
-PlannerService --> PostgreSQL
-
-MemoryService --> PostgreSQL
-
-MemoryService --> VectorDB
-
-ThreatGraph --> Neo4j
-
-ThreatGraph --> PostgreSQL
-
+%% API Routing
+BackendAPI --> InvestigationService
+BackendAPI --> MemoryService
+BackendAPI --> GraphService
 BackendAPI --> PlannerService
 
-BackendAPI --> MemoryService
+%% Workflow Coordination
+PlannerService --> InvestigationService
+PlannerService --> MemoryService
+PlannerService --> GraphService
 
-BackendAPI --> ThreatGraph
+%% Data Ownership
+InvestigationService --> PostgreSQL
+MemoryService --> PostgreSQL
+MemoryService --> VectorDB
+GraphService --> Neo4j
 ```
 
 ---
