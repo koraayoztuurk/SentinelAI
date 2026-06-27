@@ -48,13 +48,13 @@ flowchart TD
 
 Client --> API
 
+API --> InvestigationService
+
+API --> MemoryService
+
+API --> GraphService
+
 API --> PlannerService
-
-PlannerService --> InvestigationService
-
-PlannerService --> MemoryService
-
-PlannerService --> GraphService
 ```
 
 ---
@@ -156,7 +156,7 @@ Client
 
 --> Authorization
 
---> PlannerService
+--> BackendService
 
 --> ResponseFormatting
 
@@ -164,6 +164,19 @@ Client
 
 --> Client
 ```
+
+---
+
+**Routing Rule**
+
+`BackendService` represents the backend service responsible for the requested operation.
+
+- Investigation, Evidence, Finding and Report operations are delegated to the **Investigation Service**.
+- Memory operations are delegated to the **Memory Service**.
+- Graph operations are delegated to the **Graph Service**.
+- Multi-step investigation workflows are delegated to the **Planner Service**.
+
+This routing model preserves service ownership boundaries while allowing the Planner Service to focus exclusively on workflow orchestration.
 
 ---
 
