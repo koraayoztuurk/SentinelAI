@@ -284,6 +284,7 @@ The Decision Engine evaluates:
 - confidence
 - supporting evidence
 - conflicting findings
+- validated agent findings
 
 The objective is to produce one coherent investigation outcome rather than multiple disconnected AI responses.
 
@@ -341,16 +342,18 @@ E --> F2[Threat Intelligence Agent]
 E --> F3[Graph Analysis Agent]
 E --> F4[Memory Agent]
 
-F1 --> G[Decision Engine]
+F1 --> G[Validation]
 F2 --> G
 F3 --> G
 F4 --> G
 
-G --> H[Report Generation]
+G --> H[Decision Engine]
 
-H --> I[Investigation Memory]
+H --> I[Report Generation]
 
-I --> J[Future Investigations]
+I --> J[Investigation Memory]
+
+J --> K[Future Investigations]
 ```
 
 ---
@@ -432,7 +435,7 @@ Responsibilities include:
 - evidence aggregation
 - recommendation synthesis
 
-The Decision Engine produces the final investigation result.
+The Decision Engine produces the structured InvestigationOutcome.
 
 ---
 
