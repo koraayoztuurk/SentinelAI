@@ -77,6 +77,8 @@ Task
 
 MemoryItem
 
+InvestigationOutcome
+
 Report
 
 Investigation --> Evidence
@@ -84,6 +86,8 @@ Investigation --> Evidence
 Investigation --> Finding
 
 Investigation --> Task
+
+Investigation --> InvestigationOutcome
 
 Investigation --> Report
 
@@ -94,6 +98,10 @@ Entity --> Relationship
 MemoryItem --> Entity
 
 MemoryItem --> Finding
+
+InvestigationOutcome --> Finding
+
+InvestigationOutcome --> Report
 ```
 
 ---
@@ -516,11 +524,87 @@ They should not influence investigation reasoning or modify organizational knowl
 
 ---
 
+# 11a. InvestigationOutcome
+
+An InvestigationOutcome represents the structured result produced by the Decision Engine at the end of the analysis phase.
+
+It captures the synthesized state of an investigation before a human-readable Report is generated.
+
+---
+
+## Responsibilities
+
+An InvestigationOutcome captures:
+
+- the overall investigation recommendation
+- overall confidence estimate
+- contributing findings
+- detected conflicts
+- unresolved questions
+
+It does not contain raw evidence.
+
+Instead, it references the findings supporting its conclusions.
+
+---
+
+## Characteristics
+
+Every InvestigationOutcome should preserve:
+
+- unique identifier
+- investigation reference
+- confidence
+- recommendation
+- contributing finding references
+- detected conflicts
+- open questions
+- creation timestamp
+
+---
+
+## Lifecycle
+
+```mermaid
+flowchart TD
+    Synthesized --> Reviewed --> Accepted
+    Reviewed --> Escalated
+```
+
+---
+
+## Storage Owner
+
+The Investigation Service owns the lifecycle and persistence of every InvestigationOutcome.
+
+---
+
+## Purpose
+
+InvestigationOutcome enables:
+
+- structured analyst decision support
+- report generation
+- confidence tracking
+- investigation traceability
+
+---
+
 # 12. Domain Relationships
 
 The domain objects defined in this document interact through well-defined relationships.
 
 These relationships remain stable regardless of implementation technology.
+
+---
+
+## InvestigationOutcome References
+
+An InvestigationOutcome references:
+
+- one parent Investigation
+- one or more Findings
+- zero or more detected conflicts
 
 ---
 
@@ -797,6 +881,8 @@ Investigation "1" --> "*" Task
 
 Investigation "1" --> "*" Report
 
+Investigation "1" --> "0..1" InvestigationOutcome
+
 Finding "*" --> "*" Evidence
 
 Finding "*" --> "*" Entity
@@ -806,6 +892,10 @@ Entity "1" --> "*" Relationship
 MemoryItem "*" --> "*" Entity
 
 MemoryItem "*" --> "*" Finding
+
+InvestigationOutcome "*" --> "*" Finding
+
+InvestigationOutcome "0..1" --> "0..1" Report
 
 Report --> Finding
 ```
