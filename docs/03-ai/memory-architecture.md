@@ -532,17 +532,27 @@ Every memory layer has a clearly defined owner responsible for maintaining its q
 
 Ownership defines who may create, update and validate knowledge.
 
-| Memory Layer | Primary Owner |
-|--------------|---------------|
-| Investigation Memory | Investigation Workspace |
-| Organizational Memory | Memory Agent |
-| Semantic Memory | Memory Agent |
-| Graph Memory | Graph Analysis Agent |
-| External Knowledge | External Providers |
+| Memory Layer | System-of-Record Owner | Knowledge Steward (Proposer) |
+|--------------|------------------------|------------------------------|
+| Investigation Memory | Investigation Service | Investigation Workspace |
+| Organizational Memory | Memory Service | Memory Agent |
+| Semantic Memory | Memory Service | Memory Agent |
+| Graph Memory | Graph Service | Graph Analysis Agent |
+| External Knowledge | External Providers | — |
 
-Ownership defines responsibility rather than implementation.
+This table distinguishes two distinct roles.
 
-Multiple components may consume memory, but ownership should remain explicit.
+**System-of-Record Owner** is the backend service that is solely responsible for creating, updating and persisting authoritative knowledge.
+
+No other component may write directly to that authoritative store.
+
+**Knowledge Steward** is the AI component responsible for proposing candidate knowledge to the owning service.
+
+Stewards retrieve, curate and recommend knowledge, but they do not persist it.
+
+This separation preserves the stateless execution model defined in the Agent Architecture while keeping persistence responsibilities explicit.
+
+Multiple components may consume memory, but write authority always remains with the owning backend service.
 
 ---
 
