@@ -125,12 +125,13 @@ Represents the core intelligence of SentinelAI.
 
 This layer coordinates:
 
+- AI Runtime (hosts agent execution, Decision Engine, RAG pipeline, and LLM/Embedding Provider Interfaces)
 - Planner
 - AI Agents
+- Decision Engine
 - Memory
 - Knowledge Retrieval
 - ThreatGraph
-- Decision Engine
 
 No presentation logic exists here.
 
