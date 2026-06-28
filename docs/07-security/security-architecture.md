@@ -83,7 +83,7 @@ Rather than introducing dedicated security services, it defines the architectura
 The Security Architecture is responsible for:
 
 - defining trust boundaries
-- establishing security domains
+- establishing architectural domains
 - assigning security responsibilities
 - protecting architectural communication
 - supporting secure investigation workflows
@@ -168,17 +168,17 @@ Every boundary crossing should be evaluated according to the security principles
 
 ---
 
-# 5. Security Domains
+# 5. Architectural Domains
 
-The Security Architecture separates SentinelAI into multiple logical security domains.
+The Security Architecture separates SentinelAI into multiple logical architectural domains.
 
-A security domain represents a collection of architectural components that share common security responsibilities and protection requirements.
+A architectural domain represents a collection of architectural components that share common security responsibilities and protection requirements.
 
-Security domains do not necessarily correspond to deployment environments or infrastructure boundaries.
+Architectural domains do not necessarily correspond to deployment environments or infrastructure boundaries.
 
 Instead, they provide a conceptual model for assigning ownership and defining security expectations.
 
-The primary security domains include:
+The primary architectural domains include:
 
 ## Analyst Domain
 
@@ -277,7 +277,7 @@ Examples may include:
 - notification services
 - organizational platforms
 
-External systems should always be treated as independent security domains.
+External systems should always be treated as independent architectural domains.
 
 Trust should never be inherited solely because an external system successfully communicates with SentinelAI.
 
@@ -331,7 +331,7 @@ The frontend is responsible for:
 - protecting investigation context during navigation
 - preventing accidental exposure of sensitive information
 - preserving secure user interaction flows
-- communicating exclusively through the Backend API
+- communicating exclusively through the Application Domain API
 - providing appropriate security feedback to analysts
 
 The frontend does not:
@@ -514,7 +514,7 @@ Monitoring serves both operational security and architectural governance by prov
 
 Monitoring should provide architectural visibility without introducing additional operational responsibilities into protected domains.
 
-Rather than focusing solely on infrastructure events, security monitoring should observe architectural behavior across trust boundaries and security domains.
+Rather than focusing solely on infrastructure events, security monitoring should observe architectural behavior across trust boundaries and architectural domains.
 
 Security monitoring should support:
 
@@ -528,6 +528,8 @@ Security monitoring should support:
 Monitoring responsibilities should remain independent of business workflows.
 
 Security monitoring complements operational monitoring by focusing on the protection of architectural assets rather than platform performance.
+
+Audit and Observability complement Security Monitoring by providing architectural accountability and behavioral visibility without redefining the monitoring responsibilities established by this document.
 
 Security monitoring should preserve analyst privacy while maintaining sufficient visibility to support incident investigation and organizational accountability.
 
@@ -599,7 +601,7 @@ The Security Architecture establishes the common security foundation shared acro
 
 By defining trust boundaries, security domains, architectural responsibilities and secure communication principles, the architecture provides a consistent model for protecting investigation information and platform resources.
 
-Rather than concentrating security within a single architectural component, SentinelAI distributes security responsibilities across the Frontend, Backend, AI Runtime and Data Domain while preserving clear ownership boundaries.
+Rather than concentrating security within a single architectural component, SentinelAI distributes security responsibilities across the Presentation Domain, Application Domain, AI Domain and Data Domain while preserving clear ownership boundaries.
 
 The Security Architecture serves as the foundation for the Authentication & Authorization, Secrets Management, Audit & Observability and Threat Model documents, ensuring that future security capabilities remain consistent with the architectural principles established throughout the platform.
 

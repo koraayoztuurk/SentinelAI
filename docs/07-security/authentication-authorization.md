@@ -88,7 +88,7 @@ Within SentinelAI:
 
 - Authentication verifies identity.
 - Authorization evaluates permissions.
-- Backend services enforce authorization decisions.
+- Application Domain services enforce authorization decisions.
 - Frontend presents authenticated user interactions.
 - AI Runtime consumes only authorized investigation context.
 
@@ -178,6 +178,10 @@ Regardless of identity category, every identity should satisfy the following arc
 Identity should remain independent of authorization.
 
 Possessing a verified identity does not imply permission to perform protected operations.
+
+Identities may own or consume secrets according to the responsibilities defined by the Secrets Management architecture.
+
+Possession or use of a secret does not establish identity, but supports the secure operation of an already established identity.
 
 ---
 
@@ -364,7 +368,7 @@ The Frontend should always defer authorization decisions to the Application Doma
 
 ## Backend Responsibilities
 
-The Backend is the primary architectural authority for authorization enforcement.
+The Application Domain (Backend) is the primary architectural authority for authorization enforcement.
 
 Its responsibilities include:
 
@@ -376,7 +380,7 @@ Its responsibilities include:
 - preserving authorization consistency
 - protecting authorization consistency across backend services
 
-Every protected business operation should be evaluated within the Backend regardless of where the request originates.
+Every protected business operation should be evaluated within the Application Domain regardless of where the request originates.
 
 ---
 

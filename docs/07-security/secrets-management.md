@@ -122,6 +122,10 @@ Human secrets should:
 
 Human secrets should never be exposed to architectural components that do not require them.
 
+Human secrets support authenticated identities as defined by the Authentication and Authorization architecture.
+
+Possession of a human secret does not establish identity, but enables the secure operation of an authenticated identity.
+
 ---
 
 ## System Secrets
@@ -307,7 +311,7 @@ Secret ownership remains outside the Presentation Domain.
 
 ## Backend Responsibilities
 
-The Backend is responsible for protecting the majority of operational platform secrets.
+The Application Domain (Backend) is responsible for protecting the majority of operational platform secrets.
 
 Its responsibilities include:
 
@@ -318,7 +322,7 @@ Its responsibilities include:
 - ensuring secrets are used only for their intended purpose
 - coordinating secure secret consumption across backend services
 
-The Backend should avoid unnecessary duplication of secrets across services.
+The Application Domain should avoid unnecessary duplication of secrets across its services.
 
 Secret usage should remain aligned with the ownership model established by this document.
 
