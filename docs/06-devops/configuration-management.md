@@ -240,6 +240,15 @@ Domain-specific configuration should:
 - avoid unnecessary coupling
 - remain compatible with platform-wide configuration principles
 
+Examples of domain-specific configuration include:
+
+- database connection settings
+- external service endpoints
+- cache configuration
+- feature-specific operational parameters
+
+Such configuration remains owned by the corresponding architectural domain and should never become shared platform configuration without explicit architectural justification.
+
 ---
 
 ## Relationship Between Configuration Types
@@ -377,6 +386,10 @@ Configuration should remain isolated according to its intended operational purpo
 Configuration intended for one deployment unit or environment should not unintentionally influence unrelated operational contexts.
 
 Configuration isolation strengthens deployment independence and environment integrity.
+
+Configuration should remain organized according to architectural responsibility rather than implementation technology.
+
+For example, independent configuration groups may exist for relational databases, graph databases, vector databases and caching technologies while remaining owned by the architectural domain that consumes them.
 
 ---
 
