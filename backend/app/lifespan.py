@@ -1,12 +1,12 @@
 """Application lifespan management.
 
 Defines the startup and shutdown lifecycle for the FastAPI application using an
-async context manager. The skeleton logs lifecycle transitions only.
+async context manager.
 
 This module is the designated seam for initializing and releasing long-lived
-resources (for example, database connection pools). No such resources are wired
-here because infrastructure integration is out of scope for the backend skeleton
-(ES-002); the specifications that introduce those resources extend this lifespan.
+resources. The persistence foundation (ES-004) builds the persistence registry on
+startup, stores it on ``app.state.persistence`` and closes it on shutdown. The
+registry's resources are created lazily, so startup opens no network connections.
 """
 
 import logging
@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.config.settings import get_settings
+from app.infrastructure.persistence.registry import build_registry
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         "Starting %s (environment=%s)", settings.app_name, settings.app_env
     )
 
-    yield
+    registry = build_registry()
+    app.state.persistence = registry
+    logger.info("Persistence registry initialized")
 
-    logger.info("Shutting down %s", settings.app_name)
+    try:
+        yield
+    finally:
+        await registry.close()
+        logger.info("Shutting down %s", settings.app_name)
