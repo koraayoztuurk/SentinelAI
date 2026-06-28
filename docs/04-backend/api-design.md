@@ -137,6 +137,12 @@ Controllers should:
 
 Controllers should never directly access databases.
 
+Controllers should never access repositories directly.
+
+All persistence operations must be delegated to backend services.
+
+Repository abstractions remain an internal implementation detail of the backend and are never exposed through the API layer.
+
 ---
 
 # 6. Request Lifecycle
@@ -185,6 +191,10 @@ This routing model preserves service ownership boundaries while allowing the Pla
 The API delegates business operations to backend services.
 
 Business logic should never execute inside controllers.
+
+Service delegation should remain independent of persistence implementation details.
+
+Whether a backend service uses relational databases, graph databases, vector databases or caching technologies should remain completely transparent to API clients.
 
 ---
 
@@ -397,6 +407,10 @@ Backend service errors should be translated into consistent API error models.
 
 Different backend services should never expose different error formats.
 
+Backend persistence technologies should never influence externally visible API contracts.
+
+Storage-specific exceptions should always be translated into standardized API error responses.
+
 ---
 
 ## Unexpected Errors
@@ -493,6 +507,12 @@ Cacheable responses may be reused when business consistency permits.
 Caching policies should remain configurable.
 
 Cached responses should never violate data consistency.
+
+Response caching is an implementation optimization.
+
+Caching should never alter API semantics, consistency guarantees or ownership rules defined by the backend architecture.
+
+Clients should not depend on cached behavior.
 
 ---
 

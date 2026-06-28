@@ -32,10 +32,19 @@ Different database technologies are used according to their strengths rather tha
 
 The platform currently consists of:
 
+### Primary Storage Technologies
+
 - PostgreSQL
 - Neo4j
 - Vector Database
 
+### Supporting Persistence Technologies
+
+- Redis (Caching)
+
+Primary storage technologies own domain data.
+
+Supporting persistence technologies improve performance and operational efficiency without becoming authoritative sources of business data.
 Each database has a clearly defined responsibility.
 
 No database should duplicate the responsibilities of another.
@@ -70,10 +79,12 @@ BackendServices
 BackendServices --> PostgreSQL
 BackendServices --> Neo4j
 BackendServices --> VectorDB
+BackendServices --> Redis
 
 PostgreSQL --> StructuredData
 Neo4j --> GraphKnowledge
 VectorDB --> SemanticEmbeddings
+Redis --> CachedData
 ```
 
 ---
@@ -130,6 +141,25 @@ Characteristics include:
 - retrieval augmentation
 
 Semantic storage is implemented using a vector database.
+
+---
+
+## Caching Layer
+
+The caching layer provides temporary storage for performance optimization.
+
+Characteristics include:
+
+- low-latency access
+- transient data
+- derived representations
+- temporary operational state
+
+The caching layer is implemented using Redis.
+
+Cached data should never become the authoritative source of business information.
+
+The caching layer may be reconstructed entirely from authoritative storage whenever necessary.
 
 ---
 
@@ -259,6 +289,64 @@ Embeddings are synchronized from the authoritative storage.
 Each storage layer is optimized for different query patterns.
 
 Selecting the appropriate storage layer improves overall system performance.
+
+---
+
+## Redis Responsibilities
+
+Redis is a supporting persistence technology used exclusively for caching and temporary operational data.
+
+Redis does not participate in authoritative data ownership.
+
+Its responsibilities include:
+
+- reducing repeated database access
+- improving query performance
+- temporarily storing derived data
+- supporting short-lived operational state
+
+Redis should never become the primary source of business information.
+
+All cached information must be reproducible from the authoritative storage layers.
+
+---
+
+## Cache Ownership
+
+Redis does not own any domain object.
+
+Cache ownership always remains with the authoritative storage layer.
+
+Cached representations are implementation optimizations rather than independent data models.
+
+Removing all cached data should not affect business correctness.
+
+---
+
+## Cache Lifetime
+
+Cached data should remain temporary.
+
+Applications should tolerate cache expiration at any time.
+
+Cache lifetime policies should be determined by the owning backend service according to workload characteristics.
+
+This architecture intentionally does not prescribe global cache expiration policies.
+
+---
+
+## Cache Failure Strategy
+
+Redis availability should never determine overall system availability.
+
+If Redis becomes unavailable:
+
+- backend services should continue operating
+- requests should fall back to authoritative storage
+- business correctness should be preserved
+- performance degradation is acceptable
+
+Cache failures should be treated as operational events rather than data integrity failures.
 
 ---
 
@@ -424,6 +512,12 @@ Derived storage layers should be updated through synchronization rather than dir
 
 Services should never bypass ownership rules by writing directly to secondary storage layers.
 
+Redis is not an authoritative storage layer.
+
+Backend services may populate or invalidate cached data as needed.
+
+Cache updates should never replace writes to the authoritative storage.
+
 ---
 
 ## Cross-Storage Queries
@@ -480,6 +574,12 @@ Operations affecting a single storage layer should complete atomically whenever 
 Operations affecting multiple storage layers should avoid distributed transactions.
 
 Instead, synchronization should occur asynchronously.
+
+Redis does not participate in transactional consistency.
+
+Cache population and invalidation should remain independent of transactional guarantees.
+
+Temporary cache inconsistencies are acceptable provided that authoritative storage remains correct.
 
 ---
 
@@ -583,6 +683,10 @@ By assigning each category of data to the storage technology best suited for its
 Future implementations may introduce new database technologies or synchronization mechanisms.
 
 However, the ownership model and architectural boundaries defined in this document should remain stable regardless of implementation details.
+
+Supporting persistence technologies such as Redis may evolve independently from the primary storage technologies.
+
+However, supporting technologies should never become authoritative sources of business data or violate the ownership principles defined by this architecture.
 
 ---
 
