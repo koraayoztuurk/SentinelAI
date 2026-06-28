@@ -163,7 +163,9 @@ Architectural evolution should preserve:
 - long-term consistency
 - decision traceability
 
-Architectural evolution should occur deliberately rather than incrementally.
+Architectural evolution should occur deliberately through incremental architectural improvement.
+
+Incremental architectural evolution should preserve architectural integrity, explicit ownership and long-term consistency.
 
 ---
 
@@ -445,7 +447,7 @@ Explicit decisions strengthen governance consistency and architectural traceabil
 
 Architectural proposals should preserve existing architectural consistency before introducing additional architectural complexity.
 
-Architectural evolution should favor coherent architectural growth over incremental expansion.
+Architectural evolution should favor coherent incremental architectural evolution while preserving architectural consistency.
 
 ---
 

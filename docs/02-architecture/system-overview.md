@@ -18,7 +18,11 @@ SentinelAI is composed of multiple independent subsystems working together to as
 
 Rather than focusing on individual technologies or implementation details, this document explains how those subsystems interact to produce meaningful outcomes.
 
-It serves as the primary architectural reference for future backend, AI, frontend and infrastructure documents.
+It serves as the primary architectural reference for future AI, Application Domain (Backend), Presentation Domain (Frontend), DevOps, Security and Testing architecture documents.
+
+This document defines the approved architecture of SentinelAI.
+
+Project vision, strategic direction and product objectives remain the responsibility of the Project Charter.
 
 ---
 
@@ -88,9 +92,9 @@ SentinelAI is organized into several logical layers.
 
 Each layer has a clearly defined responsibility.
 
-## User Layer
+## Presentation Domain (Frontend)
 
-Responsible for user interaction.
+Responsible for user interaction and presentation workflows.
 
 Examples include:
 
@@ -105,9 +109,9 @@ Its responsibility is interaction.
 
 ---
 
-## Application Layer
+## Application Domain (Backend)
 
-Coordinates user requests.
+Coordinates application workflows and user requests.
 
 Responsible for:
 
@@ -521,9 +525,9 @@ flowchart LR
 
 User[Security Analyst]
 
-User --> UI[Frontend]
+User --> UI[Presentation Domain (Frontend)]
 
-UI --> API[Backend API]
+UI --> API[Application Domain]
 
 API --> Planner[Planner]
 
@@ -557,7 +561,7 @@ The objective of the Control Flow is coordination rather than data storage.
 A typical investigation follows these steps:
 
 1. The analyst initiates or opens an investigation.
-2. The Backend validates the request.
+2. The Application Domain (Backend) validates the request.
 3. The Planner evaluates the current investigation state.
 4. The Planner creates an execution plan.
 5. Specialized Agents perform assigned tasks.
@@ -613,11 +617,11 @@ A[Security Analyst]
 end
 
 subgraph Presentation
-B[Frontend]
+B[Presentation Domain (Frontend)]
 end
 
 subgraph Application
-C[Backend API]
+C[Application Domain]
 D[Investigation Workspace]
 end
 

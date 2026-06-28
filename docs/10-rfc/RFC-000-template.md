@@ -7,6 +7,8 @@ updated:
 reviewers:
 related_documents:
 related_adrs:
+supersedes:
+superseded_by:
 ---
 
 # RFC-XXX
@@ -20,6 +22,8 @@ related_adrs:
 Provide a concise summary of the proposed architectural change.
 
 The summary should allow readers to understand the proposal without reading the remainder of the document.
+
+The summary should describe the proposed architectural evolution rather than implementation details.
 
 ---
 
@@ -50,6 +54,8 @@ The problem statement should describe the current architectural limitation rathe
 Describe what this proposal intends to achieve.
 
 Goals should remain architectural rather than implementation-oriented.
+
+Goals should remain measurable from an architectural perspective whenever possible.
 
 ---
 
@@ -87,8 +93,8 @@ Consider impacts on:
 - Product
 - Architecture
 - AI
-- Backend
-- Frontend
+- Application Domain (Backend)
+- Presentation Domain (Frontend)
 - DevOps
 - Security
 - Testing
@@ -108,6 +114,8 @@ Each alternative should briefly explain:
 - disadvantages
 - architectural trade-offs
 
+The preferred alternative should clearly explain why it best preserves architectural consistency and long-term maintainability.
+
 ---
 
 # Migration Strategy
@@ -115,6 +123,8 @@ Each alternative should briefly explain:
 If accepted, describe how the architecture would evolve.
 
 Migration planning should remain architectural rather than implementation-specific.
+
+Migration strategies should preserve compatibility with accepted Architectural Decision Records (ADRs) unless the proposal explicitly supersedes them.
 
 ---
 
@@ -129,6 +139,7 @@ Possible considerations include:
 - architectural complexity
 - maintainability
 - long-term evolution
+- compatibility with existing architecture
 
 ---
 
@@ -155,6 +166,21 @@ Possible considerations include:
 
 ---
 
+# Review Outcome
+
+Document the final governance outcome.
+
+Possible outcomes include:
+
+- Accepted
+- Rejected
+- Superseded
+- Withdrawn
+
+If accepted, reference the corresponding Architectural Decision Record(s).
+
+---
+
 # References
 
 List related documentation.
@@ -163,8 +189,9 @@ Possible references include:
 
 - Project documents
 - Architecture documents
+- RFCs
 - ADRs
-- Previous RFCs
+- Development Roadmap
 
 ---
 

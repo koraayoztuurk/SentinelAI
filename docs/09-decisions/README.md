@@ -22,7 +22,7 @@ Recording important decisions provides:
 
 - architectural consistency
 - historical context
-- transparent decision making
+- transparent and traceable decision making
 - easier onboarding
 - improved maintainability
 
@@ -154,6 +154,27 @@ Both document types are required to fully understand the platform.
 
 ---
 
+# Relationship with RFCs
+
+Architectural proposals are governed through the RFC Process.
+
+Accepted architectural proposals normally result in one or more Architectural Decision Records (ADRs).
+
+The RFC Process governs:
+
+- architectural proposals
+- proposal review
+- proposal lifecycle
+- governance decisions
+
+ADRs record the accepted architectural decisions resulting from that governance process.
+
+RFCs and ADRs serve complementary governance responsibilities.
+
+RFCs should never replace ADRs, and ADRs should never replace the RFC Process.
+
+---
+
 # Current ADRs
 
 | ADR | Decision |
@@ -175,8 +196,19 @@ Both document types are required to fully understand the platform.
 Before introducing a significant architectural change:
 
 1. Review the existing ADRs.
-2. Verify that the proposed change does not conflict with accepted decisions.
-3. Create a new ADR if a new architectural decision is required.
-4. Supersede previous ADRs instead of silently modifying them.
+
+2. Verify that the proposed change does not conflict with accepted architectural decisions.
+
+3. Create or update an RFC describing the proposed architectural change.
+
+4. Complete the RFC review process.
+
+5. If the RFC is accepted, create one or more ADRs documenting the accepted architectural decision.
+
+6. Supersede previous ADRs rather than silently modifying them.
+
+The RFC Process is the canonical governance mechanism for proposing architectural evolution.
+
+ADRs remain the canonical record of accepted architectural decisions.
 
 Architectural consistency is preferred over short-term implementation convenience.

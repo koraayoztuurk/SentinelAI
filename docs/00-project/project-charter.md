@@ -188,13 +188,18 @@ The initial versions of SentinelAI intentionally focus on a limited set of well-
 
 Restricting the scope allows the platform to evolve through stable architectural foundations rather than uncontrolled feature expansion.
 
-The project roadmap is divided into multiple product versions.
+Implementation sequencing is defined by the Development Roadmap.
+
+The Project Charter defines long-term product capabilities and strategic direction rather than implementation order.
+
+Future platform capabilities are grouped to illustrate long-term product evolution rather than execution sequencing.
 
 ---
 
-## Version 1 (Bootcamp)
+## Initial Product Capabilities
 
-Version 1 focuses on building a production-quality AI-assisted incident investigation platform.
+
+Initial Product Capabilities focuses on building a production-quality AI-assisted incident investigation platform.
 
 Core capabilities include:
 
@@ -211,9 +216,9 @@ Core capabilities include:
 
 ---
 
-## Version 2
+## Graph Intelligence Capabilities
 
-Version 2 introduces graph intelligence.
+Graph Intelligence Capabilities introduces graph intelligence.
 
 Major additions include:
 
@@ -226,9 +231,9 @@ Major additions include:
 
 ---
 
-## Version 3
+## Threat Intelligence Capabilities
 
-Version 3 expands SentinelAI into a threat intelligence platform.
+Threat Intelligence Capabilities expands SentinelAI into a threat intelligence platform.
 
 Major additions include:
 
@@ -241,9 +246,9 @@ Major additions include:
 
 ---
 
-## Long-Term Vision
+## Long-Term Platform Vision
 
-Later versions may include:
+Later capability grouping may include:
 
 - Autonomous playbook execution
 - AI-assisted containment
@@ -272,6 +277,10 @@ These capabilities may integrate with SentinelAI in the future but are not core 
 ---
 
 # 9. Product Pillars
+
+Architectural goals are defined by the System Overview.
+
+The Product Pillars defined here describe the long-term product direction that guides those architectural decisions.
 
 Every engineering decision should strengthen at least one of these pillars.
 
@@ -463,7 +472,7 @@ Several constraints intentionally shape the development process.
 
 ## Time
 
-Version 1 must be achievable within the Bootcamp timeline.
+Initial Product Capabilities must be achievable within the Bootcamp timeline.
 
 Features that threaten delivery will be postponed rather than implemented poorly.
 
@@ -495,7 +504,21 @@ Complexity must always be justified.
 
 ---
 
-# 14. Engineering Principles
+# 14. Architecture First
+
+SentinelAI follows an Architecture First philosophy.
+
+Architectural decisions precede implementation decisions.
+
+Implementation should realize approved architecture rather than define it.
+
+Architectural evolution is governed through the RFC Process and documented through Architectural Decision Records (ADRs).
+
+Development sequencing is defined by the Development Roadmap.
+
+---
+
+# 15. Engineering Principles
 
 The following principles guide every engineering decision within SentinelAI.
 
@@ -533,7 +556,7 @@ Human oversight remains an essential part of the system.
 
 SentinelAI is designed as a long-term platform.
 
-Each version should extend previous work instead of replacing it.
+Each architectural capability should extend previously established platform capabilities rather than replace them.
 
 ---
 
@@ -545,7 +568,7 @@ Even experimental components should follow engineering best practices.
 
 ---
 
-# 15. Version History
+# 16. Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
