@@ -240,7 +240,7 @@ Responsibilities include:
 - understanding investigation objectives
 - determining required analysis steps
 - selecting appropriate agents
-- creating execution plans
+- selecting the next action to execute (one Planner Action per cycle)
 - monitoring investigation progress
 
 The Planner never performs domain-specific analysis.

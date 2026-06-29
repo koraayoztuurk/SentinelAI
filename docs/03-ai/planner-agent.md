@@ -305,6 +305,11 @@ Possible actions include:
 
 Only one planning decision should be made at a time.
 
+This single decision is emitted to the Planner Service as a single **Planner Action** for execution.
+The Planner Agent issues the next action only after observing the previous action's result (see the
+Planner Decision Loop). Multi-step investigations are therefore sequenced by the Planner Agent across
+successive actions rather than emitted as a single multi-step execution plan.
+
 The Planner may also intentionally choose to perform no immediate action when additional evidence is expected.
 
 Delaying execution is sometimes preferable to performing low-value analysis.
@@ -660,6 +665,13 @@ Typical outputs include:
 - execution priority
 - completion decision
 - escalation decision
+
+Each planning decision is emitted as a single **Planner Action** — the same structure the Planner
+Service consumes (see Planner Service §11 "Inputs"). For a service-invocation action this includes
+the target backend service, the operation, its inputs, an investigation reference, an action
+identifier and optional constraints; alternatively the action is a control action (complete or
+escalate). The Planner Agent emits exactly one action per cycle and does not emit a multi-step
+execution plan.
 
 Planner outputs should be deterministic whenever possible.
 

@@ -379,6 +379,13 @@ Tasks coordinate the activities executed by AI agents and analysts.
 
 Tasks enable structured investigation planning and execution tracking.
 
+A Task is distinct from a Planner **execution plan / Planner Action**. Execution plans and Planner
+Actions are transient, application-layer orchestration structures used by the Planner Agent and the
+Planner Service to coordinate execution; they are **not** domain objects and are not part of this
+domain model. A Task represents a unit of investigation work in the domain, whereas a Planner Action
+represents a single backend operation the Planner Service should execute on behalf of the Planner
+Agent.
+
 ---
 
 ## Examples

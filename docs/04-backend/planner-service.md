@@ -41,6 +41,21 @@ It does not generate plans.
 
 ---
 
+## Control Model
+
+The Planner Service executes **one Planner Action per request** (a single-action model). It does not
+hold or execute multi-step plans as a unit, and it does not persist workflow state.
+
+Multi-step, adaptive investigation is realised by the **Planner Agent's iterative decision loop**:
+the Planner Agent selects the next action, the Planner Service executes that single action and
+returns its result, and the Planner Agent then decides the following action. Execution order and
+dependencies between actions are therefore decided by the Planner Agent across successive cycles,
+not orchestrated as a stored multi-step workflow inside the Planner Service. References to
+"workflow", "steps" and "execution order" elsewhere in this document describe this agent-driven
+iterative loop, not a persisted multi-step plan executed by the service.
+
+---
+
 # 3. High-Level Architecture
 
 ```mermaid
@@ -100,6 +115,15 @@ Knowledge remains within dedicated backend services.
 
 ---
 
+## Execution State
+
+The Planner Service is **stateless**. It does not persist workflow or execution state and owns no
+storage. Each request executes a single Planner Action and returns its result; nothing is retained
+between requests. Execution remains observable through logging rather than a persisted workflow
+store. Investigation business state continues to be owned by the Investigation Service.
+
+---
+
 ## Workflow Responsibilities
 
 The Planner Service:
@@ -146,6 +170,12 @@ Supported operations include:
 - complete workflow
 
 Workflow execution should remain observable throughout its lifecycle.
+
+Under the single-action model, the only operation the Planner Service performs per request is the
+execution of one Planner Action. Lifecycle control (start / pause / resume / cancel / complete) is
+expressed by the Planner Agent's decision loop — by issuing the next action, withholding further
+actions, or issuing a control action — rather than by stateful workflow operations on the
+(stateless) Planner Service.
 
 ---
 
@@ -242,6 +272,11 @@ Aggregation should not modify business data.
 
 Aggregated results should preserve the originating service for every returned artifact.
 
+Under the single-action model, each request returns one **execution result** for the action: the
+originating backend service, the action identifier, the execution status (Completed or Failed), and
+the service response or a structured error. Combining results across multiple actions is the Planner
+Agent's responsibility across its decision loop, not a function performed inside the Planner Service.
+
 
 ---
 
@@ -313,6 +348,12 @@ State transitions should be deterministic.
 
 Every transition should be recorded for auditability.
 
+The lifecycle above describes the **execution status of a single Planner Action** — an
+application-layer, in-memory status. It is **not** a persisted workflow object and is **not** the
+domain `TaskStatus`. Because the Planner Service is stateless, "recorded for auditability" is
+satisfied through observability logging of each action's execution rather than a persisted workflow
+store.
+
 ---
 
 ## Recovery
@@ -335,15 +376,22 @@ Backend workflows should always be executed through the Planner Service.
 
 ## Inputs
 
-The Planner Service may receive:
+The Planner Service receives a single **Planner Action** per request (see Control Model).
 
-- execution plans
-- workflow requests
-- investigation context
-- execution constraints
-- planner instructions
+A Planner Action is a transient, application-layer structure (not a domain object). It is one of:
 
-Requests should contain sufficient information to execute deterministic workflows.
+- a **service-invocation action**, containing:
+  - an action identifier (for correlation and observability)
+  - an investigation reference
+  - a target backend service (Investigation, Graph or Memory)
+  - the operation to invoke on that service
+  - the operation inputs
+  - optional execution constraints (for example, a timeout)
+- a **control action** (no service call), such as completing the investigation or escalating to the
+  analyst.
+
+The target service and operation must be drawn from that service's documented operations. The
+action carries sufficient information to execute a deterministic, single-action operation.
 
 ---
 
@@ -402,6 +450,13 @@ Validation includes:
 - valid execution order
 - service availability
 - duplicate workflow steps
+
+Under the single-action model, the Planner Service validates each Planner Action before dispatch:
+the target is one of the known backend services; the requested operation is a supported operation of
+that service; the required operation inputs are present; and any execution constraints are
+satisfiable. Cross-action ordering, dependency satisfaction and duplicate-step detection are the
+Planner Agent's responsibility (it sequences actions across cycles), not the stateless Planner
+Service.
 
 ---
 

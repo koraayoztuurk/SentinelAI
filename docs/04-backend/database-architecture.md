@@ -183,6 +183,11 @@ This prevents duplicated ownership and inconsistent updates.
 
 The primary storage location owns the lifecycle of each object.
 
+The **Planner Service is stateless** and owns no storage: it persists no workflow or execution
+state. Planner execution plans and Planner Actions are transient application-layer structures and do
+not appear in this ownership model. (The owning service for the `Task` domain object is defined by
+the Investigation domain rather than by the Planner Service.)
+
 ---
 
 # 7. Data Synchronization
