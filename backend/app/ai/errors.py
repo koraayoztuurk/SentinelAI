@@ -47,3 +47,14 @@ class PlannerAgentError(AIRuntimeError):
     """
 
     code = "ai.planner_agent_error"
+
+
+class MemoryAgentError(AIRuntimeError):
+    """Raised when the Memory Agent cannot begin retrieval planning.
+
+    Used for precondition violations (a blank ``RetrievalPlanId``, an Investigation
+    State without objectives). Transformation failures are not raised — unknown
+    strategies are ignored and an empty Retrieval Plan is returned.
+    """
+
+    code = "ai.memory_agent_error"
