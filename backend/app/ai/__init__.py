@@ -31,15 +31,32 @@ from app.ai.errors import (
     AgentError,
     AIRuntimeError,
     EmbeddingProviderError,
+    InsufficientContextError,
     LLMProviderError,
     MemoryAgentError,
     PlannerAgentError,
+    RagError,
 )
 from app.ai.providers import (
     EmbeddingProvider,
     LLMProvider,
     LLMRequest,
     LLMResponse,
+)
+from app.ai.rag import (
+    ContextBuilder,
+    ContextValidationResult,
+    ContextValidator,
+    InvestigationContext,
+    Prompt,
+    PromptBuilder,
+    RagPipeline,
+    RagResult,
+    RetrievedItem,
+    RetrievedKnowledge,
+    Retriever,
+    ValidationIssue,
+    ValidationIssueCode,
 )
 
 __all__ = [
@@ -63,6 +80,20 @@ __all__ = [
     "RetrievalPlan",
     "RetrievalPlanId",
     "RetrievalStrategy",
+    # RAG Pipeline (ES-013)
+    "Retriever",
+    "RetrievedItem",
+    "RetrievedKnowledge",
+    "ContextBuilder",
+    "InvestigationContext",
+    "ContextValidator",
+    "ContextValidationResult",
+    "ValidationIssue",
+    "ValidationIssueCode",
+    "PromptBuilder",
+    "Prompt",
+    "RagPipeline",
+    "RagResult",
     # Errors
     "AIRuntimeError",
     "LLMProviderError",
@@ -70,4 +101,6 @@ __all__ = [
     "AgentError",
     "PlannerAgentError",
     "MemoryAgentError",
+    "RagError",
+    "InsufficientContextError",
 ]

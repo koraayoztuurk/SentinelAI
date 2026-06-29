@@ -58,3 +58,19 @@ class MemoryAgentError(AIRuntimeError):
     """
 
     code = "ai.memory_agent_error"
+
+
+class RagError(AIRuntimeError):
+    """Base class for RAG pipeline errors."""
+
+    code = "ai.rag_error"
+
+
+class InsufficientContextError(RagError):
+    """Raised when the assembled investigation context fails validation.
+
+    The RAG pipeline reports insufficient context explicitly rather than building a
+    prompt over it (rag-architecture §9/§20).
+    """
+
+    code = "ai.rag_insufficient_context"
