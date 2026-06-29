@@ -36,3 +36,14 @@ class AgentError(AIRuntimeError):
     """
 
     code = "ai.agent_error"
+
+
+class PlannerAgentError(AIRuntimeError):
+    """Raised when the Planner Agent cannot begin planning.
+
+    Used for precondition violations (an Investigation State without objectives, a
+    blank action identifier). Transformation failures are not raised — they
+    resolve to an escalate action.
+    """
+
+    code = "ai.planner_agent_error"

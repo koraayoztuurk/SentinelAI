@@ -20,11 +20,13 @@ from app.ai.agents import (
     AgentRuntime,
     AgentStatus,
 )
+from app.ai.agents.planner import InvestigationState, PlannerAgent
 from app.ai.errors import (
     AgentError,
     AIRuntimeError,
     EmbeddingProviderError,
     LLMProviderError,
+    PlannerAgentError,
 )
 from app.ai.providers import (
     EmbeddingProvider,
@@ -46,9 +48,13 @@ __all__ = [
     "AgentResult",
     "AgentStatus",
     "AgentRuntime",
+    # Planner Agent (ES-011)
+    "PlannerAgent",
+    "InvestigationState",
     # Errors
     "AIRuntimeError",
     "LLMProviderError",
     "EmbeddingProviderError",
     "AgentError",
+    "PlannerAgentError",
 ]
