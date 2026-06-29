@@ -25,3 +25,14 @@ class EmbeddingProviderError(AIRuntimeError):
     """Raised when an embedding provider operation fails."""
 
     code = "ai.embedding_provider_error"
+
+
+class AgentError(AIRuntimeError):
+    """Raised for a runtime-level agent failure (e.g. an invalid request or a
+    blank agent identity).
+
+    The Agent Runtime contains this error and represents it as a failed result;
+    it never escapes ``AgentRuntime.run``.
+    """
+
+    code = "ai.agent_error"

@@ -1,19 +1,31 @@
 """AI Runtime layer.
 
-Hosts SentinelAI's AI execution (ADR-005). This task (ES-009) establishes the
-**foundation** only: the provider-neutral, replaceable provider ports
-(language-model and embedding) and the AI error hierarchy.
+Hosts SentinelAI's AI execution (ADR-005). The foundation provides the
+provider-neutral, replaceable provider ports (ES-009) and the Agent Runtime —
+the agent contract and its stateless execution host (ES-010).
 
-The foundation owns **only** provider abstractions. Prompt engineering, reasoning
-strategies, orchestration and agent behaviour belong to higher AI layers
-(Agent Runtime, Planner Agent, Memory Manager, RAG) introduced by later
-specifications.
+The foundation owns **only** provider abstractions and the agent execution host.
+Prompt engineering, reasoning strategies, concrete agents, the Decision Engine,
+tools and RAG belong to higher AI layers introduced by later specifications.
 
 The AI Runtime is an independent layer: it never accesses persistence directly
 and reaches business data only through backend services.
 """
 
-from app.ai.errors import AIRuntimeError, EmbeddingProviderError, LLMProviderError
+from app.ai.agents import (
+    Agent,
+    AgentIdentity,
+    AgentRequest,
+    AgentResult,
+    AgentRuntime,
+    AgentStatus,
+)
+from app.ai.errors import (
+    AgentError,
+    AIRuntimeError,
+    EmbeddingProviderError,
+    LLMProviderError,
+)
 from app.ai.providers import (
     EmbeddingProvider,
     LLMProvider,
@@ -22,11 +34,21 @@ from app.ai.providers import (
 )
 
 __all__ = [
+    # Provider ports (ES-009)
     "LLMProvider",
     "LLMRequest",
     "LLMResponse",
     "EmbeddingProvider",
+    # Agent Runtime (ES-010)
+    "Agent",
+    "AgentIdentity",
+    "AgentRequest",
+    "AgentResult",
+    "AgentStatus",
+    "AgentRuntime",
+    # Errors
     "AIRuntimeError",
     "LLMProviderError",
     "EmbeddingProviderError",
+    "AgentError",
 ]
