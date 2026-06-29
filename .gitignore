@@ -138,3 +138,9 @@ temp/
 *.swp
 
 implementation/
+
+# -----------------------
+# Internal development tracker (never committed)
+# -----------------------
+
+SentinelAI-Implementation-Tracker.md
