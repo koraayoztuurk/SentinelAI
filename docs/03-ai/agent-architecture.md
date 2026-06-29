@@ -551,6 +551,12 @@ Examples include:
 
 The Investigation Workspace acts as the single source of truth throughout the investigation lifecycle.
 
+The Investigation Workspace (with the Context Builder) is responsible for **assembling** the
+Investigation State. Agents receive it as an already-assembled input and only reason over it; they
+never assemble or persist it. Its concrete contract is defined in Planner Agent §4 — it is an
+application/AI-layer operational structure (not a domain object) that references domain entities by
+identifier.
+
 ---
 
 ## Agent State
@@ -912,6 +918,11 @@ Outputs should be deterministic whenever possible.
 Given the same investigation context and evidence, an agent should aim to produce consistent structured outputs.
 
 Minor variations in natural language are acceptable, but the underlying findings and evidence should remain stable.
+
+The generic agent execution result is a **framework-neutral** envelope (status, output, error — see
+the Agent Runtime). A concrete agent may produce a typed structured product (for example the Planner
+Agent's Planner Action); that product is **represented through** the neutral result envelope, **without
+coupling** the generic result contract to any specific product type.
 
 ---
 

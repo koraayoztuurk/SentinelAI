@@ -386,6 +386,10 @@ domain model. A Task represents a unit of investigation work in the domain, wher
 represents a single backend operation the Planner Service should execute on behalf of the Planner
 Agent.
 
+Similarly, the **Investigation State** consumed by the Planner Agent is a transient application/AI-layer
+operational structure (assembled by the Investigation Workspace / Context Builder, referencing domain
+entities by identifier) — it is **not** a domain object and is not part of this domain model.
+
 ---
 
 ## Examples

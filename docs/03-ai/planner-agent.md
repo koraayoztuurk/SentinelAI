@@ -84,6 +84,24 @@ Unlike long-term organizational memory, it only contains information relevant to
 
 ---
 
+## Investigation State Contract
+
+The Investigation State is a transient **application/AI-layer operational structure** — **not** a
+domain object. It references domain entities by identifier rather than embedding them, and contains:
+
+- investigation metadata (identifier, status, priority, objectives)
+- evidence references (identifiers)
+- finding references (identifiers)
+- task state (completed / pending / skipped task references)
+- the overall confidence estimate
+- investigation history (prior planning decisions and outcomes)
+
+The Investigation State is **assembled outside the Planner Agent** — by the Investigation Workspace /
+Context Builder — and is supplied to the Planner Agent **already assembled**. The Planner Agent only
+**reasons over** the provided state; it never assembles, retrieves or persists it.
+
+---
+
 ## Investigation Metadata
 
 General information describing the investigation.
@@ -262,6 +280,22 @@ Its objective is to determine the next action that provides the greatest investi
 Planning decisions should always be evidence-driven.
 
 The Planner should avoid unnecessary analysis whenever sufficient information is already available.
+
+---
+
+## Reasoning Mechanism
+
+The Planner Agent reasons over the provided Investigation State using the language-model provider
+(AI Foundation, `LLMProvider`). The architecture fixes two contract points:
+
+- **Provider request/response contract** — the Planner Agent derives a provider request from the
+  Investigation State and obtains a provider response through the `LLMProvider` interface.
+- **Transformation boundary** — the provider response is transformed into **exactly one Planner
+  Action** (see Planner Service §11) and validated before it is returned.
+
+Prompt templates and prompt-engineering details are intentionally **out of scope for the
+architecture**; they are an implementation concern. The architecture fixes only the request/response
+contract and the response → Planner Action transformation boundary.
 
 ---
 
@@ -640,6 +674,9 @@ The Planner receives:
 - execution history
 - available agent capabilities
 
+The Investigation State is provided to the Planner Agent **already assembled** (by the Investigation
+Workspace / Context Builder); the Planner Agent does not assemble or retrieve it.
+
 ---
 
 ## Preconditions
@@ -672,6 +709,11 @@ the target backend service, the operation, its inputs, an investigation referenc
 identifier and optional constraints; alternatively the action is a control action (complete or
 escalate). The Planner Agent emits exactly one action per cycle and does not emit a multi-step
 execution plan.
+
+As an AI agent, the Planner Agent runs through the Agent Runtime (Agent Architecture §6a, §15). Its
+Planner Action is its structured product and is **represented through** the generic, framework-neutral
+`AgentResult` execution envelope; the generic `AgentResult` contract does **not** depend on Planner
+Action.
 
 Planner outputs should be deterministic whenever possible.
 

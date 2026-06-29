@@ -304,6 +304,16 @@ SentinelAI therefore prioritizes context engineering over prompt engineering.
 
 ---
 
+## Relationship to Investigation State
+
+The Context Builder (with the Investigation Workspace) is responsible for **assembling** the
+Investigation State that the Planner Agent consumes (Planner Agent §4). The Planner Agent never
+assembles its own state — it receives an already-assembled Investigation State and only reasons over
+it. RAG context assembly and Investigation State assembly are the same assembly responsibility and
+must not be duplicated inside the Planner Agent.
+
+---
+
 # 9. Context Validation
 
 Before contextual information is delivered to a language model, it should be validated.
