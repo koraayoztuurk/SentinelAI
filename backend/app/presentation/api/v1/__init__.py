@@ -8,4 +8,7 @@ follow (ES-015+).
 
 from fastapi import APIRouter
 
+from app.presentation.api.v1.investigation import investigation_router
+
 api_v1_router = APIRouter(prefix="/api/v1")
+api_v1_router.include_router(investigation_router)
