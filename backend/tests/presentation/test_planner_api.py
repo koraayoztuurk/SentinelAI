@@ -42,15 +42,9 @@ from app.domain.value_objects import (
     RelationshipType,
 )
 from app.main import create_app
-from app.presentation.api.auth import (
-    AuthenticatedIdentity,
-    IdentityKind,
-    require_identity,
-)
+from app.presentation.api.authorization import require_authorization
 from app.presentation.api.generation import get_id_generator
 from app.presentation.api.v1.planner.dependencies import get_planner_service
-
-_IDENTITY = AuthenticatedIdentity(subject="test-analyst", kind=IdentityKind.HUMAN)
 
 _NOW = datetime(2026, 6, 30, tzinfo=UTC)
 
@@ -193,7 +187,7 @@ class _Harness:
         app = create_app()
         app.dependency_overrides[get_planner_service] = lambda: self.service
         app.dependency_overrides[get_id_generator] = lambda: _FixedId()
-        app.dependency_overrides[require_identity] = lambda: _IDENTITY
+        app.dependency_overrides[require_authorization] = lambda: None
         return TestClient(app)
 
 
@@ -359,7 +353,7 @@ def test_get_memory_completed() -> None:
 
 def test_service_not_configured_returns_503() -> None:
     app = create_app()
-    app.dependency_overrides[require_identity] = lambda: _IDENTITY
+    app.dependency_overrides[require_authorization] = lambda: None
     client = TestClient(app)
     response = client.post(
         "/api/v1/planner/actions", json={"action": "control", "kind": "complete"}

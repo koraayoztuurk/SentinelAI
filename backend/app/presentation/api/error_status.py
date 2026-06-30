@@ -6,6 +6,7 @@ is an explicit, stable table keyed by each error's ``code`` constant — HTTP co
 never leak into the application or domain layers. Unknown codes fall back to 400.
 """
 
+from app.application.authorization.errors import AuthorizationError
 from app.application.graph.errors import (
     EntityNotFoundError,
     RelationshipNotFoundError,
@@ -57,6 +58,7 @@ _STATUS_BY_CODE: dict[str, int] = {
     InvalidMemoryVersionError.code: 422,
     InvalidActionError.code: 422,
     AuthenticationError.code: 401,
+    AuthorizationError.code: 403,
     BlankValueError.code: 422,
     InvalidConfidenceError.code: 422,
     MissingSupportingEvidenceError.code: 422,

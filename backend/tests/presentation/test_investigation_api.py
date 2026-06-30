@@ -17,17 +17,11 @@ from app.domain.identifiers import EvidenceId, FindingId, InvestigationId, Repor
 from app.domain.investigation import Investigation
 from app.domain.report import Report
 from app.main import create_app
-from app.presentation.api.auth import (
-    AuthenticatedIdentity,
-    IdentityKind,
-    require_identity,
-)
+from app.presentation.api.authorization import require_authorization
 from app.presentation.api.generation import get_clock, get_id_generator
 from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_service,
 )
-
-_IDENTITY = AuthenticatedIdentity(subject="test-analyst", kind=IdentityKind.HUMAN)
 
 _FIXED_TIME = datetime(2026, 6, 30, tzinfo=UTC)
 
@@ -133,7 +127,7 @@ def _client() -> TestClient:
     app.dependency_overrides[get_investigation_service] = lambda: service
     app.dependency_overrides[get_id_generator] = lambda: ids
     app.dependency_overrides[get_clock] = lambda: clock
-    app.dependency_overrides[require_identity] = lambda: _IDENTITY
+    app.dependency_overrides[require_authorization] = lambda: None
     return TestClient(app)
 
 
@@ -366,7 +360,7 @@ def test_create_list_and_get_report() -> None:
 
 def test_service_not_configured_returns_503() -> None:
     app = create_app()
-    app.dependency_overrides[require_identity] = lambda: _IDENTITY
+    app.dependency_overrides[require_authorization] = lambda: None
     client = TestClient(app)
     response = client.post(
         "/api/v1/investigations",

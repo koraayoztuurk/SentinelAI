@@ -1,18 +1,21 @@
-"""Tests for Authentication (ES-019).
+"""Tests for Authorization (ES-020).
 
-Verifies the secure-by-default enforcement seam: protected ``/api/v1`` endpoints
-reject unauthenticated requests, the public ``/health`` endpoint stays open, and a
-configured authenticator lets requests through. No concrete identity provider is
-required — tests inject doubles.
+Verifies that authorization is enforced after authentication and decided by the
+application-layer authorizer: an authenticated identity is denied by default
+(403), an allow-all policy lets the request reach the endpoint, and unauthenticated
+requests still fail authentication first (401).
 """
 
 import asyncio
 
 import pytest
-from fastapi import Request
 from fastapi.testclient import TestClient
 
-from app.application.authorization import AuthorizationRequest
+from app.application.authorization import (
+    AuthorizationError,
+    AuthorizationRequest,
+    DenyAllAuthorizer,
+)
 from app.application.investigation import InvestigationService
 from app.domain.evidence import Evidence
 from app.domain.finding import Finding
@@ -23,23 +26,15 @@ from app.main import create_app
 from app.presentation.api.auth import (
     AuthenticatedIdentity,
     IdentityKind,
-    UnconfiguredAuthenticator,
-    current_identity,
-    get_authenticator,
     require_identity,
 )
 from app.presentation.api.authorization import get_authorizer
-from app.presentation.api.errors import AuthenticationError
 from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_service,
 )
 
 _IDENTITY = AuthenticatedIdentity(subject="test-analyst", kind=IdentityKind.HUMAN)
-
-
-class _AllowAuthenticator:
-    async def authenticate(self, request: Request) -> AuthenticatedIdentity:
-        return _IDENTITY
+_PAYLOAD = {"title": "Phish", "owner": "a", "priority": "high"}
 
 
 class _AllowAllAuthorizer:
@@ -101,72 +96,54 @@ def _service() -> InvestigationService:
 # ----------------------------------------------------------------- enforcement
 
 
-def test_protected_endpoint_denies_unauthenticated() -> None:
-    client = TestClient(create_app())
-    response = client.post(
-        "/api/v1/investigations",
-        json={"title": "Phish", "owner": "a", "priority": "high"},
-    )
-    assert response.status_code == 401
+def test_authenticated_request_denied_by_default() -> None:
+    app = create_app()
+    app.dependency_overrides[require_identity] = lambda: _IDENTITY
+    client = TestClient(app)
+    response = client.post("/api/v1/investigations", json=_PAYLOAD)
+    assert response.status_code == 403
     body = response.json()
-    assert body["error"]["code"] == "api.unauthenticated"
+    assert body["error"]["code"] == "authorization.denied"
     assert body["meta"]["request_id"] == response.headers.get("X-Request-ID")
 
 
-def test_authenticated_request_passes_through() -> None:
+def test_authorized_request_reaches_endpoint() -> None:
     app = create_app()
     app.dependency_overrides[require_identity] = lambda: _IDENTITY
     app.dependency_overrides[get_authorizer] = _AllowAllAuthorizer
     app.dependency_overrides[get_investigation_service] = _service
     client = TestClient(app)
-    response = client.post(
-        "/api/v1/investigations",
-        json={"title": "Phish", "owner": "a", "priority": "high"},
-    )
+    response = client.post("/api/v1/investigations", json=_PAYLOAD)
     assert response.status_code == 201
 
 
-def test_authenticator_double_passes_through() -> None:
-    app = create_app()
-    app.dependency_overrides[get_authenticator] = _AllowAuthenticator
-    app.dependency_overrides[get_authorizer] = _AllowAllAuthorizer
-    app.dependency_overrides[get_investigation_service] = _service
-    client = TestClient(app)
-    response = client.post(
-        "/api/v1/investigations",
-        json={"title": "Phish", "owner": "a", "priority": "high"},
-    )
-    assert response.status_code == 201
-
-
-def test_health_stays_public() -> None:
+def test_unauthenticated_fails_authentication_first() -> None:
     client = TestClient(create_app())
-    response = client.get("/health")
-    assert response.status_code == 200
+    response = client.post("/api/v1/investigations", json=_PAYLOAD)
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "api.unauthenticated"
 
 
-# ------------------------------------------------------------------- identity
+# --------------------------------------------------------------------- unit
 
 
-def test_identity_kinds() -> None:
-    assert {k.value for k in IdentityKind} == {"human", "system", "external"}
-
-
-def test_blank_subject_rejected() -> None:
-    with pytest.raises(AuthenticationError):
-        AuthenticatedIdentity(subject="  ", kind=IdentityKind.HUMAN)
-
-
-def test_unconfigured_authenticator_denies() -> None:
+def test_deny_all_authorizer_denies() -> None:
     async def scenario() -> None:
-        with pytest.raises(AuthenticationError):
-            await UnconfiguredAuthenticator().authenticate(None)  # type: ignore[arg-type]
+        request = AuthorizationRequest(
+            subject="s", identity_kind="human", operation="POST /api/v1/investigations"
+        )
+        with pytest.raises(AuthorizationError):
+            await DenyAllAuthorizer().authorize(request)
 
     asyncio.run(scenario())
 
 
-def test_current_identity_requires_established_identity() -> None:
-    scope = {"type": "http", "headers": []}
-    request = Request(scope)
-    with pytest.raises(AuthenticationError):
-        current_identity(request)
+def test_authorization_request_fields() -> None:
+    request = AuthorizationRequest(
+        subject="analyst-1",
+        identity_kind="human",
+        operation="GET /api/v1/investigations/inv-1",
+    )
+    assert request.subject == "analyst-1"
+    assert request.identity_kind == "human"
+    assert request.operation == "GET /api/v1/investigations/inv-1"
