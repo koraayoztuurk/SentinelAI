@@ -11,9 +11,11 @@ The module-level ``app`` instance is the ASGI application served by, for example
 from fastapi import FastAPI
 
 from app import __version__
+from app.application.audit import LoggingAuditRecorder
 from app.config.settings import get_settings
 from app.core.logging import configure_logging
 from app.lifespan import lifespan
+from app.presentation.api.audit import AuditMiddleware
 from app.presentation.api.context import RequestContextMiddleware
 from app.presentation.api.v1 import api_v1_router
 from app.presentation.exception_handlers import register_exception_handlers
@@ -31,8 +33,10 @@ def create_app() -> FastAPI:
         version=__version__,
         lifespan=lifespan,
     )
+    app.state.audit_recorder = LoggingAuditRecorder()
 
     app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(AuditMiddleware)
     register_exception_handlers(app)
     app.include_router(health_router)
     app.include_router(api_v1_router)
