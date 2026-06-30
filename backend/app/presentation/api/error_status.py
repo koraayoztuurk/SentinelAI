@@ -26,6 +26,7 @@ from app.application.memory.errors import (
     InvalidMemoryVersionError,
     MemoryNotFoundError,
 )
+from app.application.planner.errors import InvalidActionError
 from app.domain.exceptions import (
     BlankValueError,
     InvalidConfidenceError,
@@ -51,6 +52,7 @@ _STATUS_BY_CODE: dict[str, int] = {
     MemoryNotFoundError.code: 404,
     DuplicateMemoryError.code: 409,
     InvalidMemoryVersionError.code: 422,
+    InvalidActionError.code: 422,
     BlankValueError.code: 422,
     InvalidConfidenceError.code: 422,
     MissingSupportingEvidenceError.code: 422,
