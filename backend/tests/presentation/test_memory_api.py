@@ -15,8 +15,15 @@ from app.application.memory import MemoryService
 from app.domain.identifiers import MemoryItemId
 from app.domain.memory_item import MemoryItem
 from app.main import create_app
+from app.presentation.api.auth import (
+    AuthenticatedIdentity,
+    IdentityKind,
+    require_identity,
+)
 from app.presentation.api.generation import get_clock, get_id_generator
 from app.presentation.api.v1.memory.dependencies import get_memory_service
+
+_IDENTITY = AuthenticatedIdentity(subject="test-analyst", kind=IdentityKind.HUMAN)
 
 _FIXED_TIME = datetime(2026, 6, 30, tzinfo=UTC)
 
@@ -71,6 +78,7 @@ def _client() -> TestClient:
     app.dependency_overrides[get_memory_service] = lambda: service
     app.dependency_overrides[get_id_generator] = lambda: _CountingIds()
     app.dependency_overrides[get_clock] = lambda: _FixedClock()
+    app.dependency_overrides[require_identity] = lambda: _IDENTITY
     return TestClient(app)
 
 
@@ -204,7 +212,9 @@ def test_history_preserves_immutable_version_one() -> None:
 
 
 def test_service_not_configured_returns_503() -> None:
-    client = TestClient(create_app())
+    app = create_app()
+    app.dependency_overrides[require_identity] = lambda: _IDENTITY
+    client = TestClient(app)
     response = client.post("/api/v1/memory", json=_create_payload())
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "api.persistence_not_configured"

@@ -17,3 +17,14 @@ class ServiceNotConfiguredError(SentinelAIError):
     """
 
     code = "api.persistence_not_configured"
+
+
+class AuthenticationError(SentinelAIError):
+    """Raised when a request cannot be associated with a verified identity.
+
+    Covers a missing, malformed or rejected credential and an unconfigured
+    authentication provider. Translated to HTTP 401; the message never reveals
+    unnecessary security details.
+    """
+
+    code = "api.unauthenticated"

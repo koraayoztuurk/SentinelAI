@@ -32,7 +32,10 @@ from app.domain.exceptions import (
     InvalidConfidenceError,
     MissingSupportingEvidenceError,
 )
-from app.presentation.api.errors import ServiceNotConfiguredError
+from app.presentation.api.errors import (
+    AuthenticationError,
+    ServiceNotConfiguredError,
+)
 from app.shared.exceptions import SentinelAIError
 
 _DEFAULT_STATUS = 400
@@ -53,6 +56,7 @@ _STATUS_BY_CODE: dict[str, int] = {
     DuplicateMemoryError.code: 409,
     InvalidMemoryVersionError.code: 422,
     InvalidActionError.code: 422,
+    AuthenticationError.code: 401,
     BlankValueError.code: 422,
     InvalidConfidenceError.code: 422,
     MissingSupportingEvidenceError.code: 422,
