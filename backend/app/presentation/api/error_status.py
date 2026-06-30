@@ -21,6 +21,11 @@ from app.application.investigation.errors import (
     InvestigationValidationError,
     ReportNotFoundError,
 )
+from app.application.memory.errors import (
+    DuplicateMemoryError,
+    InvalidMemoryVersionError,
+    MemoryNotFoundError,
+)
 from app.domain.exceptions import (
     BlankValueError,
     InvalidConfidenceError,
@@ -43,6 +48,9 @@ _STATUS_BY_CODE: dict[str, int] = {
     EvidenceOwnershipError.code: 422,
     EntityNotFoundError.code: 404,
     RelationshipNotFoundError.code: 404,
+    MemoryNotFoundError.code: 404,
+    DuplicateMemoryError.code: 409,
+    InvalidMemoryVersionError.code: 422,
     BlankValueError.code: 422,
     InvalidConfidenceError.code: 422,
     MissingSupportingEvidenceError.code: 422,

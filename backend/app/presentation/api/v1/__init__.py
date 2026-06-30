@@ -10,7 +10,9 @@ from fastapi import APIRouter
 
 from app.presentation.api.v1.graph import graph_router
 from app.presentation.api.v1.investigation import investigation_router
+from app.presentation.api.v1.memory import memory_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(investigation_router)
 api_v1_router.include_router(graph_router)
+api_v1_router.include_router(memory_router)
