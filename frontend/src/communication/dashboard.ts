@@ -38,6 +38,13 @@ export interface DashboardViewModel {
 // Only confirmed findings appear on the dashboard (dashboard-architecture §5).
 const CONFIRMED_STATUSES = new Set(["validated", "accepted"]);
 
+// A finding is confirmed when it has been validated or accepted. Shared so other
+// investigation-scoped derivations (e.g. graph seeds, ES-026) classify findings the
+// same way the dashboard does.
+export function isConfirmedFinding(status: string): boolean {
+  return CONFIRMED_STATUSES.has(status);
+}
+
 export function toDashboardViewModel(
   investigation: InvestigationDto,
   findings: readonly FindingDto[],
@@ -52,7 +59,7 @@ export function toDashboardViewModel(
       createdAt: investigation.created_at,
     },
     findings: findings
-      .filter((finding) => CONFIRMED_STATUSES.has(finding.status))
+      .filter((finding) => isConfirmedFinding(finding.status))
       .map((finding) => ({
         id: finding.id,
         status: finding.status,

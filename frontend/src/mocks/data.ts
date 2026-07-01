@@ -9,6 +9,7 @@ import type {
   FindingDto,
   InvestigationDto,
 } from "../communication/investigations";
+import type { EntityDto, RelationshipDto } from "../communication/graph";
 
 export const SAMPLE_INVESTIGATION_ID = "inv-001";
 
@@ -89,5 +90,72 @@ export const sampleFindings: readonly FindingDto[] = [
     status: "proposed",
     related_entities: [],
     related_relationships: [],
+  },
+];
+
+// A small connected graph reachable from the confirmed findings' related entities
+// (host-12, host-19, user-jdoe). The Graph API is entity-seeded, so the handlers
+// derive relationships-incident and neighbours from this adjacency.
+function entity(
+  id: string,
+  type: string,
+  displayName: string,
+  confidence: number,
+): EntityDto {
+  return {
+    id,
+    type,
+    display_name: displayName,
+    confidence,
+    source: "graph-analysis-agent",
+    attributes: {},
+    aliases: [],
+  };
+}
+
+export const sampleEntities: readonly EntityDto[] = [
+  entity("host-12", "host", "FIN-WS-12", 0.9),
+  entity("host-19", "host", "FIN-WS-19", 0.88),
+  entity("user-jdoe", "user", "jdoe", 0.82),
+  entity("svc-sql", "service", "finance-sql", 0.79),
+  entity("host-07", "host", "FIN-WS-07", 0.7),
+];
+
+export const sampleRelationships: readonly RelationshipDto[] = [
+  {
+    id: "rel-1",
+    source_entity_id: "host-12",
+    target_entity_id: "host-19",
+    type: "connects_to",
+    confidence: 0.84,
+    supporting_evidence: ["ev-101"],
+    created_at: "2026-06-28T09:22:00Z",
+  },
+  {
+    id: "rel-2",
+    source_entity_id: "host-12",
+    target_entity_id: "user-jdoe",
+    type: "authenticated",
+    confidence: 0.77,
+    supporting_evidence: ["ev-110"],
+    created_at: "2026-06-28T09:40:00Z",
+  },
+  {
+    id: "rel-3",
+    source_entity_id: "host-19",
+    target_entity_id: "svc-sql",
+    type: "connects_to",
+    confidence: 0.71,
+    supporting_evidence: ["ev-102"],
+    created_at: "2026-06-28T09:50:00Z",
+  },
+  {
+    id: "rel-4",
+    source_entity_id: "user-jdoe",
+    target_entity_id: "host-07",
+    type: "accessed",
+    confidence: 0.66,
+    supporting_evidence: ["ev-110"],
+    created_at: "2026-06-28T11:30:00Z",
   },
 ];

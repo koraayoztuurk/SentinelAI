@@ -67,6 +67,7 @@ const viewModel: WorkspaceViewModel = {
     },
   ],
   findingEvidence: { "fnd-001": ["ev-101"] },
+  seedEntities: [],
 };
 
 function renderAt(path: string) {

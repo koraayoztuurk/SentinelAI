@@ -18,6 +18,7 @@ import { OverviewSection } from "../sections/workspace/OverviewSection";
 import { EvidenceSection } from "../sections/workspace/EvidenceSection";
 import { FindingsSection } from "../sections/workspace/FindingsSection";
 import { TimelineSection } from "../sections/workspace/TimelineSection";
+import { GraphSection } from "../sections/workspace/GraphSection";
 import { PlaceholderRegion } from "../sections/workspace/WorkspaceRegion";
 import type { WorkspaceViewModel } from "../communication/workspace";
 
@@ -42,11 +43,8 @@ function WorkspaceContent({ viewModel }: { readonly viewModel: WorkspaceViewMode
           />
         </div>
         <TimelineSection timeline={viewModel.timeline} />
-        <div className="grid gap-5 md:grid-cols-3">
-          <PlaceholderRegion
-            title="Graph"
-            note="Graph visualization arrives with ES-026."
-          />
+        <GraphSection seedEntities={viewModel.seedEntities} />
+        <div className="grid gap-5 md:grid-cols-2">
           <PlaceholderRegion title="AI Insights" />
           <PlaceholderRegion title="Memory" />
         </div>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFindingEvidenceIndex,
+  collectSeedEntities,
   deriveTimelineEvents,
   toWorkspaceViewModel,
 } from "./workspace";
@@ -66,5 +67,16 @@ describe("buildFindingEvidenceIndex", () => {
     expect(index["fnd-001"]).toEqual(["ev-101", "ev-102"]);
     expect(index["fnd-002"]).toEqual(["ev-110"]);
     expect(index["fnd-003"]).toEqual(["ev-120"]);
+  });
+});
+
+describe("collectSeedEntities", () => {
+  it("collects the confirmed findings' related entities, deduplicated", () => {
+    // fnd-003 is proposed (excluded); the seeds keep first-seen order.
+    expect(collectSeedEntities(sampleFindings)).toEqual([
+      "host-12",
+      "host-19",
+      "user-jdoe",
+    ]);
   });
 });

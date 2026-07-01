@@ -9,9 +9,11 @@ import { http, HttpResponse } from "msw";
 import { getApiBaseUrl } from "../communication/config";
 import {
   SAMPLE_INVESTIGATION_ID,
+  sampleEntities,
   sampleEvidence,
   sampleFindings,
   sampleInvestigation,
+  sampleRelationships,
 } from "./data";
 
 const base = getApiBaseUrl();
@@ -78,5 +80,45 @@ export const handlers = [
       data: sampleFindings,
       meta: meta(),
     });
+  }),
+
+  // --- graph (entity-seeded; the handlers derive incidence/neighbours) ---
+
+  http.get(`${base}/api/v1/graph/entities/:id`, ({ params }) => {
+    const entity = sampleEntities.find((item) => item.id === params.id);
+    if (entity === undefined) {
+      return HttpResponse.json(
+        {
+          status: "error",
+          error: { code: "graph.entity_not_found", message: "Entity not found." },
+          meta: meta(),
+        },
+        { status: 404 },
+      );
+    }
+    return HttpResponse.json({ status: "success", data: entity, meta: meta() });
+  }),
+
+  http.get(`${base}/api/v1/graph/entities/:id/relationships`, ({ params }) => {
+    const incident = sampleRelationships.filter(
+      (rel) =>
+        rel.source_entity_id === params.id || rel.target_entity_id === params.id,
+    );
+    return HttpResponse.json({ status: "success", data: incident, meta: meta() });
+  }),
+
+  http.get(`${base}/api/v1/graph/entities/:id/neighbors`, ({ params }) => {
+    const neighbourIds = new Set<string>();
+    for (const rel of sampleRelationships) {
+      if (rel.source_entity_id === params.id) {
+        neighbourIds.add(rel.target_entity_id);
+      } else if (rel.target_entity_id === params.id) {
+        neighbourIds.add(rel.source_entity_id);
+      }
+    }
+    const neighbours = sampleEntities.filter((item) =>
+      neighbourIds.has(item.id),
+    );
+    return HttpResponse.json({ status: "success", data: neighbours, meta: meta() });
   }),
 ];

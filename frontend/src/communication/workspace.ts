@@ -25,6 +25,7 @@ import {
   type InvestigationDto,
 } from "./investigations";
 import {
+  isConfirmedFinding,
   toDashboardViewModel,
   type DashboardViewModel,
 } from "./dashboard";
@@ -54,6 +55,10 @@ export interface WorkspaceViewModel extends DashboardViewModel {
   readonly evidence: readonly EvidenceViewModel[];
   readonly timeline: readonly TimelineEventViewModel[];
   readonly findingEvidence: FindingEvidenceIndex;
+  // Entity ids referenced by the confirmed findings — the seeds the Graph Region
+  // (ES-026) explores. Investigation-scoped because the backend Graph API is
+  // entity-seeded (no investigation→graph endpoint).
+  readonly seedEntities: readonly string[];
 }
 
 function toEvidenceViewModel(evidence: EvidenceDto): EvidenceViewModel {
@@ -107,6 +112,28 @@ export function buildFindingEvidenceIndex(
   return index;
 }
 
+// Pure: the deduplicated entity ids referenced by the confirmed findings, in
+// first-seen order. These are the Graph Region's exploration seeds — every seed is
+// traceable to a presented finding.
+export function collectSeedEntities(
+  findings: readonly FindingDto[],
+): readonly string[] {
+  const seeds: string[] = [];
+  const seen = new Set<string>();
+  for (const finding of findings) {
+    if (!isConfirmedFinding(finding.status)) {
+      continue;
+    }
+    for (const entityId of finding.related_entities) {
+      if (!seen.has(entityId)) {
+        seen.add(entityId);
+        seeds.push(entityId);
+      }
+    }
+  }
+  return seeds;
+}
+
 export function toWorkspaceViewModel(
   investigation: InvestigationDto,
   evidence: readonly EvidenceDto[],
@@ -117,6 +144,7 @@ export function toWorkspaceViewModel(
     evidence: evidence.map(toEvidenceViewModel),
     timeline: deriveTimelineEvents(evidence, findings),
     findingEvidence: buildFindingEvidenceIndex(findings),
+    seedEntities: collectSeedEntities(findings),
   };
 }
 
