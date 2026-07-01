@@ -6,7 +6,7 @@
 // the investigation context (Frontend Architecture §11). The page binds only to the
 // view model — never to backend DTOs.
 
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Button } from "../ui/Button";
 import { useInvestigationDashboard } from "../state/useInvestigationDashboard";
 import { InvestigationSummarySection } from "../sections/dashboard/InvestigationSummarySection";
@@ -28,7 +28,15 @@ export function InvestigationDashboardPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Investigation Dashboard</h1>
+        <div>
+          <h1 className="text-xl font-semibold">Investigation Dashboard</h1>
+          <Link
+            to={`/investigations/${id}/workspace`}
+            className="text-xs opacity-60 hover:opacity-100"
+          >
+            Open workspace →
+          </Link>
+        </div>
         <span className="font-mono text-xs opacity-60">{id}</span>
       </header>
 

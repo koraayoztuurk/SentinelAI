@@ -9,6 +9,7 @@ import { http, HttpResponse } from "msw";
 import { getApiBaseUrl } from "../communication/config";
 import {
   SAMPLE_INVESTIGATION_ID,
+  sampleEvidence,
   sampleFindings,
   sampleInvestigation,
 } from "./data";
@@ -39,6 +40,24 @@ export const handlers = [
     return HttpResponse.json({
       status: "success",
       data: sampleInvestigation,
+      meta: meta(),
+    });
+  }),
+
+  http.get(`${base}/api/v1/investigations/:id/evidence`, ({ params }) => {
+    if (params.id !== SAMPLE_INVESTIGATION_ID) {
+      return HttpResponse.json(
+        {
+          status: "error",
+          error: { code: "investigation.not_found", message: "Investigation not found." },
+          meta: meta(),
+        },
+        { status: 404 },
+      );
+    }
+    return HttpResponse.json({
+      status: "success",
+      data: sampleEvidence,
       meta: meta(),
     });
   }),

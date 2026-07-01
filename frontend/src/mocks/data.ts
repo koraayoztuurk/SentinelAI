@@ -4,7 +4,11 @@
 // serves representative data shaped exactly like the real API responses. This is
 // never bundled into the production build.
 
-import type { FindingDto, InvestigationDto } from "../communication/investigations";
+import type {
+  EvidenceDto,
+  FindingDto,
+  InvestigationDto,
+} from "../communication/investigations";
 
 export const SAMPLE_INVESTIGATION_ID = "inv-001";
 
@@ -16,6 +20,41 @@ export const sampleInvestigation: InvestigationDto = {
   owner: "analyst-erin",
   priority: "high",
 };
+
+export const sampleEvidence: readonly EvidenceDto[] = [
+  {
+    id: "ev-101",
+    investigation_id: SAMPLE_INVESTIGATION_ID,
+    source: "edr",
+    timestamp: "2026-06-28T09:20:00Z",
+    integrity: "verified",
+    content: "Unusual SMB session opened from host-12 to host-19.",
+  },
+  {
+    id: "ev-102",
+    investigation_id: SAMPLE_INVESTIGATION_ID,
+    source: "firewall",
+    timestamp: "2026-06-28T09:35:00Z",
+    integrity: "verified",
+    content: "Lateral connection allowed on port 445 across the finance subnet.",
+  },
+  {
+    id: "ev-110",
+    investigation_id: SAMPLE_INVESTIGATION_ID,
+    source: "identity",
+    timestamp: "2026-06-28T11:25:00Z",
+    integrity: "verified",
+    content: "Account user-jdoe authenticated from an unrecognized workstation.",
+  },
+  {
+    id: "ev-120",
+    investigation_id: SAMPLE_INVESTIGATION_ID,
+    source: "threat-intel",
+    timestamp: "2026-06-28T12:05:00Z",
+    integrity: "unverified",
+    content: "Observed indicator matches a known lateral-movement toolkit.",
+  },
+];
 
 export const sampleFindings: readonly FindingDto[] = [
   {

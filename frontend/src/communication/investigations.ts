@@ -29,6 +29,15 @@ export interface FindingDto {
   readonly related_relationships: readonly string[];
 }
 
+export interface EvidenceDto {
+  readonly id: string;
+  readonly investigation_id: string;
+  readonly source: string;
+  readonly timestamp: string;
+  readonly integrity: string;
+  readonly content: string;
+}
+
 export function getInvestigation(
   id: string,
   signal?: AbortSignal,
@@ -45,6 +54,16 @@ export function listFindings(
 ): Promise<readonly FindingDto[]> {
   return apiClient.get<readonly FindingDto[]>(
     `/api/v1/investigations/${encodeURIComponent(id)}/findings`,
+    { signal },
+  );
+}
+
+export function listEvidence(
+  id: string,
+  signal?: AbortSignal,
+): Promise<readonly EvidenceDto[]> {
+  return apiClient.get<readonly EvidenceDto[]>(
+    `/api/v1/investigations/${encodeURIComponent(id)}/evidence`,
     { signal },
   );
 }

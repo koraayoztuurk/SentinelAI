@@ -6,3 +6,12 @@
 // test exercises the same sample data without the network.
 
 import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@testing-library/react";
+import { afterEach } from "vitest";
+
+// Unmount and clear the DOM after every test. React Testing Library's automatic
+// cleanup is not reliably registered on this runtime, so a rendered tree could
+// otherwise leak into the next test (producing duplicate-element matches).
+afterEach(() => {
+  cleanup();
+});
