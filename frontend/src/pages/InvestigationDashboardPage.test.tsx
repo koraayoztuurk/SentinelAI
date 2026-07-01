@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvestigationDashboardPage } from "./InvestigationDashboardPage";
+import { TestQueryProvider } from "../test/TestQueryProvider";
 import { ApiError } from "../communication/errors";
 import { loadInvestigationDashboard } from "../communication/dashboard";
 import type { DashboardViewModel } from "../communication/dashboard";
@@ -36,14 +37,16 @@ const viewModel: DashboardViewModel = {
 
 function renderAt(path: string) {
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route
-          path="/investigations/:id"
-          element={<InvestigationDashboardPage />}
-        />
-      </Routes>
-    </MemoryRouter>,
+    <TestQueryProvider>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route
+            path="/investigations/:id"
+            element={<InvestigationDashboardPage />}
+          />
+        </Routes>
+      </MemoryRouter>
+    </TestQueryProvider>,
   );
 }
 

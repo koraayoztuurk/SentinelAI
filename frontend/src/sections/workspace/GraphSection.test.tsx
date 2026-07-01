@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GraphSection } from "./GraphSection";
+import { TestQueryProvider } from "../../test/TestQueryProvider";
 import { WorkspaceProvider } from "../../state/workspaceContext";
 import { loadEntityNeighborhood } from "../../communication/graph";
 import type { GraphViewModel } from "../../communication/graph";
@@ -29,9 +30,11 @@ const graph: GraphViewModel = {
 
 function renderSection(seedEntities: readonly string[]) {
   return render(
-    <WorkspaceProvider>
-      <GraphSection seedEntities={seedEntities} />
-    </WorkspaceProvider>,
+    <TestQueryProvider>
+      <WorkspaceProvider>
+        <GraphSection seedEntities={seedEntities} />
+      </WorkspaceProvider>
+    </TestQueryProvider>,
   );
 }
 

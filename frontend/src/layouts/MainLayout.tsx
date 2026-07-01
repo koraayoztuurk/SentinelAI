@@ -6,6 +6,7 @@
 // introduced by later specifications (ES-024+).
 
 import type { ReactNode } from "react";
+import { ThemeToggle } from "../ui/ThemeToggle";
 
 export interface MainLayoutProps {
   readonly children: ReactNode;
@@ -14,8 +15,9 @@ export interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="px-6 py-4 border-b border-white/10">
+      <header className="flex items-center justify-between px-6 py-4 border-b border-white/10">
         <span className="font-semibold">SentinelAI</span>
+        <ThemeToggle />
       </header>
       <main className="flex-1 p-6">{children}</main>
     </div>

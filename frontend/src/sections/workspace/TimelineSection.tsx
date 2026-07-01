@@ -7,6 +7,7 @@
 
 import type { TimelineEventViewModel } from "../../communication/workspace";
 import { useWorkspaceContext } from "../../state/workspaceContext";
+import { selectIsTimelineEventEmphasized } from "../../state/workspaceSelectors";
 import { TimelineEntry } from "../../components/workspace/TimelineEntry";
 import { WorkspaceRegion } from "./WorkspaceRegion";
 
@@ -16,13 +17,6 @@ export interface TimelineSectionProps {
 
 export function TimelineSection({ timeline }: TimelineSectionProps) {
   const { state } = useWorkspaceContext();
-
-  function isEmphasized(event: TimelineEventViewModel): boolean {
-    if (event.kind === "finding") {
-      return event.reference === state.selectedFindingId;
-    }
-    return event.reference === state.selectedEvidenceId;
-  }
 
   return (
     <WorkspaceRegion title="Timeline">
@@ -34,7 +28,7 @@ export function TimelineSection({ timeline }: TimelineSectionProps) {
             <TimelineEntry
               key={event.id}
               event={event}
-              emphasized={isEmphasized(event)}
+              emphasized={selectIsTimelineEventEmphasized(state, event)}
             />
           ))}
         </ol>

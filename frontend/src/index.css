@@ -1,11 +1,19 @@
 @import "tailwindcss";
 
 /* Design tokens. The foundation defines a minimal palette; the design system is
-   expanded by the dashboard and workspace specifications (ES-024+). */
+   expanded by the dashboard and workspace specifications (ES-024+). The default is
+   the dark theme; the Session State theme preference (ES-027) applies a `data-theme`
+   attribute on <html> to switch palettes. */
 :root {
   --color-surface: #0b1020;
   --color-on-surface: #e6e9f2;
   --color-accent: #4f7cff;
+}
+
+:root[data-theme="light"] {
+  --color-surface: #f5f7fb;
+  --color-on-surface: #0b1020;
+  --color-accent: #3457d5;
 }
 
 body {

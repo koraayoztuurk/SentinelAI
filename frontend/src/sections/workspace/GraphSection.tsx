@@ -8,7 +8,6 @@
 // focus, preserving the origin seed. All coordination flows through the shared
 // Investigation Context — regions never talk to each other directly.
 
-import { useState } from "react";
 import { Button } from "../../ui/Button";
 import { useWorkspaceContext } from "../../state/workspaceContext";
 import { useEntityNeighborhood } from "../../state/useEntityNeighborhood";
@@ -22,10 +21,8 @@ export interface GraphSectionProps {
 
 export function GraphSection({ seedEntities }: GraphSectionProps) {
   const { state, dispatch } = useWorkspaceContext();
-  const [reloadToken, setReloadToken] = useState(0);
-  const { graph, loading, error } = useEntityNeighborhood(
+  const { graph, loading, error, retry } = useEntityNeighborhood(
     state.selectedEntityId,
-    reloadToken,
   );
 
   if (seedEntities.length === 0) {
@@ -70,7 +67,7 @@ export function GraphSection({ seedEntities }: GraphSectionProps) {
             <p className="mt-1 text-xs opacity-60">{error.message}</p>
             <Button
               className="mt-3 rounded border border-white/20 px-3 py-1 text-sm"
-              onClick={() => setReloadToken((token) => token + 1)}
+              onClick={retry}
             >
               Retry
             </Button>

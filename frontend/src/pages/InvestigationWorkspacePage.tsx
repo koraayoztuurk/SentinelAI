@@ -55,7 +55,7 @@ function WorkspaceContent({ viewModel }: { readonly viewModel: WorkspaceViewMode
 
 export function InvestigationWorkspacePage() {
   const { id = "" } = useParams();
-  const { viewModel, loading, error } = useInvestigationWorkspace(id);
+  const { viewModel, loading, error, retry } = useInvestigationWorkspace(id);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -80,7 +80,7 @@ export function InvestigationWorkspacePage() {
           <p className="mt-1 text-xs opacity-60">{error.message}</p>
           <Button
             className="mt-3 rounded border border-white/20 px-3 py-1 text-sm"
-            onClick={() => window.location.reload()}
+            onClick={retry}
           >
             Retry
           </Button>

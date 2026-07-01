@@ -12,6 +12,7 @@ import type {
   FindingEvidenceIndex,
 } from "../../communication/workspace";
 import { useWorkspaceContext } from "../../state/workspaceContext";
+import { selectHighlightedEvidenceIds } from "../../state/workspaceSelectors";
 import { EvidenceCard } from "../../components/workspace/EvidenceCard";
 import { WorkspaceRegion } from "./WorkspaceRegion";
 
@@ -26,12 +27,10 @@ export function EvidenceSection({
 }: EvidenceSectionProps) {
   const { state, dispatch } = useWorkspaceContext();
 
-  const highlighted = useMemo(() => {
-    const ids = state.selectedFindingId
-      ? (findingEvidence[state.selectedFindingId] ?? [])
-      : [];
-    return new Set(ids);
-  }, [state.selectedFindingId, findingEvidence]);
+  const highlighted = useMemo(
+    () => selectHighlightedEvidenceIds(state.selectedFindingId, findingEvidence),
+    [state.selectedFindingId, findingEvidence],
+  );
 
   return (
     <WorkspaceRegion title="Evidence">

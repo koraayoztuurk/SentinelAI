@@ -23,7 +23,7 @@ function DashboardSkeleton() {
 
 export function InvestigationDashboardPage() {
   const { id = "" } = useParams();
-  const { viewModel, loading, error } = useInvestigationDashboard(id);
+  const { viewModel, loading, error, retry } = useInvestigationDashboard(id);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -48,7 +48,7 @@ export function InvestigationDashboardPage() {
           <p className="mt-1 text-xs opacity-60">{error.message}</p>
           <Button
             className="mt-3 rounded border border-white/20 px-3 py-1 text-sm"
-            onClick={() => window.location.reload()}
+            onClick={retry}
           >
             Retry
           </Button>

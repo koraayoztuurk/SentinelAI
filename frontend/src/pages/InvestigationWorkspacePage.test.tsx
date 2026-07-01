@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvestigationWorkspacePage } from "./InvestigationWorkspacePage";
+import { TestQueryProvider } from "../test/TestQueryProvider";
 import { ApiError } from "../communication/errors";
 import { loadInvestigationWorkspace } from "../communication/workspace";
 import type { WorkspaceViewModel } from "../communication/workspace";
@@ -72,14 +73,16 @@ const viewModel: WorkspaceViewModel = {
 
 function renderAt(path: string) {
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route
-          path="/investigations/:id/workspace"
-          element={<InvestigationWorkspacePage />}
-        />
-      </Routes>
-    </MemoryRouter>,
+    <TestQueryProvider>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route
+            path="/investigations/:id/workspace"
+            element={<InvestigationWorkspacePage />}
+          />
+        </Routes>
+      </MemoryRouter>
+    </TestQueryProvider>,
   );
 }
 

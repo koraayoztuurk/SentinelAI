@@ -1,54 +1,31 @@
-// Investigation dashboard fetch hook.
+// Investigation dashboard query hook.
 //
-// A minimal local hook that loads the dashboard view model and tracks loading and
-// error state. Requests are cancelled when the id changes or the component
-// unmounts (Frontend Architecture §10 cancellation). A server-state cache /
-// auto-refresh library (TanStack Query) is deferred to the State Management
-// specification (ES-027).
+// A thin adapter over TanStack Query: it consumes the centralized `dashboardQuery`
+// option builder (so caching/retry policy stays in `state/query`) and projects the
+// query into the UI-facing `{ viewModel, loading, error, retry }` shape. `retry`
+// routes through the invalidate helper rather than touching the query client
+// directly. Cancellation is handled by Query (the `signal` reaches the loader).
 
-import { useEffect, useState } from "react";
-import { ApiError } from "../communication/errors";
-import {
-  loadInvestigationDashboard,
-  type DashboardViewModel,
-} from "../communication/dashboard";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError, toApiError } from "../communication/errors";
+import type { DashboardViewModel } from "../communication/dashboard";
+import { dashboardQuery, invalidateDashboard } from "./query";
 
 export interface DashboardState {
   readonly viewModel: DashboardViewModel | null;
   readonly loading: boolean;
   readonly error: ApiError | null;
+  readonly retry: () => void;
 }
 
 export function useInvestigationDashboard(id: string): DashboardState {
-  const [state, setState] = useState<DashboardState>({
-    viewModel: null,
-    loading: true,
-    error: null,
-  });
+  const client = useQueryClient();
+  const query = useQuery(dashboardQuery(id));
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ viewModel: null, loading: true, error: null });
-
-    loadInvestigationDashboard(id, controller.signal)
-      .then((viewModel) => {
-        if (!controller.signal.aborted) {
-          setState({ viewModel, loading: false, error: null });
-        }
-      })
-      .catch((cause: unknown) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        const error =
-          cause instanceof ApiError
-            ? cause
-            : new ApiError("communication.error", "The request failed.", 0);
-        setState({ viewModel: null, loading: false, error });
-      });
-
-    return () => controller.abort();
-  }, [id]);
-
-  return state;
+  return {
+    viewModel: query.data ?? null,
+    loading: query.isLoading,
+    error: toApiError(query.error),
+    retry: () => void invalidateDashboard(client, id),
+  };
 }

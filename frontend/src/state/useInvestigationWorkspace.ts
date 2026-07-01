@@ -1,54 +1,30 @@
-// Investigation workspace fetch hook.
+// Investigation workspace query hook.
 //
-// A minimal local hook that loads the workspace view model and tracks loading and
-// error state, mirroring `useInvestigationDashboard` (ES-024). Requests are
-// cancelled when the id changes or the component unmounts (Frontend Architecture
-// §10 cancellation). A server-state cache / auto-refresh library (TanStack Query) is
-// deferred to the State Management specification (ES-027).
+// A thin adapter over TanStack Query mirroring `useInvestigationDashboard`: it
+// consumes the centralized `workspaceQuery` option builder and projects the query
+// into `{ viewModel, loading, error, retry }`. `retry` routes through the invalidate
+// helper. Cancellation is handled by Query.
 
-import { useEffect, useState } from "react";
-import { ApiError } from "../communication/errors";
-import {
-  loadInvestigationWorkspace,
-  type WorkspaceViewModel,
-} from "../communication/workspace";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError, toApiError } from "../communication/errors";
+import type { WorkspaceViewModel } from "../communication/workspace";
+import { invalidateWorkspace, workspaceQuery } from "./query";
 
 export interface WorkspaceState {
   readonly viewModel: WorkspaceViewModel | null;
   readonly loading: boolean;
   readonly error: ApiError | null;
+  readonly retry: () => void;
 }
 
 export function useInvestigationWorkspace(id: string): WorkspaceState {
-  const [state, setState] = useState<WorkspaceState>({
-    viewModel: null,
-    loading: true,
-    error: null,
-  });
+  const client = useQueryClient();
+  const query = useQuery(workspaceQuery(id));
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ viewModel: null, loading: true, error: null });
-
-    loadInvestigationWorkspace(id, controller.signal)
-      .then((viewModel) => {
-        if (!controller.signal.aborted) {
-          setState({ viewModel, loading: false, error: null });
-        }
-      })
-      .catch((cause: unknown) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        const error =
-          cause instanceof ApiError
-            ? cause
-            : new ApiError("communication.error", "The request failed.", 0);
-        setState({ viewModel: null, loading: false, error });
-      });
-
-    return () => controller.abort();
-  }, [id]);
-
-  return state;
+  return {
+    viewModel: query.data ?? null,
+    loading: query.isLoading,
+    error: toApiError(query.error),
+    retry: () => void invalidateWorkspace(client, id),
+  };
 }
