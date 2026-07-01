@@ -1,0 +1,50 @@
+// Investigation data access.
+//
+// Typed access to the backend Investigation API through the shared `apiClient`
+// (the single Backend API boundary). The DTOs mirror the backend response shapes
+// (ES-015); they stay internal to the communication layer — the UI consumes view
+// models, not these DTOs. Every call forwards an optional `AbortSignal` so request
+// cancellation reaches the communication layer.
+
+import { apiClient } from "./apiClient";
+
+export interface InvestigationDto {
+  readonly id: string;
+  readonly title: string;
+  readonly status: string;
+  readonly created_at: string;
+  readonly owner: string;
+  readonly priority: string;
+}
+
+export interface FindingDto {
+  readonly id: string;
+  readonly investigation_id: string;
+  readonly supporting_evidence: readonly string[];
+  readonly creator: string;
+  readonly created_at: string;
+  readonly confidence: number;
+  readonly status: string;
+  readonly related_entities: readonly string[];
+  readonly related_relationships: readonly string[];
+}
+
+export function getInvestigation(
+  id: string,
+  signal?: AbortSignal,
+): Promise<InvestigationDto> {
+  return apiClient.get<InvestigationDto>(
+    `/api/v1/investigations/${encodeURIComponent(id)}`,
+    { signal },
+  );
+}
+
+export function listFindings(
+  id: string,
+  signal?: AbortSignal,
+): Promise<readonly FindingDto[]> {
+  return apiClient.get<readonly FindingDto[]>(
+    `/api/v1/investigations/${encodeURIComponent(id)}/findings`,
+    { signal },
+  );
+}
