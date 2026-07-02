@@ -1,0 +1,86 @@
+# SentinelAI local/dev stack (ES-028).
+#
+# Maps the architectural deployment units (deployment-architecture §5) onto
+# containers: Presentation (frontend), Application incl. the in-process AI Runtime
+# (backend), and Data (postgres/neo4j/qdrant/redis). The data tier is opt-in via the
+# `data` profile so the default `docker compose up` runs the application only.
+#
+#   docker compose up --build                  # backend + frontend
+#   docker compose --profile data up --build   # + the data tier
+#
+# The backend starts lazily (it opens no DB connections at startup), so it does not
+# depend on the data services and runs cleanly whether or not the profile is active.
+
+name: sentinelai
+
+services:
+  # ---- Data deployment unit (opt-in: `--profile data`) ----
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["data"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sentinelai}
+      POSTGRES_USER: ${POSTGRES_USER:-sentinelai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sentinelai} -d ${POSTGRES_DB:-sentinelai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5
+    profiles: ["data"]
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-change_me}
+    volumes:
+      - neo4j-data:/data
+
+  qdrant:
+    image: qdrant/qdrant
+    profiles: ["data"]
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["data"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---- Application deployment unit ----
+  backend:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # ---- Presentation deployment unit ----
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres-data:
+  neo4j-data:
+  qdrant-data:
+  redis-data:

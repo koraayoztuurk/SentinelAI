@@ -161,6 +161,34 @@ SentinelAI/
 
 ---
 
+## Running with Docker
+
+The platform's deployment units are containerized (ES-028). A root `docker-compose.yml`
+maps the architectural deployment units onto containers: **Presentation** (frontend),
+**Application** including the in-process AI Runtime (backend) and **Data**
+(PostgreSQL, Neo4j, Qdrant, Redis). The frontend serves the SPA and reverse-proxies
+`/api` and `/health` to the backend, so the browser talks to a single same-origin
+boundary (no CORS).
+
+```bash
+cp .env.example .env                       # optional; the stack also runs on defaults
+
+docker compose up --build                  # backend + frontend
+docker compose --profile data up --build   # + the data tier (PostgreSQL/Neo4j/Qdrant/Redis)
+```
+
+The application is served at **http://localhost:8080**:
+
+```bash
+curl http://localhost:8080/health          # {"status":"ok","name":"SentinelAI",...} (proxied to the backend)
+```
+
+The data tier is opt-in through the `data` compose profile; the backend starts lazily
+and does not require the databases to be running. Tear down with `docker compose down`
+(add `--profile data` to remove the data services too, `-v` to drop their volumes).
+
+---
+
 ## Documentation
 
 SentinelAI places architecture at the center of the development process. Before implementation begins, every major architectural domain is documented, reviewed and governed through a structured documentation model.

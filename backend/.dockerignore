@@ -1,0 +1,15 @@
+# Keep the build context small and deterministic. README.md and pyproject.toml are
+# required by the build and are intentionally NOT excluded.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+tests/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.env
+.env.*
