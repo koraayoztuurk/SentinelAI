@@ -1,6 +1,10 @@
 """Tests for the correlation context (ES-031)."""
 
+import pytest
+
 from app.observability.correlation import Correlation, bind, current, reset
+
+pytestmark = pytest.mark.operational
 
 
 def test_bind_and_reset_restore_previous_value() -> None:

@@ -4,10 +4,13 @@ Verifies the ES-002 acceptance criteria that the application starts and the
 health endpoint responds correctly.
 """
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app import __version__
 from app.main import app
+
+pytestmark = pytest.mark.operational
 
 client = TestClient(app)
 

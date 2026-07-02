@@ -3,9 +3,13 @@
 import json
 import logging
 
+import pytest
+
 from app.config.settings import Settings
 from app.core.logging import CorrelationFilter, JsonFormatter, configure_logging
 from app.observability.correlation import Correlation, bind, reset
+
+pytestmark = pytest.mark.operational
 
 
 def _record(name: str = "app.test", msg: str = "hello") -> logging.LogRecord:

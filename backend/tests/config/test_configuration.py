@@ -24,6 +24,8 @@ from app.config.validation import (
     validate_secrets,
 )
 
+pytestmark = pytest.mark.operational
+
 # ------------------------------------------------------------------- environment
 
 

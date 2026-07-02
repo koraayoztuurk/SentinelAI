@@ -1,8 +1,11 @@
 """Tests for the operational observability endpoints (ES-031)."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+
+pytestmark = pytest.mark.operational
 
 
 def test_readiness_is_ready_after_startup() -> None:

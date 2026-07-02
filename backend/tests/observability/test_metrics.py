@@ -1,6 +1,10 @@
 """Tests for the operational metrics registry (ES-031)."""
 
+import pytest
+
 from app.observability.metrics import PlatformMetrics
+
+pytestmark = pytest.mark.operational
 
 
 def test_records_and_renders_request_counter() -> None:

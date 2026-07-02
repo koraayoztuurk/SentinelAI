@@ -10,8 +10,11 @@ deterministic and side-effect-free.
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
+from app.application.graph import GraphService
 from app.application.investigation import InvestigationService
-from app.domain.enums import FindingStatus, InvestigationStatus
+from app.application.memory import MemoryService
+from app.domain.entity import Entity
+from app.domain.enums import FindingStatus, InvestigationStatus, MemoryStatus
 from app.domain.evidence import Evidence
 from app.domain.finding import Finding
 from app.domain.identifiers import (
@@ -19,22 +22,30 @@ from app.domain.identifiers import (
     EvidenceId,
     FindingId,
     InvestigationId,
+    MemoryItemId,
     RelationshipId,
     ReportId,
 )
 from app.domain.investigation import Investigation
+from app.domain.memory_item import MemoryItem
+from app.domain.relationship import Relationship
 from app.domain.report import Report
 from app.domain.value_objects import (
     ActorRef,
     Confidence,
+    EntityType,
     EvidenceIntegrity,
     EvidenceSource,
+    MemoryType,
     Priority,
+    RelationshipType,
 )
 from tests.support.doubles import (
     InMemoryEvidenceRepository,
     InMemoryFindingRepository,
+    InMemoryGraphRepository,
     InMemoryInvestigationRepository,
+    InMemoryMemoryRepository,
     InMemoryReportRepository,
 )
 
@@ -123,6 +134,65 @@ def build_report(
     )
 
 
+def build_entity(
+    entity_id: str,
+    *,
+    type_value: str = "endpoint",
+    display_name: str = "node",
+    confidence: float = 0.9,
+    source: str = "edr",
+) -> Entity:
+    return Entity(
+        id=EntityId(entity_id),
+        type=EntityType(type_value),
+        display_name=display_name,
+        confidence=Confidence(confidence),
+        source=source,
+    )
+
+
+def build_relationship(
+    relationship_id: str,
+    source_entity_id: str,
+    target_entity_id: str,
+    *,
+    type_value: str = "communicates_with",
+    confidence: float = 0.8,
+    supporting_evidence: Sequence[str] = ("ev-1",),
+    created_at: datetime = FIXED_TIME,
+) -> Relationship:
+    return Relationship(
+        id=RelationshipId(relationship_id),
+        source_entity_id=EntityId(source_entity_id),
+        target_entity_id=EntityId(target_entity_id),
+        type=RelationshipType(type_value),
+        confidence=Confidence(confidence),
+        supporting_evidence=tuple(EvidenceId(v) for v in supporting_evidence),
+        created_at=created_at,
+    )
+
+
+def build_memory_item(
+    memory_id: str,
+    *,
+    type_value: str = "attack_pattern",
+    source_investigation_id: str = "inv-1",
+    confidence: float = 0.9,
+    status: MemoryStatus = MemoryStatus.CANDIDATE,
+    version: int = 1,
+    created_at: datetime = FIXED_TIME,
+) -> MemoryItem:
+    return MemoryItem(
+        id=MemoryItemId(memory_id),
+        type=MemoryType(type_value),
+        source_investigation_id=InvestigationId(source_investigation_id),
+        confidence=Confidence(confidence),
+        status=status,
+        created_at=created_at,
+        version=version,
+    )
+
+
 def make_investigation_service() -> InvestigationService:
     """Wire an ``InvestigationService`` over fresh in-memory doubles."""
 
@@ -132,3 +202,15 @@ def make_investigation_service() -> InvestigationService:
         InMemoryFindingRepository(),
         InMemoryReportRepository(),
     )
+
+
+def make_graph_service() -> GraphService:
+    """Wire a ``GraphService`` over a fresh in-memory graph repository."""
+
+    return GraphService(InMemoryGraphRepository())
+
+
+def make_memory_service() -> MemoryService:
+    """Wire a ``MemoryService`` over a fresh in-memory memory repository."""
+
+    return MemoryService(InMemoryMemoryRepository())

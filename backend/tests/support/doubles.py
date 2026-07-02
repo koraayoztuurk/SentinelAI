@@ -9,15 +9,21 @@ infrastructure, not owned by a single domain.
 
 from datetime import datetime
 
+from app.domain.entity import Entity
 from app.domain.evidence import Evidence
 from app.domain.finding import Finding
 from app.domain.identifiers import (
+    EntityId,
     EvidenceId,
     FindingId,
     InvestigationId,
+    MemoryItemId,
+    RelationshipId,
     ReportId,
 )
 from app.domain.investigation import Investigation
+from app.domain.memory_item import MemoryItem
+from app.domain.relationship import Relationship
 from app.domain.report import Report
 
 # ------------------------------------------------------------- repository doubles
@@ -105,6 +111,100 @@ class InMemoryReportRepository:
             r
             for r in self._items.values()
             if r.investigation_id == investigation_id
+        )
+
+
+class InMemoryGraphRepository:
+    """Dict-backed graph repository double (entities + relationships).
+
+    ``neighbors`` implements a minimal single-hop adjacency: entities directly
+    connected to the requested entity, bounded by ``max_nodes``. Documented
+    traversal semantics belong to the Graph Service / Neo4j adapter.
+    """
+
+    def __init__(self) -> None:
+        self._entities: dict[str, Entity] = {}
+        self._relationships: dict[str, Relationship] = {}
+
+    async def add_entity(self, entity: Entity) -> None:
+        self._entities[entity.id.value] = entity
+
+    async def get_entity(self, entity_id: EntityId) -> Entity | None:
+        return self._entities.get(entity_id.value)
+
+    async def update_entity(self, entity: Entity) -> None:
+        self._entities[entity.id.value] = entity
+
+    async def add_relationship(self, relationship: Relationship) -> None:
+        self._relationships[relationship.id.value] = relationship
+
+    async def get_relationship(
+        self, relationship_id: RelationshipId
+    ) -> Relationship | None:
+        return self._relationships.get(relationship_id.value)
+
+    async def update_relationship(self, relationship: Relationship) -> None:
+        self._relationships[relationship.id.value] = relationship
+
+    async def list_relationships_for_entity(
+        self, entity_id: EntityId
+    ) -> tuple[Relationship, ...]:
+        return tuple(
+            r
+            for r in self._relationships.values()
+            if entity_id in (r.source_entity_id, r.target_entity_id)
+        )
+
+    async def neighbors(
+        self, entity_id: EntityId, depth: int, max_nodes: int
+    ) -> tuple[Entity, ...]:
+        result: list[Entity] = []
+        for relationship in self._relationships.values():
+            other: EntityId | None = None
+            if relationship.source_entity_id == entity_id:
+                other = relationship.target_entity_id
+            elif relationship.target_entity_id == entity_id:
+                other = relationship.source_entity_id
+            if other is not None and other.value in self._entities:
+                result.append(self._entities[other.value])
+            if len(result) >= max_nodes:
+                break
+        return tuple(result)
+
+
+class InMemoryMemoryRepository:
+    """Dict-backed versioned MemoryItem repository double.
+
+    ``add`` appends a version, ``get`` returns the latest version, ``update``
+    replaces the matching version in place (deprecation), ``list_versions``
+    returns every version ordered by version number ascending.
+    """
+
+    def __init__(self) -> None:
+        self._versions: dict[str, list[MemoryItem]] = {}
+
+    async def add(self, memory_item: MemoryItem) -> None:
+        self._versions.setdefault(memory_item.id.value, []).append(memory_item)
+
+    async def get(self, memory_id: MemoryItemId) -> MemoryItem | None:
+        versions = self._versions.get(memory_id.value)
+        return max(versions, key=lambda m: m.version) if versions else None
+
+    async def update(self, memory_item: MemoryItem) -> None:
+        versions = self._versions.get(memory_item.id.value, [])
+        for index, existing in enumerate(versions):
+            if existing.version == memory_item.version:
+                versions[index] = memory_item
+                return
+
+    async def list_versions(
+        self, memory_id: MemoryItemId
+    ) -> tuple[MemoryItem, ...]:
+        return tuple(
+            sorted(
+                self._versions.get(memory_id.value, ()),
+                key=lambda m: m.version,
+            )
         )
 
 
