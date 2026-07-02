@@ -24,6 +24,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.2",
+    "pytest-cov>=5",
     "httpx>=0.27",
     "mypy>=1.10",
     "ruff>=0.5",
@@ -49,3 +50,22 @@ warn_return_any = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--strict-markers"
+# Validation taxonomy (testing-strategy §5). `--strict-markers` makes an
+# unregistered marker an error, so the taxonomy stays explicit.
+markers = [
+    "unit: Domain Validation — a component/service in isolation with in-memory doubles.",
+    "integration: Integration Validation — cross-domain collaboration (ES-034).",
+    "architecture: Architecture Validation — boundaries and dependency rules (ES-033).",
+    "operational: Operational Validation — health, readiness, metrics, config and startup.",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"

@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Frontend Architecture
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-27
+last_updated: 2026-07-02
 ---
 
 # SentinelAI Frontend Architecture
@@ -602,6 +602,14 @@ Examples include:
 - filtered investigation results
 
 Derived State should always be reproducible and should never become an authoritative source of information.
+
+---
+
+## Server-State (Cached Backend Data)
+
+Backend-owned business information consumed by the frontend is cached, not owned. Server-state is a distinct concern from the four client-owned state categories above: the backend remains the authoritative source, and the frontend holds only a cached representation with its own freshness and invalidation lifecycle.
+
+Cached server-state should be refreshed or invalidated rather than mutated in place, consistent with the ownership principle that the frontend caches business information rather than owning it.
 
 The detailed ownership, synchronization and lifecycle of frontend state are defined in the **UI State Management** document.
 
@@ -1580,3 +1588,4 @@ The primary objective of the frontend is to present trustworthy investigation in
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Frontend Architecture specification created |
+| 1.1.0 | 2026-07-02 | Clarified server-state (cached backend data) as a distinct concern from the owned client-state categories |

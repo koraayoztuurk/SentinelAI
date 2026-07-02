@@ -1,9 +1,9 @@
 ---
 title: UI State Management
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-27
+last_updated: 2026-07-02
 ---
 
 # UI State Management
@@ -196,6 +196,12 @@ Independent ownership of Derived State should be avoided.
 
 ---
 
+## Server-State (Cached Backend Data)
+
+Backend-owned business information is not one of the four categories above: it is **cached, not owned**. The backend remains the authoritative source, and the frontend holds only a cached representation with its own freshness and invalidation lifecycle, managed separately from the client-owned state categories (see the Frontend Architecture, State Management Philosophy).
+
+---
+
 # 6. State Ownership
 
 Every category of frontend state should have a clearly defined architectural owner.
@@ -377,3 +383,4 @@ Future implementations may introduce new state capabilities while preserving the
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial UI State Management specification created |
+| 1.1.0 | 2026-07-02 | Noted cached backend (server) state as managed separately from the four state categories |

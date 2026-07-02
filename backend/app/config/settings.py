@@ -15,6 +15,8 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.config.environment import Environment, resolve_environment
+
 
 class Settings(BaseSettings):
     """Application-level configuration loaded from the environment."""
@@ -31,6 +33,18 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     log_level: str = "INFO"
+    log_format: str = "text"
+
+    @property
+    def environment(self) -> Environment:
+        """The active operational environment as the typed :class:`Environment`.
+
+        Derived from the raw ``app_env`` string; raises
+        :class:`~app.config.errors.UnknownEnvironmentError` for an unrecognized
+        value.
+        """
+
+        return resolve_environment(self.app_env)
 
 
 @lru_cache

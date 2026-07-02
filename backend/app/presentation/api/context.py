@@ -21,6 +21,8 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
+from app.observability import Correlation, bind, metrics, reset
+
 logger = logging.getLogger(__name__)
 
 REQUEST_ID_HEADER = "X-Request-ID"
@@ -51,22 +53,35 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         )
         request.state.request_context = context
 
-        started_at = perf_counter()
-        response = await call_next(request)
-        duration_ms = (perf_counter() - started_at) * 1000.0
-
-        response.headers[REQUEST_ID_HEADER] = request_id
-        response.headers[CORRELATION_ID_HEADER] = correlation_id
-        response.headers[PROCESS_TIME_HEADER] = f"{duration_ms:.3f}"
-
-        logger.info(
-            "request method=%s path=%s status=%s request_id=%s",
-            request.method,
-            request.url.path,
-            response.status_code,
-            request_id,
+        # Bind the correlation for the duration of the request so every log record
+        # emitted while handling it carries the identifiers (end-to-end traceability).
+        token = bind(
+            Correlation(request_id=request_id, correlation_id=correlation_id)
         )
-        return response
+        started_at = perf_counter()
+        try:
+            response = await call_next(request)
+            duration_ms = (perf_counter() - started_at) * 1000.0
+
+            response.headers[REQUEST_ID_HEADER] = request_id
+            response.headers[CORRELATION_ID_HEADER] = correlation_id
+            response.headers[PROCESS_TIME_HEADER] = f"{duration_ms:.3f}"
+
+            metrics.record_request(
+                request.method, response.status_code, duration_ms
+            )
+            logger.info(
+                "request method=%s path=%s status=%s correlation_id=%s "
+                "duration_ms=%.3f",
+                request.method,
+                request.url.path,
+                response.status_code,
+                correlation_id,
+                duration_ms,
+            )
+            return response
+        finally:
+            reset(token)
 
 
 def get_request_context(request: Request) -> RequestContext:

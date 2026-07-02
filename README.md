@@ -187,6 +187,22 @@ The data tier is opt-in through the `data` compose profile; the backend starts l
 and does not require the databases to be running. Tear down with `docker compose down`
 (add `--profile data` to remove the data services too, `-v` to drop their volumes).
 
+### Continuous integration & deployment
+
+Continuous integration (`.github/workflows/ci.yml`, ES-030) validates each deployment
+unit independently and confirms the deployment artifacts build: the backend
+(`ruff` / `mypy` / `pytest`), the frontend (`lint` / `typecheck` / `test` / `build`)
+and the Docker images (`docker compose build`). Images are built for validation only —
+they are not pushed to a registry, and there is no automated environment deploy yet.
+
+For a production-shaped run, layer the production overlay on top of the base compose
+with a real `.env` (non-development environments must replace every `change_me` secret
+— the backend fails fast on startup otherwise):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile data up -d
+```
+
 ---
 
 ## Documentation

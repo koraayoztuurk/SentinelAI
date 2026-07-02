@@ -86,6 +86,9 @@ coverage.xml
 
 htmlcov/
 
+# Frontend coverage output (Vitest v8)
+coverage/
+
 # -----------------------
 # TypeScript
 # -----------------------

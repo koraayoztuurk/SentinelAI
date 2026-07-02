@@ -20,6 +20,7 @@ from app.presentation.api.context import RequestContextMiddleware
 from app.presentation.api.v1 import api_v1_router
 from app.presentation.exception_handlers import register_exception_handlers
 from app.presentation.health import router as health_router
+from app.presentation.observability import router as observability_router
 
 
 def create_app() -> FastAPI:
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
     app.add_middleware(AuditMiddleware)
     register_exception_handlers(app)
     app.include_router(health_router)
+    app.include_router(observability_router)
     app.include_router(api_v1_router)
 
     return app

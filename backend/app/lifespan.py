@@ -15,7 +15,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.config.database import get_neo4j_settings, get_postgres_settings
 from app.config.settings import get_settings
+from app.config.validation import validate_configuration
 from app.infrastructure.persistence.registry import build_registry
 
 logger = logging.getLogger(__name__)
@@ -29,8 +31,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
 
     settings = get_settings()
+    # Configuration Validation (configuration-management §8): fail fast before
+    # serving if the configuration is inconsistent with the active environment.
+    environment = validate_configuration(
+        settings, get_postgres_settings(), get_neo4j_settings()
+    )
     logger.info(
-        "Starting %s (environment=%s)", settings.app_name, settings.app_env
+        "Starting %s (environment=%s)", settings.app_name, environment.value
     )
 
     registry = build_registry()

@@ -1,9 +1,9 @@
 ---
 title: Investigation Workspace
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-27
+last_updated: 2026-07-02
 ---
 
 # Investigation Workspace
@@ -200,6 +200,8 @@ Presents investigation events in chronological order.
 
 This region enables analysts to reconstruct attack progression and understand temporal relationships.
 
+Until a dedicated investigation-event source is introduced, the Timeline reconstructs events from the temporal attributes of existing investigation artifacts (for example evidence collection times and finding creation times). A future dedicated event source may enrich the Timeline without changing this region's responsibility.
+
 ---
 
 ## Graph Region
@@ -217,6 +219,8 @@ Displays AI-generated observations and recommendations.
 Every recommendation should remain explainable through supporting investigation evidence.
 
 AI-generated content should never appear without sufficient contextual information.
+
+The AI Insights Region — and, likewise, the Memory Region — depends on capabilities exposed by the Application Domain and the AI Runtime. Until those capabilities are exposed to the workspace, these regions present an explicit awaiting/empty state rather than fabricating content.
 
 ---
 
@@ -540,3 +544,4 @@ Future implementations may introduce additional capabilities, visualizations and
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Investigation Workspace specification created |
+| 1.1.0 | 2026-07-02 | Clarified the Timeline event source and the AI Insights/Memory region data dependency |

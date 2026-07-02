@@ -1,0 +1,18 @@
+# Production overlay (ES-030) — the Operational-stage deployment configuration
+# (release-management §5), layered on the base compose.
+#
+# It selects the production environment and adds restart policies. In production the
+# backend requires real secrets: with APP_ENV=production, the ES-029 configuration
+# validation fails fast if the `change_me` placeholders are still in place. Run with
+# a real `.env` and the data tier:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile data up -d
+
+services:
+  backend:
+    environment:
+      APP_ENV: production
+    restart: unless-stopped
+
+  frontend:
+    restart: unless-stopped

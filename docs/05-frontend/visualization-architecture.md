@@ -1,9 +1,9 @@
 ---
 title: Visualization Architecture
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-27
+last_updated: 2026-07-02
 ---
 
 # Visualization Architecture
@@ -137,6 +137,8 @@ Typical visualization categories include:
 Represents entities and their relationships.
 
 Graph visualizations support exploration of investigation structure and relationship discovery.
+
+The graph is presented as an entity-seeded neighbourhood rather than a single whole-investigation retrieval: it is seeded from entities within the investigation's scope (for example the entities referenced by findings) and expanded through relationship traversal from a focused entity. This preserves the entity-centric graph model while keeping the visualization synchronized with the shared Investigation Context.
 
 ---
 
@@ -369,3 +371,4 @@ Future implementations may introduce new visualization techniques and analytical
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Visualization Architecture specification created |
+| 1.1.0 | 2026-07-02 | Clarified the graph as an entity-seeded neighbourhood (seeded from investigation-scoped entities) |
