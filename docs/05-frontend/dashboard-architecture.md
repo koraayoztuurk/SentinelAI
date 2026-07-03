@@ -1,9 +1,9 @@
 ---
 title: Dashboard Architecture
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-27
+last_updated: 2026-07-03
 ---
 
 # Dashboard Architecture
@@ -179,9 +179,11 @@ Objectives help analysts understand what remains to be completed before the inve
 
 ## Findings
 
-Highlights validated investigation findings.
+Highlights confirmed investigation findings.
 
 Only confirmed findings should appear within this component.
+
+**Definition (normative):** a finding is *confirmed* when its lifecycle status is **Validated** or **Accepted** (Domain Model, Finding lifecycle). This is a presentation filter over domain lifecycle states — it introduces no new business state, and its definition is owned by this document, realized in the frontend's communication layer (view-model mapping). Any other investigation-scoped derivation that classifies findings (for example, graph seeding) must reuse this same definition.
 
 Supporting evidence remains accessible through other workspace regions.
 
@@ -426,3 +428,4 @@ Future implementations may introduce additional dashboard capabilities and visua
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Dashboard Architecture specification created |
+| 1.1.0 | 2026-07-03 | "Confirmed finding" defined normatively (Validated or Accepted) with explicit ownership: a presentation filter over domain lifecycle states, realized in the frontend communication layer |

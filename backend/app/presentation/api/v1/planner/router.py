@@ -8,6 +8,12 @@ The Planner Service isolates downstream failures into a failed ``ExecutionResult
 rather than raising, so a valid action whose downstream fails returns HTTP 200 with
 ``execution_status="failed"``. Only precondition violations (`InvalidActionError`,
 translated to 422) and an unbound service (503) produce HTTP error responses.
+
+Contract status: **transitional, not part of the stable public API** (api-design
+§8, ADR-010 Notes). The documented caller of the Planner Service is the AI
+Runtime's Investigation Loop; this endpoint exists until that loop has a runtime
+invocation surface and will be superseded by an investigation-level execution
+surface.
 """
 
 from fastapi import APIRouter, Depends, status

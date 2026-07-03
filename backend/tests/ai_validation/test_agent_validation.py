@@ -13,8 +13,6 @@ import pytest
 
 from app.ai import (
     AgentIdentity,
-    AgentRequest,
-    AgentResult,
     AgentRuntime,
     AgentStatus,
     MemoryAgent,
@@ -63,7 +61,7 @@ class _FailingAgent:
     def identity(self) -> AgentIdentity:
         return AgentIdentity("failing-agent")
 
-    async def execute(self, request: AgentRequest) -> AgentResult:
+    async def execute(self, request: str) -> str:
         raise self._failure
 
 
@@ -76,7 +74,7 @@ def test_runtime_contains_every_failure_class() -> None:
 
     async def scenario() -> None:
         runtime = AgentRuntime()
-        request = AgentRequest(payload="analyse", investigation_id="inv-1")
+        request = "analyse"
 
         contained = await runtime.run(_FailingAgent(_DomainFailure("boom")), request)
         assert contained.status is AgentStatus.FAILED

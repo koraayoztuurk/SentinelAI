@@ -148,6 +148,43 @@ def test_ai_runtime_does_not_depend_on_infrastructure_or_presentation() -> None:
 
 
 @pytest.mark.architecture
+def test_application_does_not_depend_on_ai_runtime() -> None:
+    # The composition direction is one-way (ADR-010): the AI Runtime composes
+    # backend service interfaces; backend services never depend on AI components.
+    violations = _forbidden_import_violations("app.application", ("app.ai",))
+    assert not violations, f"application depended on the AI runtime: {violations}"
+
+
+@pytest.mark.architecture
+def test_no_service_imports_another_services_repositories() -> None:
+    # ADR-004 / ADR-010: no backend service may access another service's
+    # persistence contracts. Cross-service collaboration goes through service
+    # interfaces, never through another service's repositories.
+    services = (
+        "investigation",
+        "graph",
+        "memory",
+        "planner",
+        "audit",
+        "authorization",
+        "secrets",
+    )
+    violations: list[tuple[str, str]] = []
+    for service in services:
+        foreign_repositories = tuple(
+            f"app.application.{other}.repositories"
+            for other in services
+            if other != service
+        )
+        violations.extend(
+            _forbidden_import_violations(
+                f"app.application.{service}", foreign_repositories
+            )
+        )
+    assert not violations, f"cross-service persistence access: {violations}"
+
+
+@pytest.mark.architecture
 def test_presentation_does_not_import_infrastructure_directly() -> None:
     violations = _forbidden_import_violations(
         "app.presentation", ("app.infrastructure",)

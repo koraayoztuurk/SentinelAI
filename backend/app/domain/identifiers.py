@@ -115,3 +115,14 @@ class ReportId:
     def __post_init__(self) -> None:
         if not self.value.strip():
             raise BlankValueError("ReportId must not be blank.")
+
+
+@dataclass(frozen=True, slots=True)
+class TraceEntryId:
+    """Unique identifier of an Investigation Trace entry."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        if not self.value.strip():
+            raise BlankValueError("TraceEntryId must not be blank.")

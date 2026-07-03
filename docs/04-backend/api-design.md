@@ -1,9 +1,9 @@
 ---
 title: SentinelAI API Design
-version: 1.0.0
+version: 1.2.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-03
 ---
 
 # SentinelAI API Design
@@ -180,9 +180,9 @@ Client
 - Investigation, Evidence, Finding and Report operations are delegated to the **Investigation Service**.
 - Memory operations are delegated to the **Memory Service**.
 - Graph operations are delegated to the **Graph Service**.
-- Multi-step investigation workflows are delegated to the **Planner Service**.
+- Planner Action execution is delegated to the **Planner Service** — one action per request (ADR-010). Multi-step investigations are sequenced by the Planner Agent's decision loop in the AI Runtime, never by the API or the Planner Service.
 
-This routing model preserves service ownership boundaries while allowing the Planner Service to focus exclusively on workflow orchestration.
+This routing model preserves service ownership boundaries while keeping the Planner Service a stateless, single-action execution seam.
 
 ---
 
@@ -200,7 +200,7 @@ Whether a backend service uses relational databases, graph databases, vector dat
 
 ## Planner Service
 
-The API delegates workflow execution to the Planner Service.
+The API delegates the execution of a single Planner Action to the Planner Service (ADR-010).
 
 ---
 
@@ -262,9 +262,11 @@ Represents graph-based investigation data.
 
 ---
 
-## Workflow Resource
+## Planner Action Resource
 
-Represents workflow execution initiated by the Planner Service.
+Represents the execution of a single Planner Action by the Planner Service (ADR-010).
+
+**Contract status: transitional, not part of the stable public API.** The documented caller of the Planner Service is the AI Runtime's Investigation Loop; this resource exists only until that loop has a runtime invocation surface. Clients must not build on it: it will be superseded by an investigation-level execution surface, and no compatibility commitment applies to it. External clients driving raw Planner Actions would invert ADR-002's coordination model (every execution request originates from the Planner) and is not a supported usage.
 
 ---
 
@@ -274,7 +276,7 @@ Each API resource should map to exactly one backend service.
 
 The API should never combine ownership across multiple services.
 
-Cross-service coordination remains the responsibility of the Planner Service.
+Cross-service coordination is the responsibility of the Planner Agent's decision loop, executed one action at a time through the Planner Service (ADR-010).
 
 ---
 
@@ -526,6 +528,18 @@ Stable contracts reduce integration cost and improve long-term maintainability.
 
 ---
 
+# 14a. Contract Synchronization
+
+The API contract exists in one authoritative, machine-readable form: the published contract artifact **`docs/api/openapi.json`**, generated from the running application (`backend/scripts/export_openapi.py`).
+
+- An architecture check fails whenever the committed artifact diverges from the application, so every contract change is explicit and reviewable — never silent.
+- Consumers **derive** from the artifact instead of hand-maintaining copies: frontend communication types and mock definitions are derivation targets (derivation tooling is deferred implementation work; the artifact is its fixed source).
+- Hand-written consumer copies are transitional; a divergence between a consumer copy and the artifact is a consumer defect, not a contract ambiguity.
+
+This resolves the multiple-hand-written-copies risk (backend schemas, frontend DTOs, mocks) identified by the architecture audit (E-05).
+
+---
+
 # 15. Future Evolution
 
 Future API capabilities may include:
@@ -574,3 +588,5 @@ However, the architectural responsibilities defined in this document should rema
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial API Design specification created |
+| 1.1.0 | 2026-07-03 | Planner delegation aligned with the single-action control model (ADR-010); Workflow Resource replaced by the Planner Action Resource |
+| 1.2.0 | 2026-07-03 | Contract Synchronization defined (§14a): committed OpenAPI artifact as the single contract source with freshness enforcement; consumer copies become derivation targets (audit finding E-05) |

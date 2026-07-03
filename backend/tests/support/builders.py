@@ -46,7 +46,9 @@ from tests.support.doubles import (
     InMemoryGraphRepository,
     InMemoryInvestigationRepository,
     InMemoryMemoryRepository,
+    InMemoryOutcomeRepository,
     InMemoryReportRepository,
+    InMemoryTraceRepository,
 )
 
 FIXED_TIME = datetime(2026, 1, 1, tzinfo=UTC)
@@ -201,6 +203,8 @@ def make_investigation_service() -> InvestigationService:
         InMemoryEvidenceRepository(),
         InMemoryFindingRepository(),
         InMemoryReportRepository(),
+        InMemoryOutcomeRepository(),
+        InMemoryTraceRepository(),
     )
 
 

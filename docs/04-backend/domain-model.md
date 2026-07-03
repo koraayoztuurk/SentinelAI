@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Domain Model
-version: 1.0.0
+version: 1.2.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-03
 ---
 
 # SentinelAI Domain Model
@@ -250,8 +250,11 @@ Typical Finding states include:
 
 - Proposed
 - Validated
+- Accepted
 - Rejected
 - Archived
+
+A validated finding is subsequently accepted or rejected (see §15).
 
 The lifecycle should remain observable and traceable.
 
@@ -601,6 +604,43 @@ InvestigationOutcome enables:
 
 ---
 
+# 11b. Trace Entry
+
+A TraceEntry is one record of the **Investigation Trace** — the append-only explainability journal of an investigation.
+
+The trace realizes the platform's central promise ("Explainable AI Assistance"): every planner decision, executed action, retrieval and loop outcome is recorded so the analyst can reconstruct *who decided or did what, when and why*.
+
+The trace is **not** the security audit log: audit records security-relevant access (Audit and Observability); the trace records investigation reasoning and execution.
+
+---
+
+## Characteristics
+
+Every TraceEntry preserves:
+
+- unique identifier
+- investigation reference
+- kind (planner decision, action execution, retrieval, loop outcome, analyst note)
+- actor (the agent, component or analyst it originates from)
+- human-readable summary
+- correlation reference (for example the action or retrieval-plan identifier)
+- creation timestamp
+
+---
+
+## Rules
+
+- Trace entries are immutable and append-only; they are never updated or removed by investigation workflows (removal is governed by the Data Lifecycle architecture).
+- Trace recording is best-effort from the producer's perspective: a trace failure must never break the investigation it explains.
+
+---
+
+## Storage Owner
+
+The Investigation Service owns the persistence of the Investigation Trace. The AI Runtime compositions (Investigation Loop, Retrieval Flow) produce entries and record them through the Investigation Service interface (ADR-010 dependency direction).
+
+---
+
 # 12. Domain Relationships
 
 The domain objects defined in this document interact through well-defined relationships.
@@ -627,6 +667,7 @@ An Investigation owns:
 - Findings
 - Tasks
 - Reports
+- Trace Entries (its explainability journal)
 
 ---
 
@@ -840,7 +881,13 @@ Although lifecycle stages differ, all domain objects should remain observable an
 ```mermaid
 flowchart TD
 	Created --> Active --> Completed --> Archived
+	Active --> Suspended --> Active
+	Suspended --> Archived
+	Completed -->|reopen on significant new evidence| Active
+	Active --> Archived
 ```
+
+Suspension is reversible (Suspended ↔ Active) and a suspended investigation may be archived without reactivation. Completion is likewise reversible: significant new evidence may transition a completed investigation back to Active (Planner Agent §10). Archived is terminal.
 
 ---
 
@@ -953,3 +1000,5 @@ Protecting domain stability is essential for long-term architectural consistency
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Domain Model specification created |
+| 1.1.0 | 2026-07-03 | Finding lifecycle list aligned with §15 (Accepted added); Investigation lifecycle diagram completed with Suspended transitions (Active ↔ Suspended, Suspended → Archived) and reopen (Completed → Active, per Planner Agent §10) |
+| 1.2.0 | 2026-07-03 | Trace Entry added (§11b) — the append-only Investigation Trace (explainability journal) owned by the Investigation Service and produced by the AI Runtime compositions (audit finding M-01/E-07) |

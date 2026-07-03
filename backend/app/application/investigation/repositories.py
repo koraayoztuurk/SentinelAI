@@ -14,8 +14,10 @@ from app.domain.evidence import Evidence
 from app.domain.finding import Finding
 from app.domain.identifiers import EvidenceId, FindingId, InvestigationId, ReportId
 from app.domain.investigation import Investigation
+from app.domain.investigation_outcome import InvestigationOutcome
 from app.domain.report import Report
 from app.domain.repositories import Repository
+from app.domain.trace import TraceEntry
 
 
 class InvestigationRepository(Repository, Protocol):
@@ -66,3 +68,27 @@ class ReportRepository(Repository, Protocol):
     async def list_for_investigation(
         self, investigation_id: InvestigationId
     ) -> tuple[Report, ...]: ...
+
+
+class OutcomeRepository(Repository, Protocol):
+    """Persistence operations for InvestigationOutcome (0..1 per investigation)."""
+
+    async def add(self, outcome: InvestigationOutcome) -> None: ...
+
+    async def get_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> InvestigationOutcome | None: ...
+
+
+class TraceRepository(Repository, Protocol):
+    """Append-only persistence operations for Investigation Trace entries.
+
+    The trace is append-only by contract: no update or delete operation exists.
+    ``list_for_investigation`` returns entries in append order.
+    """
+
+    async def add(self, entry: TraceEntry) -> None: ...
+
+    async def list_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> tuple[TraceEntry, ...]: ...

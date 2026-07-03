@@ -45,6 +45,10 @@ from app.main import create_app
 from app.presentation.api.authorization import require_authorization
 from app.presentation.api.generation import get_id_generator
 from app.presentation.api.v1.planner.dependencies import get_planner_service
+from tests.support.doubles import (
+    InMemoryOutcomeRepository,
+    InMemoryTraceRepository,
+)
 
 _NOW = datetime(2026, 6, 30, tzinfo=UTC)
 
@@ -177,7 +181,12 @@ class _Harness:
         self.memory = _MemoryRepo()
         self.service = PlannerService(
             InvestigationService(
-                self.investigations, _EvidenceRepo(), _FindingRepo(), _ReportRepo()
+                self.investigations,
+                _EvidenceRepo(),
+                _FindingRepo(),
+                _ReportRepo(),
+                InMemoryOutcomeRepository(),
+                InMemoryTraceRepository(),
             ),
             GraphService(self.graph),
             MemoryService(self.memory),

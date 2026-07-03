@@ -75,6 +75,14 @@ Explains why the selected decision was preferred.
 
 The rationale should describe the engineering principles that motivated the decision.
 
+**Rationale must be decision-specific.** Generic quality attributes ("improves maintainability, scalability and ownership") apply to almost any decision and therefore justify none; they may appear only in support of decision-specific drivers. A rationale should answer, concretely for this decision:
+
+- which problem or constraint drove it (traceable to the Context)
+- what would go wrong under the rejected alternatives, specifically
+- how the decision's success or violation can be observed or verified (a measurable or checkable consequence — for example an enforceable constraint, a testable boundary or an explicit ownership rule)
+
+New ADRs (ADR-010 onward) are expected to meet this standard; earlier ADRs are historical records and are not rewritten retroactively.
+
 ---
 
 ## Alternatives Considered
@@ -188,6 +196,11 @@ RFCs should never replace ADRs, and ADRs should never replace the RFC Process.
 | ADR-007 | ThreatGraph Architecture |
 | ADR-008 | API Architecture |
 | ADR-009 | Frontend Architecture |
+| ADR-010 | Planner Composition and AI Orchestration Ownership |
+| ADR-011 | Supporting Persistence Technologies |
+| ADR-012 | Derived Representation Production and Propagation |
+| ADR-013 | AI Provider Resilience and the Single Agent Execution Path |
+| ADR-014 | Lightweight Architectural Proposal Process |
 
 ---
 

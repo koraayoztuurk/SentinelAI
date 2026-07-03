@@ -1,9 +1,9 @@
 ---
 title: Authentication and Authorization
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-27
+last_updated: 2026-07-03
 ---
 
 # Authentication and Authorization
@@ -336,6 +336,39 @@ Authorization traceability strengthens security monitoring, audit activities and
 
 ---
 
+# 6a. Investigation Access Scoping Model
+
+The threat model names cross-investigation information leakage as a threat and investigation isolation as its mitigation. This section defines the isolation **model** those statements rely on (audit finding M-04).
+
+## Scoping Key
+
+- Every Investigation carries an **owner** (the domain's `ActorRef`); ownership is the initial access-scoping key.
+- The model is extensible to team and organization scopes: a scope is always expressed as an attribute of the investigation, evaluated by the authorization policy — never inferred from data content.
+
+## Access Rules
+
+- Access to an investigation and to every investigation-scoped object (evidence, findings, reports, outcome, trace) is evaluated against the investigation's scope by the `Authorizer` policy.
+- AI retrieval operates **within** the requesting investigation's scope for investigation-scoped data: the Investigation State and retrieval context carry the investigation reference, and investigation-scoped knowledge of other investigations is not retrievable through it.
+
+## Shared Knowledge Boundary
+
+Organizational Memory and the Knowledge Graph are **deliberately cross-investigation** (organizational learning is a platform goal). The isolation boundary is placed at promotion, not at retrieval:
+
+- Only **validated** knowledge is promoted into the shared layers (Memory Architecture, Domain Rule 5); promotion is the controlled point where investigation-scoped information becomes organizational.
+- Retrieval from shared layers is therefore legitimate for any investigation; retrieval of another investigation's *unpromoted* data is not.
+
+---
+
+# 6b. Operation Context (Identity Propagation)
+
+Authorization, auditing and the Investigation Trace all need to know **on whose behalf** an operation runs. The architectural concept is the **operation context**: the verified identity (subject + kind), its authorization scope and the request correlation identifier — established at the API boundary and carried to the components that need it.
+
+- The operation context is passed **explicitly** (as an argument of the operations that require it), consistent with the platform's caller-supplies rule; hidden global/ambient state is not permitted.
+- It is immutable for the lifetime of the operation and is never persisted as such — persisted records (audit events, trace entries) copy the fields they need.
+- The concrete context type is introduced together with its first consumer (the concrete authorization policy); defining it earlier would be a speculative abstraction.
+
+---
+
 # 7. Responsibility Boundaries
 
 Authentication and Authorization responsibilities are intentionally separated across the SentinelAI architecture.
@@ -556,3 +589,4 @@ Future authentication and authorization capabilities should extend these archite
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Authentication and Authorization specification created |
+| 1.1.0 | 2026-07-03 | Investigation Access Scoping Model added (§6a: owner-based scoping, extensible to team/org; shared-knowledge boundary at promotion) and Operation Context defined (§6b: explicit identity propagation) — audit findings M-04/E-06 |

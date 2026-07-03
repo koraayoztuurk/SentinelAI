@@ -22,6 +22,10 @@ from app.presentation.api.generation import get_clock, get_id_generator
 from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_service,
 )
+from tests.support.doubles import (
+    InMemoryOutcomeRepository,
+    InMemoryTraceRepository,
+)
 
 _FIXED_TIME = datetime(2026, 6, 30, tzinfo=UTC)
 
@@ -120,7 +124,12 @@ class _FixedClock:
 def _client() -> TestClient:
     app = create_app()
     service = InvestigationService(
-        _InvestigationRepo(), _EvidenceRepo(), _FindingRepo(), _ReportRepo()
+        _InvestigationRepo(),
+        _EvidenceRepo(),
+        _FindingRepo(),
+        _ReportRepo(),
+        InMemoryOutcomeRepository(),
+        InMemoryTraceRepository(),
     )
     ids = _CountingIds()
     clock = _FixedClock()

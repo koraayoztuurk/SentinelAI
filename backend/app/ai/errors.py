@@ -27,6 +27,12 @@ class EmbeddingProviderError(AIRuntimeError):
     code = "ai.embedding_provider_error"
 
 
+class ExternalKnowledgeError(AIRuntimeError):
+    """Raised when an external knowledge provider operation fails or times out."""
+
+    code = "ai.external_knowledge_error"
+
+
 class AgentError(AIRuntimeError):
     """Raised for a runtime-level agent failure (e.g. an invalid request or a
     blank agent identity).
@@ -58,6 +64,17 @@ class MemoryAgentError(AIRuntimeError):
     """
 
     code = "ai.memory_agent_error"
+
+
+class InvestigationLoopError(AIRuntimeError):
+    """Raised when the Investigation Loop cannot begin running.
+
+    Used for precondition violations (a non-positive cycle budget). Downstream
+    execution failures are never raised by the loop — they are represented as
+    failed execution results observed by the Planner Agent (ADR-010).
+    """
+
+    code = "ai.investigation_loop_error"
 
 
 class RagError(AIRuntimeError):

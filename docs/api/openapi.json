@@ -1,0 +1,2747 @@
+{
+  "components": {
+    "schemas": {
+      "ApiResponse_EntityResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EntityResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[EntityResponse]",
+        "type": "object"
+      },
+      "ApiResponse_EvidenceResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EvidenceResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[EvidenceResponse]",
+        "type": "object"
+      },
+      "ApiResponse_FindingResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FindingResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[FindingResponse]",
+        "type": "object"
+      },
+      "ApiResponse_InvestigationResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/InvestigationResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[InvestigationResponse]",
+        "type": "object"
+      },
+      "ApiResponse_MemoryItemResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MemoryItemResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[MemoryItemResponse]",
+        "type": "object"
+      },
+      "ApiResponse_PlannerExecutionResponse_object__": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PlannerExecutionResponse_object_"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[PlannerExecutionResponse[object]]",
+        "type": "object"
+      },
+      "ApiResponse_RelationshipResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RelationshipResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[RelationshipResponse]",
+        "type": "object"
+      },
+      "ApiResponse_ReportResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReportResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[ReportResponse]",
+        "type": "object"
+      },
+      "ApiResponse_list_EntityResponse__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/EntityResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[list[EntityResponse]]",
+        "type": "object"
+      },
+      "ApiResponse_list_EvidenceResponse__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[list[EvidenceResponse]]",
+        "type": "object"
+      },
+      "ApiResponse_list_FindingResponse__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/FindingResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[list[FindingResponse]]",
+        "type": "object"
+      },
+      "ApiResponse_list_MemoryItemResponse__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryItemResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[list[MemoryItemResponse]]",
+        "type": "object"
+      },
+      "ApiResponse_list_RelationshipResponse__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/RelationshipResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[list[RelationshipResponse]]",
+        "type": "object"
+      },
+      "ApiResponse_list_ReportResponse__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ReportResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[list[ReportResponse]]",
+        "type": "object"
+      },
+      "ChangeInvestigationStatusActionRequest": {
+        "description": "Transition an investigation's lifecycle status through the Planner.",
+        "properties": {
+          "action": {
+            "const": "change_investigation_status",
+            "title": "Action",
+            "type": "string"
+          },
+          "investigation_id": {
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "new_status": {
+            "$ref": "#/components/schemas/InvestigationStatus"
+          }
+        },
+        "required": [
+          "action",
+          "investigation_id",
+          "new_status"
+        ],
+        "title": "ChangeInvestigationStatusActionRequest",
+        "type": "object"
+      },
+      "ControlActionRequest": {
+        "description": "Execute a control decision (complete / escalate).",
+        "properties": {
+          "action": {
+            "const": "control",
+            "title": "Action",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ControlKind"
+          }
+        },
+        "required": [
+          "action",
+          "kind"
+        ],
+        "title": "ControlActionRequest",
+        "type": "object"
+      },
+      "ControlKind": {
+        "description": "A control decision that signals the Planner Agent's loop (no service call).",
+        "enum": [
+          "complete",
+          "escalate"
+        ],
+        "title": "ControlKind",
+        "type": "string"
+      },
+      "EntityAttributesUpdateRequest": {
+        "description": "Replacement descriptive attributes for an entity.",
+        "properties": {
+          "attributes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Attributes",
+            "type": "object"
+          }
+        },
+        "required": [
+          "attributes"
+        ],
+        "title": "EntityAttributesUpdateRequest",
+        "type": "object"
+      },
+      "EntityCreateRequest": {
+        "description": "Client-supplied fields for creating (or reusing) an entity.",
+        "properties": {
+          "aliases": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "attributes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "title": "Attributes",
+            "type": "object"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "display_name",
+          "confidence",
+          "source"
+        ],
+        "title": "EntityCreateRequest",
+        "type": "object"
+      },
+      "EntityResponse": {
+        "description": "Flat projection of an entity.",
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "attributes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Attributes",
+            "type": "object"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "display_name",
+          "confidence",
+          "source",
+          "attributes",
+          "aliases"
+        ],
+        "title": "EntityResponse",
+        "type": "object"
+      },
+      "EvidenceCreateRequest": {
+        "description": "Client-supplied fields for attaching evidence.",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "integrity": {
+            "title": "Integrity",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "integrity",
+          "content"
+        ],
+        "title": "EvidenceCreateRequest",
+        "type": "object"
+      },
+      "EvidenceResponse": {
+        "description": "Flat projection of an evidence item.",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "integrity": {
+            "title": "Integrity",
+            "type": "string"
+          },
+          "investigation_id": {
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "investigation_id",
+          "source",
+          "timestamp",
+          "integrity",
+          "content"
+        ],
+        "title": "EvidenceResponse",
+        "type": "object"
+      },
+      "ExecutionErrorBody": {
+        "description": "A failed action's structured error.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ExecutionErrorBody",
+        "type": "object"
+      },
+      "FindNeighborsActionRequest": {
+        "description": "Retrieve neighbouring entities through the Planner.",
+        "properties": {
+          "action": {
+            "const": "find_neighbors",
+            "title": "Action",
+            "type": "string"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "max_nodes": {
+            "title": "Max Nodes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "action",
+          "entity_id",
+          "depth",
+          "max_nodes"
+        ],
+        "title": "FindNeighborsActionRequest",
+        "type": "object"
+      },
+      "FindingCreateRequest": {
+        "description": "Client-supplied fields for creating a finding.",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "creator": {
+            "title": "Creator",
+            "type": "string"
+          },
+          "related_entities": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Entities",
+            "type": "array"
+          },
+          "related_relationships": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Relationships",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FindingStatus"
+          },
+          "supporting_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supporting Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "supporting_evidence",
+          "creator",
+          "confidence",
+          "status"
+        ],
+        "title": "FindingCreateRequest",
+        "type": "object"
+      },
+      "FindingResponse": {
+        "description": "Flat projection of a finding.",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creator": {
+            "title": "Creator",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "investigation_id": {
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "related_entities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Entities",
+            "type": "array"
+          },
+          "related_relationships": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Relationships",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "supporting_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supporting Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "investigation_id",
+          "supporting_evidence",
+          "creator",
+          "created_at",
+          "confidence",
+          "status",
+          "related_entities",
+          "related_relationships"
+        ],
+        "title": "FindingResponse",
+        "type": "object"
+      },
+      "FindingStatus": {
+        "description": "Lifecycle states of a Finding.",
+        "enum": [
+          "proposed",
+          "validated",
+          "accepted",
+          "rejected",
+          "archived"
+        ],
+        "title": "FindingStatus",
+        "type": "string"
+      },
+      "FindingUpdateRequest": {
+        "description": "Full finding representation supplied on update (PUT semantics).",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creator": {
+            "title": "Creator",
+            "type": "string"
+          },
+          "related_entities": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Entities",
+            "type": "array"
+          },
+          "related_relationships": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Relationships",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FindingStatus"
+          },
+          "supporting_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supporting Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "supporting_evidence",
+          "creator",
+          "created_at",
+          "confidence",
+          "status"
+        ],
+        "title": "FindingUpdateRequest",
+        "type": "object"
+      },
+      "GetInvestigationActionRequest": {
+        "description": "Retrieve an investigation through the Planner.",
+        "properties": {
+          "action": {
+            "const": "get_investigation",
+            "title": "Action",
+            "type": "string"
+          },
+          "investigation_id": {
+            "title": "Investigation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "investigation_id"
+        ],
+        "title": "GetInvestigationActionRequest",
+        "type": "object"
+      },
+      "GetMemoryActionRequest": {
+        "description": "Retrieve a Memory Item through the Planner.",
+        "properties": {
+          "action": {
+            "const": "get_memory",
+            "title": "Action",
+            "type": "string"
+          },
+          "memory_id": {
+            "title": "Memory Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "memory_id"
+        ],
+        "title": "GetMemoryActionRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "description": "Response model for the health endpoint.",
+        "properties": {
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "name",
+          "version",
+          "environment"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "InvestigationCreateRequest": {
+        "description": "Client-supplied fields for creating an investigation.",
+        "properties": {
+          "owner": {
+            "title": "Owner",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "owner",
+          "priority"
+        ],
+        "title": "InvestigationCreateRequest",
+        "type": "object"
+      },
+      "InvestigationResponse": {
+        "description": "Flat projection of an investigation.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "owner": {
+            "title": "Owner",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "created_at",
+          "owner",
+          "priority"
+        ],
+        "title": "InvestigationResponse",
+        "type": "object"
+      },
+      "InvestigationStatus": {
+        "description": "Lifecycle states of an Investigation.",
+        "enum": [
+          "created",
+          "active",
+          "suspended",
+          "completed",
+          "archived"
+        ],
+        "title": "InvestigationStatus",
+        "type": "string"
+      },
+      "InvestigationStatusChangeRequest": {
+        "description": "Target lifecycle status for an investigation transition.",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/InvestigationStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "InvestigationStatusChangeRequest",
+        "type": "object"
+      },
+      "MemoryCreateRequest": {
+        "description": "Client-supplied fields for creating a Memory Item.",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "referenced_entities": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Referenced Entities",
+            "type": "array"
+          },
+          "referenced_findings": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Referenced Findings",
+            "type": "array"
+          },
+          "referenced_relationships": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Referenced Relationships",
+            "type": "array"
+          },
+          "source_investigation_id": {
+            "title": "Source Investigation Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MemoryStatus"
+          },
+          "supporting_evidence": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Supporting Evidence",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "source_investigation_id",
+          "confidence",
+          "status"
+        ],
+        "title": "MemoryCreateRequest",
+        "type": "object"
+      },
+      "MemoryItemResponse": {
+        "description": "Flat projection of a Memory Item.",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "referenced_entities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Referenced Entities",
+            "type": "array"
+          },
+          "referenced_findings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Referenced Findings",
+            "type": "array"
+          },
+          "referenced_relationships": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Referenced Relationships",
+            "type": "array"
+          },
+          "source_investigation_id": {
+            "title": "Source Investigation Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "supporting_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supporting Evidence",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "source_investigation_id",
+          "confidence",
+          "status",
+          "created_at",
+          "version",
+          "supporting_evidence",
+          "referenced_findings",
+          "referenced_entities",
+          "referenced_relationships"
+        ],
+        "title": "MemoryItemResponse",
+        "type": "object"
+      },
+      "MemoryStatus": {
+        "description": "Lifecycle states of a Memory Item.",
+        "enum": [
+          "candidate",
+          "verified",
+          "organizational",
+          "deprecated"
+        ],
+        "title": "MemoryStatus",
+        "type": "string"
+      },
+      "MemoryUpdateRequest": {
+        "description": "Full Memory Item representation supplied on update (PUT semantics).\n\nThe identifier is never part of the body: it is taken from the path. The\n``version`` must immediately follow the latest persisted version.",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "referenced_entities": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Referenced Entities",
+            "type": "array"
+          },
+          "referenced_findings": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Referenced Findings",
+            "type": "array"
+          },
+          "referenced_relationships": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Referenced Relationships",
+            "type": "array"
+          },
+          "source_investigation_id": {
+            "title": "Source Investigation Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MemoryStatus"
+          },
+          "supporting_evidence": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Supporting Evidence",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "type",
+          "source_investigation_id",
+          "confidence",
+          "status",
+          "version",
+          "created_at"
+        ],
+        "title": "MemoryUpdateRequest",
+        "type": "object"
+      },
+      "PlannerExecutionResponse_object_": {
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "execution_status": {
+            "title": "Execution Status",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "action_id",
+          "target",
+          "execution_status"
+        ],
+        "title": "PlannerExecutionResponse[object]",
+        "type": "object"
+      },
+      "RelationshipConfidenceUpdateRequest": {
+        "description": "New confidence for an existing relationship.",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          }
+        },
+        "required": [
+          "confidence"
+        ],
+        "title": "RelationshipConfidenceUpdateRequest",
+        "type": "object"
+      },
+      "RelationshipCreateRequest": {
+        "description": "Client-supplied fields for creating a relationship.",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "source_entity_id": {
+            "title": "Source Entity Id",
+            "type": "string"
+          },
+          "supporting_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supporting Evidence",
+            "type": "array"
+          },
+          "target_entity_id": {
+            "title": "Target Entity Id",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_entity_id",
+          "target_entity_id",
+          "type",
+          "confidence",
+          "supporting_evidence"
+        ],
+        "title": "RelationshipCreateRequest",
+        "type": "object"
+      },
+      "RelationshipResponse": {
+        "description": "Flat projection of a relationship.",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "source_entity_id": {
+            "title": "Source Entity Id",
+            "type": "string"
+          },
+          "supporting_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supporting Evidence",
+            "type": "array"
+          },
+          "target_entity_id": {
+            "title": "Target Entity Id",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source_entity_id",
+          "target_entity_id",
+          "type",
+          "confidence",
+          "supporting_evidence",
+          "created_at"
+        ],
+        "title": "RelationshipResponse",
+        "type": "object"
+      },
+      "ReportCreateRequest": {
+        "description": "Client-supplied fields for creating a report.",
+        "properties": {
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "version": {
+            "default": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "author"
+        ],
+        "title": "ReportCreateRequest",
+        "type": "object"
+      },
+      "ReportResponse": {
+        "description": "Flat projection of a report.",
+        "properties": {
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "investigation_id": {
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "investigation_id",
+          "author",
+          "created_at",
+          "version"
+        ],
+        "title": "ReportResponse",
+        "type": "object"
+      },
+      "ResponseMeta": {
+        "description": "Response metadata common to success and error responses.",
+        "properties": {
+          "api_version": {
+            "title": "Api Version",
+            "type": "string"
+          },
+          "correlation_id": {
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "correlation_id",
+          "timestamp",
+          "api_version"
+        ],
+        "title": "ResponseMeta",
+        "type": "object"
+      },
+      "ResponseStatus": {
+        "description": "The outcome status carried by every API response.",
+        "enum": [
+          "success",
+          "error"
+        ],
+        "title": "ResponseStatus",
+        "type": "string"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "SentinelAI",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/graph/entities": {
+      "post": {
+        "operationId": "create_entity_api_v1_graph_entities_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EntityResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Entity",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
+    "/api/v1/graph/entities/{entity_id}": {
+      "get": {
+        "operationId": "get_entity_api_v1_graph_entities__entity_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EntityResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Entity",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
+    "/api/v1/graph/entities/{entity_id}/attributes": {
+      "post": {
+        "operationId": "update_entity_attributes_api_v1_graph_entities__entity_id__attributes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityAttributesUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EntityResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Entity Attributes",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
+    "/api/v1/graph/entities/{entity_id}/neighbors": {
+      "get": {
+        "operationId": "find_neighbors_api_v1_graph_entities__entity_id__neighbors_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Depth",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_nodes",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Max Nodes",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_EntityResponse__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Find Neighbors",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
+    "/api/v1/graph/entities/{entity_id}/relationships": {
+      "get": {
+        "operationId": "list_relationships_for_entity_api_v1_graph_entities__entity_id__relationships_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_RelationshipResponse__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Relationships For Entity",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
+    "/api/v1/graph/relationships": {
+      "post": {
+        "operationId": "create_relationship_api_v1_graph_relationships_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_RelationshipResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Relationship",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
+    "/api/v1/graph/relationships/{relationship_id}": {
+      "get": {
+        "operationId": "get_relationship_api_v1_graph_relationships__relationship_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "relationship_id",
+            "required": true,
+            "schema": {
+              "title": "Relationship Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_RelationshipResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Relationship",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
+    "/api/v1/graph/relationships/{relationship_id}/confidence": {
+      "post": {
+        "operationId": "update_relationship_confidence_api_v1_graph_relationships__relationship_id__confidence_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "relationship_id",
+            "required": true,
+            "schema": {
+              "title": "Relationship Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipConfidenceUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_RelationshipResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Relationship Confidence",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
+    "/api/v1/investigations": {
+      "post": {
+        "operationId": "create_investigation_api_v1_investigations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestigationCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_InvestigationResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Investigation",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}": {
+      "get": {
+        "operationId": "get_investigation_api_v1_investigations__investigation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_InvestigationResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Investigation",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/evidence": {
+      "get": {
+        "operationId": "list_evidence_api_v1_investigations__investigation_id__evidence_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_EvidenceResponse__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Evidence",
+        "tags": [
+          "investigation"
+        ]
+      },
+      "post": {
+        "operationId": "attach_evidence_api_v1_investigations__investigation_id__evidence_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidenceCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvidenceResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Attach Evidence",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/evidence/{evidence_id}": {
+      "get": {
+        "operationId": "get_evidence_api_v1_investigations__investigation_id__evidence__evidence_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "evidence_id",
+            "required": true,
+            "schema": {
+              "title": "Evidence Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvidenceResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Evidence",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/findings": {
+      "get": {
+        "operationId": "list_findings_api_v1_investigations__investigation_id__findings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_FindingResponse__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Findings",
+        "tags": [
+          "investigation"
+        ]
+      },
+      "post": {
+        "operationId": "create_finding_api_v1_investigations__investigation_id__findings_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_FindingResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Finding",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/findings/{finding_id}": {
+      "put": {
+        "operationId": "update_finding_api_v1_investigations__investigation_id__findings__finding_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "finding_id",
+            "required": true,
+            "schema": {
+              "title": "Finding Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_FindingResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Finding",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/reports": {
+      "get": {
+        "operationId": "list_reports_api_v1_investigations__investigation_id__reports_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_ReportResponse__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Reports",
+        "tags": [
+          "investigation"
+        ]
+      },
+      "post": {
+        "operationId": "create_report_api_v1_investigations__investigation_id__reports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ReportResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Report",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/reports/{report_id}": {
+      "get": {
+        "operationId": "get_report_api_v1_investigations__investigation_id__reports__report_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ReportResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Report",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/status": {
+      "post": {
+        "operationId": "change_investigation_status_api_v1_investigations__investigation_id__status_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestigationStatusChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_InvestigationResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Investigation Status",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
+    "/api/v1/memory": {
+      "post": {
+        "operationId": "create_memory_api_v1_memory_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MemoryItemResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Memory",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/api/v1/memory/{memory_id}": {
+      "get": {
+        "operationId": "get_memory_api_v1_memory__memory_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MemoryItemResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Memory",
+        "tags": [
+          "memory"
+        ]
+      },
+      "put": {
+        "operationId": "update_memory_api_v1_memory__memory_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MemoryItemResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Memory",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/api/v1/memory/{memory_id}/deprecate": {
+      "post": {
+        "operationId": "deprecate_memory_api_v1_memory__memory_id__deprecate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MemoryItemResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Deprecate Memory",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/api/v1/memory/{memory_id}/history": {
+      "get": {
+        "operationId": "get_memory_history_api_v1_memory__memory_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_MemoryItemResponse__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Memory History",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/api/v1/planner/actions": {
+      "post": {
+        "operationId": "execute_action_api_v1_planner_actions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "change_investigation_status": "#/components/schemas/ChangeInvestigationStatusActionRequest",
+                    "control": "#/components/schemas/ControlActionRequest",
+                    "find_neighbors": "#/components/schemas/FindNeighborsActionRequest",
+                    "get_investigation": "#/components/schemas/GetInvestigationActionRequest",
+                    "get_memory": "#/components/schemas/GetMemoryActionRequest"
+                  },
+                  "propertyName": "action"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ControlActionRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GetInvestigationActionRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChangeInvestigationStatusActionRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/FindNeighborsActionRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GetMemoryActionRequest"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PlannerExecutionResponse_object__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Execute Action",
+        "tags": [
+          "planner"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Return the application's liveness status and identity.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness check",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Report whether the backend has completed startup and can accept traffic.\n\nReadiness reflects startup completion \u2014 the persistence registry has been built\non ``app.state`` during the lifespan. It deliberately does not probe the\ndatabases: the backend runs without them (the persistence resources are created\nlazily), so readiness means \"initialized\", distinct from liveness.",
+        "operationId": "readiness_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Readiness Health Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Readiness check",
+        "tags": [
+          "observability"
+        ]
+      }
+    },
+    "/metrics": {
+      "get": {
+        "description": "Return operational metrics in the Prometheus text exposition format.",
+        "operationId": "operational_metrics_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Operational metrics",
+        "tags": [
+          "observability"
+        ]
+      }
+    }
+  }
+}

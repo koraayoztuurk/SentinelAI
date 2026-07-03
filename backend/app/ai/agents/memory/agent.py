@@ -17,6 +17,7 @@ recognized strategy remains. Precondition violations raise ``MemoryAgentError``.
 
 import json
 import logging
+from dataclasses import dataclass
 
 from app.ai.agents.base import AgentIdentity
 from app.ai.agents.memory.plan import RetrievalPlan, RetrievalPlanId, RetrievalStrategy
@@ -29,6 +30,14 @@ logger = logging.getLogger(__name__)
 MEMORY_AGENT_IDENTITY = AgentIdentity("memory-agent")
 
 
+@dataclass(frozen=True, slots=True)
+class RetrievalPlanRequest:
+    """The typed execution request of the Memory Agent (ADR-013)."""
+
+    state: InvestigationState
+    plan_id: RetrievalPlanId
+
+
 class MemoryAgent:
     """Selects the retrieval strategies for an investigation (stateless)."""
 
@@ -38,6 +47,11 @@ class MemoryAgent:
     @property
     def identity(self) -> AgentIdentity:
         return MEMORY_AGENT_IDENTITY
+
+    async def execute(self, request: RetrievalPlanRequest) -> RetrievalPlan:
+        """Run one planning cycle through the typed agent contract (ADR-013)."""
+
+        return await self.plan(request.state, request.plan_id)
 
     async def plan(
         self, state: InvestigationState, plan_id: RetrievalPlanId

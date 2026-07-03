@@ -49,6 +49,10 @@ from app.domain.value_objects import (
     Priority,
     RelationshipType,
 )
+from tests.support.doubles import (
+    InMemoryOutcomeRepository,
+    InMemoryTraceRepository,
+)
 
 _NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -165,7 +169,12 @@ class _MemoryRepo:
 
 def _planner() -> PlannerService:
     investigation = InvestigationService(
-        _InvestigationRepo(), _EvidenceRepo(), _FindingRepo(), _ReportRepo()
+        _InvestigationRepo(),
+        _EvidenceRepo(),
+        _FindingRepo(),
+        _ReportRepo(),
+        InMemoryOutcomeRepository(),
+        InMemoryTraceRepository(),
     )
     graph = GraphService(_GraphRepo())
     memory = MemoryService(_MemoryRepo())

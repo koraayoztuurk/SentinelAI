@@ -22,9 +22,11 @@ from app.domain.identifiers import (
     ReportId,
 )
 from app.domain.investigation import Investigation
+from app.domain.investigation_outcome import InvestigationOutcome
 from app.domain.memory_item import MemoryItem
 from app.domain.relationship import Relationship
 from app.domain.report import Report
+from app.domain.trace import TraceEntry
 
 # ------------------------------------------------------------- repository doubles
 
@@ -111,6 +113,38 @@ class InMemoryReportRepository:
             r
             for r in self._items.values()
             if r.investigation_id == investigation_id
+        )
+
+
+class InMemoryOutcomeRepository:
+    """Dict-backed InvestigationOutcome repository double (0..1 per investigation)."""
+
+    def __init__(self) -> None:
+        self._items: dict[str, InvestigationOutcome] = {}
+
+    async def add(self, outcome: InvestigationOutcome) -> None:
+        self._items[outcome.investigation_id.value] = outcome
+
+    async def get_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> InvestigationOutcome | None:
+        return self._items.get(investigation_id.value)
+
+
+class InMemoryTraceRepository:
+    """List-backed, append-only Investigation Trace repository double."""
+
+    def __init__(self) -> None:
+        self._entries: list[TraceEntry] = []
+
+    async def add(self, entry: TraceEntry) -> None:
+        self._entries.append(entry)
+
+    async def list_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> tuple[TraceEntry, ...]:
+        return tuple(
+            e for e in self._entries if e.investigation_id == investigation_id
         )
 
 

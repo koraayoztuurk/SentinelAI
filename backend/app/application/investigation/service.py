@@ -15,36 +15,53 @@ import logging
 from app.application.investigation.errors import (
     DuplicateEvidenceError,
     DuplicateInvestigationError,
+    DuplicateOutcomeError,
     EvidenceNotFoundError,
     EvidenceOwnershipError,
     FindingNotFoundError,
     InvalidLifecycleTransitionError,
     InvestigationNotFoundError,
     InvestigationValidationError,
+    OutcomeNotFoundError,
     ReportNotFoundError,
 )
 from app.application.investigation.repositories import (
     EvidenceRepository,
     FindingRepository,
     InvestigationRepository,
+    OutcomeRepository,
     ReportRepository,
+    TraceRepository,
 )
 from app.domain.enums import InvestigationStatus
 from app.domain.evidence import Evidence
 from app.domain.finding import Finding
-from app.domain.identifiers import EvidenceId, InvestigationId, ReportId
+from app.domain.identifiers import EvidenceId, FindingId, InvestigationId, ReportId
 from app.domain.investigation import Investigation
+from app.domain.investigation_outcome import InvestigationOutcome
 from app.domain.report import Report
+from app.domain.trace import TraceEntry
 
 logger = logging.getLogger(__name__)
 
-# Permitted investigation lifecycle transitions (spec section 10).
+# Permitted investigation lifecycle transitions (spec section 10, v1.1.0):
+# suspension (Active <-> Suspended) and completion (Completed -> Active on
+# significant new evidence) are reversible; Archived is terminal.
 _ALLOWED_TRANSITIONS: dict[InvestigationStatus, frozenset[InvestigationStatus]] = {
     InvestigationStatus.CREATED: frozenset({InvestigationStatus.ACTIVE}),
     InvestigationStatus.ACTIVE: frozenset(
-        {InvestigationStatus.COMPLETED, InvestigationStatus.ARCHIVED}
+        {
+            InvestigationStatus.SUSPENDED,
+            InvestigationStatus.COMPLETED,
+            InvestigationStatus.ARCHIVED,
+        }
     ),
-    InvestigationStatus.COMPLETED: frozenset({InvestigationStatus.ARCHIVED}),
+    InvestigationStatus.SUSPENDED: frozenset(
+        {InvestigationStatus.ACTIVE, InvestigationStatus.ARCHIVED}
+    ),
+    InvestigationStatus.COMPLETED: frozenset(
+        {InvestigationStatus.ACTIVE, InvestigationStatus.ARCHIVED}
+    ),
 }
 
 
@@ -57,11 +74,15 @@ class InvestigationService:
         evidence: EvidenceRepository,
         findings: FindingRepository,
         reports: ReportRepository,
+        outcomes: OutcomeRepository,
+        trace: TraceRepository,
     ) -> None:
         self._investigations = investigations
         self._evidence = evidence
         self._findings = findings
         self._reports = reports
+        self._outcomes = outcomes
+        self._trace = trace
 
     # ------------------------------------------------------------- investigation
 
@@ -213,6 +234,79 @@ class InvestigationService:
         await self._require_investigation(investigation_id)
         return await self._reports.list_for_investigation(investigation_id)
 
+    # ------------------------------------------------------------------- outcome
+
+    async def create_outcome(
+        self, outcome: InvestigationOutcome
+    ) -> InvestigationOutcome:
+        """Validate and persist the synthesized outcome of an investigation.
+
+        An investigation has at most one outcome (domain-model §16, 0..1).
+        """
+
+        await self._require_investigation(outcome.investigation_id)
+        existing = await self._outcomes.get_for_investigation(
+            outcome.investigation_id
+        )
+        if existing is not None:
+            raise DuplicateOutcomeError(
+                f"Investigation '{outcome.investigation_id.value}' already has "
+                f"an outcome."
+            )
+        await self._validate_finding_references(
+            outcome.investigation_id, outcome.contributing_findings
+        )
+        await self._outcomes.add(outcome)
+        logger.info(
+            "outcome created id=%s investigation=%s",
+            outcome.id.value,
+            outcome.investigation_id.value,
+        )
+        return outcome
+
+    async def get_outcome(
+        self, investigation_id: InvestigationId
+    ) -> InvestigationOutcome:
+        """Return an investigation's outcome or raise if none exists."""
+
+        await self._require_investigation(investigation_id)
+        outcome = await self._outcomes.get_for_investigation(investigation_id)
+        if outcome is None:
+            raise OutcomeNotFoundError(
+                f"Investigation '{investigation_id.value}' has no outcome."
+            )
+        return outcome
+
+    # --------------------------------------------------------------------- trace
+
+    async def record_trace(self, entry: TraceEntry) -> TraceEntry:
+        """Append an entry to the investigation's explainability trace.
+
+        The trace is append-only; entries are never updated or removed.
+        """
+
+        await self._require_investigation(entry.investigation_id)
+        if not entry.summary.strip():
+            raise InvestigationValidationError(
+                "Trace entry summary must not be blank."
+            )
+        await self._trace.add(entry)
+        logger.info(
+            "trace entry recorded id=%s investigation=%s kind=%s",
+            entry.id.value,
+            entry.investigation_id.value,
+            entry.kind.value,
+        )
+        return entry
+
+    async def list_trace(
+        self, investigation_id: InvestigationId
+    ) -> tuple[TraceEntry, ...]:
+        """List the investigation's trace entries in append order."""
+
+        await self._require_investigation(investigation_id)
+        return await self._trace.list_for_investigation(investigation_id)
+
     # ------------------------------------------------------------------- helpers
 
     async def _require_investigation(
@@ -239,6 +333,23 @@ class InvestigationService:
             if evidence.investigation_id != investigation_id:
                 raise EvidenceOwnershipError(
                     f"Evidence '{evidence_id.value}' does not belong to "
+                    f"investigation '{investigation_id.value}'."
+                )
+
+    async def _validate_finding_references(
+        self,
+        investigation_id: InvestigationId,
+        finding_ids: tuple[FindingId, ...],
+    ) -> None:
+        for finding_id in finding_ids:
+            finding = await self._findings.get(finding_id)
+            if finding is None:
+                raise FindingNotFoundError(
+                    f"Finding '{finding_id.value}' not found."
+                )
+            if finding.investigation_id != investigation_id:
+                raise InvestigationValidationError(
+                    f"Finding '{finding_id.value}' does not belong to "
                     f"investigation '{investigation_id.value}'."
                 )
 

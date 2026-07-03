@@ -14,6 +14,7 @@ violations raise ``PlannerAgentError``.
 
 import json
 import logging
+from dataclasses import dataclass
 
 from app.ai.agents.base import AgentIdentity
 from app.ai.agents.planner.state import InvestigationState
@@ -34,6 +35,14 @@ logger = logging.getLogger(__name__)
 PLANNER_AGENT_IDENTITY = AgentIdentity("planner-agent")
 
 
+@dataclass(frozen=True, slots=True)
+class PlannerDecisionRequest:
+    """The typed execution request of the Planner Agent (ADR-013)."""
+
+    state: InvestigationState
+    action_id: str
+
+
 class PlannerAgent:
     """Selects the next Planner Action for an investigation (stateless)."""
 
@@ -43,6 +52,11 @@ class PlannerAgent:
     @property
     def identity(self) -> AgentIdentity:
         return PLANNER_AGENT_IDENTITY
+
+    async def execute(self, request: PlannerDecisionRequest) -> PlannerAction:
+        """Run one decision through the typed agent contract (ADR-013)."""
+
+        return await self.decide(request.state, request.action_id)
 
     async def decide(
         self, state: InvestigationState, action_id: str

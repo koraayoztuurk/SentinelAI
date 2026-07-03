@@ -37,6 +37,7 @@ from app.domain.identifiers import MemoryItemId as MemoryItemId
 from app.domain.identifiers import RelationshipId as RelationshipId
 from app.domain.identifiers import ReportId as ReportId
 from app.domain.identifiers import TaskId as TaskId
+from app.domain.identifiers import TraceEntryId as TraceEntryId
 from app.domain.investigation import Investigation as Investigation
 from app.domain.investigation_outcome import (
     InvestigationOutcome as InvestigationOutcome,
@@ -45,6 +46,8 @@ from app.domain.memory_item import MemoryItem as MemoryItem
 from app.domain.relationship import Relationship as Relationship
 from app.domain.report import Report as Report
 from app.domain.task import Task as Task
+from app.domain.trace import TraceEntry as TraceEntry
+from app.domain.trace import TraceEntryKind as TraceEntryKind
 from app.domain.value_objects import ActorRef as ActorRef
 from app.domain.value_objects import Confidence as Confidence
 from app.domain.value_objects import EntityType as EntityType

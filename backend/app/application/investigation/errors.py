@@ -68,3 +68,15 @@ class ReportNotFoundError(InvestigationServiceError):
     """Raised when a referenced report does not exist."""
 
     code = "investigation.report_not_found"
+
+
+class OutcomeNotFoundError(InvestigationServiceError):
+    """Raised when an investigation has no synthesized outcome."""
+
+    code = "investigation.outcome_not_found"
+
+
+class DuplicateOutcomeError(InvestigationServiceError):
+    """Raised when an investigation already has an outcome (0..1 per investigation)."""
+
+    code = "investigation.duplicate_outcome"

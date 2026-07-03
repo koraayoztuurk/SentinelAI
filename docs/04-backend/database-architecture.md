@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Database Architecture
-version: 1.0.0
+version: 1.2.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-03
 ---
 
 # SentinelAI Database Architecture
@@ -40,7 +40,7 @@ The platform currently consists of:
 
 ### Supporting Persistence Technologies
 
-- Redis (Caching)
+- Redis (Caching) — governed by ADR-011
 
 Primary storage technologies own domain data.
 
@@ -194,9 +194,32 @@ the Investigation domain rather than by the Planner Service.)
 
 Although SentinelAI uses multiple databases, every domain object has a single source of truth.
 
-Other storage layers maintain derived representations optimized for their specific workloads.
+Synchronization exists **only for derived representations**: secondary copies generated from an authoritative object and optimized for a specific workload.
 
-Synchronization should preserve consistency while minimizing unnecessary duplication.
+Authoritative stores are never synchronization targets for the objects they own. Neo4j is the authoritative store for Entities and Relationships — graph objects are written to Neo4j directly by the Graph Service, not synchronized into it from another store.
+
+The only derived representation defined by the current architecture is the **embedding**: Memory Item embeddings are generated from the authoritative Memory Item (PostgreSQL) and synchronized to the Vector Database.
+
+---
+
+## Synchronization Ownership
+
+There is no standalone synchronization component.
+
+Synchronization of a derived representation is owned by the **backend service that owns the authoritative object** (per ADR-004). The Memory Service therefore owns embedding generation and Vector Database synchronization (see the Memory Service specification).
+
+Future derived representations must name their owning service when they are introduced; an ownerless synchronization process is not permitted.
+
+---
+
+## Synchronization Mechanism (ADR-012)
+
+Propagation follows the **transactional outbox** pattern (ADR-012):
+
+- The authoritative change and the intent to derive are recorded in the same local transaction (the outbox, inside the authoritative store).
+- Asynchronous, **idempotent projectors** — owned by the owning service — consume the outbox and produce the derived representation.
+- **No request path writes to more than one store**; the authoritative write commits and propagation is always asynchronous (constraint AC-14, Architecture Testing catalogue).
+- Distributed transactions and saga compensation are rejected for derived data: derived copies are reproducible, so eventual re-projection is sufficient.
 
 ---
 
@@ -222,9 +245,9 @@ Repeated synchronization attempts should always produce the same resulting state
 Typical synchronization occurs as follows:
 
 1. A domain object is created or updated in its primary storage.
-2. Relevant changes are detected.
+2. Relevant changes are detected by the owning service.
 3. Derived representations are generated.
-4. Secondary storage layers are updated.
+4. The derived storage layer is updated.
 5. Synchronization status is recorded.
 
 Synchronization should remain observable throughout its lifecycle.
@@ -236,14 +259,42 @@ Synchronization should remain observable throughout its lifecycle.
 ```mermaid
 flowchart LR
 
-Backend --> PostgreSQL
+MemoryService --> PostgreSQL
 
-PostgreSQL --> SyncService
+PostgreSQL -->|Memory Item| EmbeddingGeneration
 
-SyncService --> Neo4j
-
-SyncService --> VectorDB
+EmbeddingGeneration -->|derived embedding| VectorDB
 ```
+
+Neo4j does not appear in this pipeline: graph objects are authoritative in Neo4j and are written there directly by their owning service.
+
+---
+
+# 8a. Cross-Store References
+
+Domain objects reference objects owned by other stores — for example, a Finding (PostgreSQL) references Entities (Neo4j).
+
+The architecture fixes the following rules for such references:
+
+- **Identifiers are the only cross-store reference mechanism.** Objects are referenced by their stable, typed identifiers; no database-level foreign keys, links or replicas exist across stores.
+- **The referencing service validates through the owning service.** When referential existence matters to a business operation, the service that owns the referencing object verifies the reference through the owning service's interface — never by querying the other store directly.
+- **Eventual consistency applies across stores.** Cross-store references may be temporarily unresolvable during synchronization or failure windows.
+- **Dangling references must remain observable.** A reference that no longer resolves is reported explicitly by the owning service on access; it is never silently dropped, repaired or fabricated.
+
+---
+
+# 8b. Evidence Payload Storage
+
+Evidence has two representations with different storage characteristics:
+
+- **Evidence record** (metadata + normalized content): owned by PostgreSQL through the Investigation Service, as defined by the ownership model above.
+- **Raw evidence payload** (uploaded files, raw log archives): large, immutable, integrity-critical binary/text content. Its designated home is a **content-addressed object store** — a future storage technology entering through the category model of ADR-011 and requiring its own decision before introduction.
+
+Until the object store exists, evidence content is carried inline in the Evidence record; this is an accepted interim state, not the target architecture. The rules below are fixed now so the Postgres adapter is not built against the wrong assumption:
+
+- The Evidence record references its payload by content address (integrity hash); the hash is also the verifiable integrity anchor (Domain Rule 1/9).
+- Payloads are immutable and never mutated in place; corrections are new evidence.
+- Payload storage ownership follows evidence ownership: access is mediated by the Investigation Service.
 
 ---
 
@@ -700,3 +751,5 @@ However, supporting technologies should never become authoritative sources of bu
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Database Architecture specification created |
+| 1.1.0 | 2026-07-03 | Synchronization scoped to derived representations with named service ownership (undefined "SyncService" removed; Neo4j no longer shown as a sync target); cross-store reference rules added (§8a); Redis governed by ADR-011 |
+| 1.2.0 | 2026-07-03 | Synchronization mechanism fixed as transactional outbox + idempotent projection (ADR-012, AC-14 no-dual-write); Evidence Payload Storage defined (§8b): content-addressed object store as the designated payload home, inline content as accepted interim state |

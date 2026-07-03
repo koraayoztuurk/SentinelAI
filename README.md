@@ -256,7 +256,7 @@ The documentation is designed to evolve together with the implementation through
 |-------|----------------------|
 | **Backend** | FastAPI, Python |
 | **Frontend** | React, TypeScript |
-| **AI Runtime** | LangGraph, LangChain |
+| **AI Runtime** | In-process Python runtime with provider-neutral LLM/embedding ports (framework-independent by design, ADR-005/ADR-010; an orchestration framework may be adopted later without changing responsibilities) |
 | **Graph Database** | Neo4j |
 | **Vector Database** | Qdrant |
 | **Relational Database** | PostgreSQL |

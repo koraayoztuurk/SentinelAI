@@ -1,12 +1,16 @@
 """Agent contract.
 
-Defines the minimal, agent-neutral contract every AI agent satisfies and the
-typed request/result the Agent Runtime executes. Agents are stateless
-(agent-architecture §10): each execution receives its inputs and keeps no state.
+Defines the single, typed, agent-neutral contract every AI agent satisfies and
+the result envelope the Agent Runtime produces (ADR-013). Agents are stateless
+(agent-architecture §10): each execution receives its typed request and returns
+its typed product, or raises on failure.
 
-The contract is intentionally minimal and provider-neutral. Rich investigation
-context/state and structured findings/confidence/evidence references are defined
-by concrete agents, introduced by later specifications.
+The envelope belongs to the runtime, not to agents: an agent never builds a
+failure envelope itself — it raises a :class:`~app.shared.exceptions.SentinelAIError`
+(or fails unexpectedly), and the Agent Runtime contains the failure as a
+``FAILED`` result with a stable error code. This realizes agent-architecture §15:
+a concrete agent's typed product is *represented through* the neutral envelope
+without coupling the envelope to any product type.
 """
 
 from dataclasses import dataclass
@@ -34,36 +38,29 @@ class AgentStatus(Enum):
     FAILED = "failed"
 
 
-@dataclass(frozen=True, slots=True)
-class AgentRequest:
-    """An agent-neutral execution request (intentionally minimal).
+class Agent[RequestT, ProductT](Protocol):
+    """The stateless, typed contract every AI agent satisfies.
 
-    ``payload`` is a generic, framework-level input; the runtime makes no
-    assumption about its meaning. ``investigation_id`` is an AI-neutral reference.
+    ``execute`` returns the agent's typed product or raises; it never returns a
+    failure envelope. Containment is the Agent Runtime's responsibility.
     """
-
-    payload: str
-    investigation_id: str
-
-
-@dataclass(frozen=True, slots=True)
-class AgentResult:
-    """The structured outcome of an agent execution.
-
-    ``agent`` records provenance; ``output`` carries the agent's structured
-    output; ``error`` carries a stable failure code when ``status`` is ``FAILED``.
-    """
-
-    agent: AgentIdentity
-    status: AgentStatus
-    output: str = ""
-    error: str | None = None
-
-
-class Agent(Protocol):
-    """The stateless contract every AI agent satisfies."""
 
     @property
     def identity(self) -> AgentIdentity: ...
 
-    async def execute(self, request: AgentRequest) -> AgentResult: ...
+    async def execute(self, request: RequestT) -> ProductT: ...
+
+
+@dataclass(frozen=True, slots=True)
+class AgentResult[ProductT]:
+    """The runtime's envelope around one agent execution.
+
+    ``agent`` records provenance; ``product`` carries the agent's typed product
+    when ``status`` is ``COMPLETED``; ``error`` carries a stable failure code
+    when ``status`` is ``FAILED``.
+    """
+
+    agent: AgentIdentity
+    status: AgentStatus
+    product: ProductT | None = None
+    error: str | None = None

@@ -7,6 +7,14 @@ embedding is intentionally deferred until a consumer requires it.
 This contract must remain entirely provider-neutral. It must not expose OpenAI-,
 Anthropic-, Gemini- or any other vendor-specific concepts, parameters or types.
 Concrete providers are introduced by later specifications.
+
+Resilience contract (ADR-013): implementations must enforce a bounded execution
+time; exceeding the bound — like any provider failure — is surfaced as
+:class:`~app.ai.errors.EmbeddingProviderError`, never as an indefinite hang.
+
+Note (ADR-012): this port serves AI Runtime consumers. The Memory Service's
+embedding production uses an application-owned port implemented in the
+infrastructure layer; backend services never import this module (AC-04).
 """
 
 from typing import Protocol

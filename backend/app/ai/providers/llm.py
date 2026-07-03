@@ -9,6 +9,11 @@ the method signature.
 This contract must remain entirely provider-neutral. It must not expose OpenAI-,
 Anthropic-, Gemini- or any other vendor-specific concepts, parameters or types.
 Concrete providers are introduced by later specifications.
+
+Resilience contract (ADR-013): implementations must enforce a bounded execution
+time; exceeding the bound — like any provider failure — is surfaced as
+:class:`~app.ai.errors.LLMProviderError`, never as an indefinite hang. Timeout
+values are configuration; the existence of the bound is the contract.
 """
 
 from dataclasses import dataclass

@@ -1,9 +1,9 @@
 ---
 title: Architecture Testing
-version: 1.0.0
+version: 1.2.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-28
+last_updated: 2026-07-03
 ---
 
 # Architecture Testing
@@ -252,7 +252,64 @@ Architectural validation areas differ in verification scope rather than architec
 
 ---
 
-# 6. Architectural Verification Responsibilities
+# 6. Architectural Constraint Catalogue (Normative)
+
+This catalogue is the **normative list of concrete architectural constraints** that implementations must preserve and that architectural verification enforces.
+
+This section is the single authoritative source for these constraints. Implementation trackers, engineering-decision registers and test suites **mirror** this catalogue; when they diverge, this document prevails and must be updated first. Constraint changes follow the platform's governance model (RFC / ADR) — a test suite may never introduce, weaken or remove a constraint on its own.
+
+Constraints are stated technology-independently. How each constraint is verified (for example, static import analysis) is an implementation detail of the verification suite and may change without affecting the constraint itself.
+
+---
+
+## Backend Constraints
+
+| ID | Constraint | Source | Verification |
+|----|------------|--------|--------------|
+| AC-01 | The domain layer depends only on itself and the shared kernel — never on application, infrastructure, presentation, AI, configuration or observability concerns. | ADR-001, Domain Model | Enforced (`backend/tests/architecture`) |
+| AC-02 | The application layer never depends on infrastructure or presentation. | ADR-001 | Enforced (`backend/tests/architecture`) |
+| AC-03 | The AI Runtime never depends on infrastructure or presentation; it never accesses persistence directly. | ADR-005 | Enforced (`backend/tests/architecture`) |
+| AC-04 | The application layer never depends on the AI Runtime. The composition direction is one-way: the AI Runtime composes backend service interfaces. | ADR-010 | Enforced (`backend/tests/architecture`) |
+| AC-05 | The presentation layer never imports infrastructure directly. | ADR-001, ADR-008 | Enforced (`backend/tests/architecture`) |
+| AC-06 | The shared kernel depends on no other application package. | ADR-001 | Enforced (`backend/tests/architecture`) |
+| AC-07 | No backend service accesses another service's persistence contracts; cross-service collaboration goes through service interfaces only. | ADR-003, ADR-004 | Enforced (`backend/tests/architecture`) |
+| AC-08 | The domain layer and backend services generate no identifiers; identifiers are caller-supplied. | Engineering decision (Domain) | Enforced (`backend/tests/architecture`) |
+| AC-09 | The domain layer and backend services read no clock; timestamps are caller-supplied. | Engineering decision (Domain) | Enforced (`backend/tests/architecture`) |
+
+---
+
+## Frontend Constraints
+
+| ID | Constraint | Source | Verification |
+|----|------------|--------|--------------|
+| AC-10 | Backend communication flows exclusively through the Communication layer; no other frontend layer issues backend requests directly. | ADR-009, Frontend Architecture §10 | Enforced (`frontend/src/architecture.test.ts`) |
+
+---
+
+## Contract Constraints
+
+| ID | Constraint | Source | Verification |
+|----|------------|--------|--------------|
+| AC-15 | The committed API contract artifact (`docs/api/openapi.json`) matches the running application; contract changes are never silent. | API Design §14a | Enforced (`backend/tests/presentation/test_openapi_contract.py`) |
+
+---
+
+## Declared, Not Yet Mechanically Enforced
+
+The following documented constraints are normative but currently verified through review rather than automated checks. They are listed here so their verification status remains explicit rather than assumed:
+
+| ID | Constraint | Source |
+|----|------------|--------|
+| AC-11 | Controllers contain no business logic; business validation belongs to backend services. | ADR-008, API Design |
+| AC-12 | Redis is never an authoritative store; removing all cached data must not affect business correctness. | ADR-011, Database Architecture |
+| AC-13 | Frontend state categories are modified only by their architectural owner. | UI State Management |
+| AC-14 | No request path writes to more than one store; derived representations propagate only through the owning service's transactional outbox. | ADR-012, Database Architecture | 
+
+When one of these constraints becomes mechanically verifiable, its row moves to the enforced tables above through a documentation update.
+
+---
+
+# 7. Architectural Verification Responsibilities
 
 Architectural verification responsibilities define the architectural ownership of architecture validation throughout SentinelAI.
 
@@ -336,7 +393,7 @@ Cross-domain collaboration should strengthen architectural confidence without we
 
 ---
 
-# 7. Architectural Testing Principles
+# 8. Architectural Testing Principles
 
 The architecture establishes the following principles for governing architectural verification throughout SentinelAI.
 
@@ -413,7 +470,7 @@ Architectural confidence should strengthen architectural reasoning without intro
 
 ---
 
-# 8. Architectural Confidence
+# 9. Architectural Confidence
 
 Architecture Testing supports architectural confidence throughout the SentinelAI platform lifecycle by establishing consistent verification of architectural correctness.
 
@@ -496,7 +553,7 @@ Verification traceability supports architectural governance without redefining t
 
 ---
 
-# 9. Extensibility
+# 10. Extensibility
 
 The Architecture Testing model is designed to evolve together with SentinelAI while preserving its architectural verification model.
 
@@ -515,7 +572,7 @@ Architectural evolution should simplify architectural verification rather than i
 
 ---
 
-# 10. Future Evolution
+# 11. Future Evolution
 
 Future versions of the Architecture Testing model may introduce:
 
@@ -533,7 +590,7 @@ Regardless of future platform evolution, explicit verification ownership, archit
 
 ---
 
-# 11. Design Principles Applied
+# 12. Design Principles Applied
 
 The Architecture Testing model follows the engineering principles established throughout SentinelAI.
 
@@ -568,3 +625,5 @@ Architecture Testing should continue to evolve together with the platform while 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial Architecture Testing specification created |
+| 1.1.0 | 2026-07-03 | Normative Architectural Constraint Catalogue added (AC-01…AC-13); this document declared the authoritative source of concrete constraints, mirrored by trackers and test suites |
+| 1.2.0 | 2026-07-03 | AC-14 declared (no dual-write; outbox-only propagation, ADR-012) and AC-15 enforced (API contract artifact freshness, API Design §14a) |

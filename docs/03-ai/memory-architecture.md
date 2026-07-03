@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Memory Architecture
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-03
 ---
 
 # SentinelAI Memory Architecture
@@ -373,7 +373,7 @@ For example:
 - Semantic Memory provides similar investigations.
 - External Knowledge provides MITRE mappings.
 
-The Memory Agent combines these results into a coherent context for downstream agents.
+The Memory Agent selects which layers participate; the retrieval pipeline retrieves from them and the Context Builder combines the results into a coherent context for downstream agents (RAG Architecture §8/§14).
 
 ---
 
@@ -471,16 +471,17 @@ The Planner should remain independent of memory implementation details.
 
 ## Memory Agent
 
-The Memory Agent is responsible for interacting with all memory layers.
+The Memory Agent is the strategy selector for memory retrieval.
 
 Responsibilities include:
 
-- retrieving relevant knowledge
-- combining results from multiple memory layers
-- filtering low-value information
-- providing structured context for downstream agents
+- reasoning over the already-assembled Investigation State
+- selecting which retrieval strategies (and thereby which memory layers) should participate
+- producing exactly one typed Retrieval Plan per request
 
-The Memory Agent acts as the gateway to organizational knowledge.
+The Memory Agent does **not** retrieve, combine, filter or assemble knowledge itself: retrieval is executed by the RAG pipeline's Retriever against the owning backend services, and context assembly belongs to the Context Builder (RAG Architecture §14, ADR-010).
+
+The Memory Agent is the steward gateway *decision* point to organizational knowledge; the pipeline is its execution path.
 
 ---
 
@@ -988,3 +989,4 @@ Knowledge should become more valuable over time through validation, refinement a
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Memory Architecture document created |
+| 1.1.0 | 2026-07-03 | Memory Agent aligned with the strategy-selector model (consistent with the §11 steward role and RAG Architecture §14); retrieval execution and context assembly assigned to the pipeline |

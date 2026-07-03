@@ -1,12 +1,9 @@
 """Domain lifecycle enumerations.
 
 These enumerations define the observable lifecycle states of the domain objects
-that have a documented set of states. They are value sets only: validation of
-permitted state transitions is a business-workflow concern owned by the relevant
-backend service, not by the domain model.
-
-Where the documentation is internally inconsistent, the enumeration uses the
-union of the documented states (see the implementation plan for details).
+that have a documented set of states (domain-model.md v1.1.0). They are value
+sets only: validation of permitted state transitions is a business-workflow
+concern owned by the relevant backend service, not by the domain model.
 """
 
 from enum import Enum

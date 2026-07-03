@@ -33,6 +33,10 @@ from app.presentation.api.errors import AuthenticationError
 from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_service,
 )
+from tests.support.doubles import (
+    InMemoryOutcomeRepository,
+    InMemoryTraceRepository,
+)
 
 _IDENTITY = AuthenticatedIdentity(subject="test-analyst", kind=IdentityKind.HUMAN)
 
@@ -94,7 +98,12 @@ class _ReportRepo:
 
 def _service() -> InvestigationService:
     return InvestigationService(
-        _InvestigationRepo(), _EvidenceRepo(), _FindingRepo(), _ReportRepo()
+        _InvestigationRepo(),
+        _EvidenceRepo(),
+        _FindingRepo(),
+        _ReportRepo(),
+        InMemoryOutcomeRepository(),
+        InMemoryTraceRepository(),
     )
 
 

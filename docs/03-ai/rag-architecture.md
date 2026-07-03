@@ -1,9 +1,9 @@
 ---
 title: SentinelAI RAG Architecture
-version: 1.0.0
+version: 1.2.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-03
 ---
 
 # SentinelAI RAG Architecture
@@ -78,12 +78,14 @@ The retrieval pipeline should support continuously growing organizational knowle
 flowchart TD
 
 Planner --> MemoryAgent
-MemoryAgent --> Retriever
+MemoryAgent -->|Retrieval Plan| Retriever
 Retriever --> ContextBuilder
 ContextBuilder --> PromptBuilder
 PromptBuilder --> LLM
 LLM --> Response
 ```
+
+The Memory Agent contributes the Retrieval Plan (strategy selection); retrieval itself is executed by the Retriever (see §14).
 
 ---
 
@@ -524,11 +526,11 @@ Continuous evaluation enables long-term improvement of retrieval performance.
 
 # 14. Memory Agent Integration
 
-The Memory Agent orchestrates the retrieval process on behalf of the Planner.
+The Memory Agent is the **strategy selector** of the retrieval process.
 
-Rather than retrieving information directly, the Planner delegates contextual knowledge acquisition to the Memory Agent.
+Rather than retrieving information directly, the Planner delegates contextual knowledge acquisition to the retrieval pipeline; the Memory Agent's contribution is deciding **which documented retrieval strategies should participate** for the current investigation.
 
-The Memory Agent determines which knowledge sources should participate in retrieval.
+The Memory Agent reasons over the already-assembled Investigation State and produces exactly one typed **Retrieval Plan** — the list of participating strategies. It is a stateless reasoner (Agent Architecture §10) and a Knowledge Steward (Memory Architecture §11): it selects and proposes, but it never retrieves, coordinates sources, assembles context or persists knowledge.
 
 ---
 
@@ -537,24 +539,20 @@ The Memory Agent determines which knowledge sources should participate in retrie
 The Memory Agent is responsible for:
 
 - selecting appropriate retrieval strategies
-- coordinating multiple knowledge sources
-- eliminating redundant retrieval
-- preserving evidence traceability
-- delivering structured context to the Context Builder
+- producing exactly one Retrieval Plan per request
+- preserving determinism (equivalent state yields an equivalent plan)
+
+The Memory Agent is **not** responsible for:
+
+- executing retrieval against knowledge sources (the Retriever)
+- coordinating sources or eliminating redundant retrieval (the retrieval pipeline)
+- assembling or validating context (Context Builder / Context Validation)
 
 ---
 
-## Knowledge Sources
+## Composition
 
-The Memory Agent may retrieve information from:
-
-- Organizational Memory
-- Knowledge Graph
-- Investigation State
-- External Threat Intelligence
-- Organizational Documentation
-
-Each source contributes different types of knowledge.
+The composition that runs the Memory Agent and then executes its plan — the **Retrieval Flow** — is owned by the AI Runtime (ADR-010): the Memory Agent selects the strategies, and the RAG pipeline's Retriever executes the plan against the knowledge sources those strategies name (Organizational Memory, the Knowledge Graph, structured lookups, external intelligence).
 
 ---
 
@@ -568,7 +566,7 @@ Complex investigations may require graph reasoning and external intelligence sim
 
 The Planner defines the investigation objective.
 
-The Memory Agent determines the appropriate retrieval strategy.
+The Memory Agent determines the appropriate retrieval strategies; the pipeline executes them.
 
 ---
 
@@ -621,6 +619,8 @@ Suitable for:
 - MITRE ATT&CK
 - malware intelligence
 - threat feeds
+
+External retrieval executes through the provider-neutral **External Knowledge provider port** (AI Foundation), preserving the same replaceable-provider discipline as the LLM and embedding ports (ADR-005); results carry their origin so external knowledge stays distinguishable from organizational knowledge (§17).
 
 ---
 
@@ -770,7 +770,7 @@ flowchart TD
 
 Planner --> MemoryAgent
 
-MemoryAgent --> Retriever
+MemoryAgent -->|Retrieval Plan| Retriever
 
 Retriever --> OrganizationalMemory
 Retriever --> KnowledgeGraph
@@ -965,3 +965,5 @@ The success of the RAG Architecture depends not on retrieving the largest amount
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial RAG Architecture document created |
+| 1.1.0 | 2026-07-03 | Memory Agent aligned with the strategy-selector model (produces a Retrieval Plan; retrieval/coordination/assembly belong to the pipeline); Retrieval Flow composition ownership referenced (ADR-010) |
+| 1.2.0 | 2026-07-03 | External retrieval bound to the provider-neutral External Knowledge port (audit finding M-03/E-04) |

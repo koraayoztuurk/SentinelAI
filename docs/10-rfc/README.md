@@ -1,9 +1,9 @@
 ---
 title: RFC Process
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-28
+last_updated: 2026-07-03
 ---
 
 # RFC Process
@@ -82,6 +82,31 @@ The RFC Process does not define software development workflows, implementation p
 Those responsibilities remain outside the scope of this document.
 
 The governance model should remain consistent with the Project Charter, the System Overview and the Architectural Decision Record (ADR) process while preserving architectural integrity and explicit decision ownership.
+
+---
+
+# 3a. Scope Threshold and Lightweight Form (ADR-014, Normative)
+
+The full lifecycle described in this document applies at the project's operating capacity through the following **normative scoping** (ADR-014):
+
+## When an RFC Is Required
+
+An RFC is required **only** for proposals that:
+
+- supersede or amend an accepted ADR,
+- change a layer boundary or an enforced architectural constraint (Architecture Testing, Constraint Catalogue),
+- change domain-model semantics (objects, lifecycles, ownership), or
+- introduce a new backend service or a new persistence technology category.
+
+All other architectural decisions proceed directly as an ADR, using the ADR's `Proposed → Accepted` transition as the discussion stage.
+
+## Lightweight Form
+
+A conforming RFC is a **single page** stating: the problem, the proposed change, the affected ADRs/constraints, the dismissed alternatives, and the acceptance criteria. The lifecycle reduces to `Proposed → Accepted / Rejected` with a recorded rationale.
+
+## Review at Current Capacity
+
+With a single maintainer, review means a written, recorded evaluation against the design principles and the constraint catalogue. The process scales up (independent reviewers, discussion windows — the remainder of this document) without structural change when contributors exist.
 
 ---
 
@@ -554,3 +579,4 @@ The RFC Process should continue to evolve together with SentinelAI while preserv
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial RFC Process specification created |
+| 1.1.0 | 2026-07-03 | Scope threshold and lightweight single-page form made normative (ADR-014); full lifecycle retained as the scale-up model |

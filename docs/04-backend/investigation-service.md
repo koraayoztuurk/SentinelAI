@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Investigation Service
-version: 1.0.0
+version: 1.2.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-03
 ---
 
 # SentinelAI Investigation Service
@@ -146,8 +146,10 @@ Supported operations include:
 - create Investigation
 - retrieve Investigation
 - update Investigation
+- suspend / resume Investigation (Active ↔ Suspended)
+- complete Investigation (transition to Completed; "closing" an investigation means completing it — no separate Closed state exists)
+- reopen Investigation (Completed → Active, on significant new evidence)
 - archive Investigation
-- close Investigation
 
 Investigation lifecycle should remain fully observable.
 
@@ -192,6 +194,40 @@ Supported operations include:
 - archive Investigation Report
 
 Reports summarize investigation outcomes without modifying underlying Investigation data.
+
+---
+
+## Outcome Operations
+
+The Investigation Service owns the lifecycle and persistence of every InvestigationOutcome (Domain Model §11a).
+
+Supported operations include:
+
+- create Investigation Outcome (at most one per investigation; contributing findings must exist and belong to the investigation)
+- retrieve Investigation Outcome
+
+Outcomes are produced by the Decision Engine (AI Runtime) and persisted through this service.
+
+---
+
+## Trace Operations
+
+The Investigation Service owns the persistence of the Investigation Trace — the append-only explainability journal (Domain Model §11b).
+
+Supported operations include:
+
+- record Trace Entry (append-only; the referenced investigation must exist; the summary must not be blank)
+- list Trace Entries (in append order)
+
+Trace entries are produced primarily by the AI Runtime compositions (Investigation Loop, Retrieval Flow) through this service's interface; analysts may contribute note entries.
+
+---
+
+## Evidence Ingestion Boundary
+
+The Investigation Service owns evidence **attachment** (accepting an already-formed Evidence item and binding it to its investigation).
+
+Evidence **ingestion** — upload transport, format parsing and log normalization (Project Charter, Initial Product Capabilities) — is a distinct future capability with its own pipeline; it is *not* an Investigation Service responsibility and requires its own architectural decision before implementation (ADR-004 rule: a new service only for a distinct business capability). Raw evidence payload storage is defined by the Database Architecture (Evidence Payload Storage).
 
 
 ---
@@ -325,10 +361,16 @@ Lifecycle management enables monitoring, auditing and controlled execution.
 stateDiagram-v2
     [*] --> Created
     Created --> Active
+    Active --> Suspended
+    Suspended --> Active
+    Suspended --> Archived
     Active --> Completed
     Active --> Archived
+    Completed --> Active
     Completed --> Archived
 ```
+
+Suspension (Active ↔ Suspended) and completion (Completed → Active on significant new evidence, Planner Agent §10) are reversible; Archived is terminal.
 
 ---
 
@@ -532,3 +574,5 @@ However, the investigation responsibilities defined in this document should rema
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Investigation Service specification created |
+| 1.1.0 | 2026-07-03 | Lifecycle completed: Suspended transitions defined (Active ↔ Suspended, Suspended → Archived), reopen defined (Completed → Active), "close" clarified as completing (no separate Closed state) |
+| 1.2.0 | 2026-07-03 | Outcome operations (create/retrieve, 0..1 per investigation) and Trace operations (append-only explainability journal) added; evidence ingestion boundary defined (attachment owned here, ingestion/normalization a future capability requiring its own decision) |

@@ -12,20 +12,36 @@ import pytest
 from app.application.investigation import (
     DuplicateEvidenceError,
     DuplicateInvestigationError,
+    DuplicateOutcomeError,
     EvidenceNotFoundError,
     EvidenceOwnershipError,
+    FindingNotFoundError,
     InvalidLifecycleTransitionError,
     InvestigationNotFoundError,
     InvestigationService,
     InvestigationValidationError,
+    OutcomeNotFoundError,
     ReportNotFoundError,
 )
-from app.domain.enums import FindingStatus, InvestigationStatus
+from app.domain.enums import (
+    FindingStatus,
+    InvestigationOutcomeStatus,
+    InvestigationStatus,
+)
 from app.domain.evidence import Evidence
 from app.domain.finding import Finding
-from app.domain.identifiers import EvidenceId, FindingId, InvestigationId, ReportId
+from app.domain.identifiers import (
+    EvidenceId,
+    FindingId,
+    InvestigationId,
+    InvestigationOutcomeId,
+    ReportId,
+    TraceEntryId,
+)
 from app.domain.investigation import Investigation
+from app.domain.investigation_outcome import InvestigationOutcome
 from app.domain.report import Report
+from app.domain.trace import TraceEntry, TraceEntryKind
 from app.domain.value_objects import (
     ActorRef,
     Confidence,
@@ -120,12 +136,42 @@ class InMemoryReportRepository:
 # ------------------------------------------------------------------------ builders
 
 
+class InMemoryOutcomeRepository:
+    def __init__(self) -> None:
+        self._items: dict[str, InvestigationOutcome] = {}
+
+    async def add(self, outcome: InvestigationOutcome) -> None:
+        self._items[outcome.investigation_id.value] = outcome
+
+    async def get_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> InvestigationOutcome | None:
+        return self._items.get(investigation_id.value)
+
+
+class InMemoryTraceRepository:
+    def __init__(self) -> None:
+        self._entries: list[TraceEntry] = []
+
+    async def add(self, entry: TraceEntry) -> None:
+        self._entries.append(entry)
+
+    async def list_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> tuple[TraceEntry, ...]:
+        return tuple(
+            e for e in self._entries if e.investigation_id == investigation_id
+        )
+
+
 def _make_service() -> InvestigationService:
     return InvestigationService(
         InMemoryInvestigationRepository(),
         InMemoryEvidenceRepository(),
         InMemoryFindingRepository(),
         InMemoryReportRepository(),
+        InMemoryOutcomeRepository(),
+        InMemoryTraceRepository(),
     )
 
 
@@ -261,6 +307,81 @@ def test_invalid_lifecycle_transition() -> None:
     asyncio.run(scenario())
 
 
+def test_suspend_and_resume_transitions() -> None:
+    # Suspension is reversible (spec section 10, v1.1.0): Active <-> Suspended.
+    async def scenario() -> None:
+        service = _make_service()
+        await service.create(_investigation("inv-1"))
+        await service.change_status(
+            InvestigationId("inv-1"), InvestigationStatus.ACTIVE
+        )
+        suspended = await service.change_status(
+            InvestigationId("inv-1"), InvestigationStatus.SUSPENDED
+        )
+        assert suspended.status is InvestigationStatus.SUSPENDED
+        resumed = await service.change_status(
+            InvestigationId("inv-1"), InvestigationStatus.ACTIVE
+        )
+        assert resumed.status is InvestigationStatus.ACTIVE
+
+    asyncio.run(scenario())
+
+
+def test_suspended_cannot_complete_directly() -> None:
+    async def scenario() -> None:
+        service = _make_service()
+        await service.create(_investigation("inv-1"))
+        await service.change_status(
+            InvestigationId("inv-1"), InvestigationStatus.ACTIVE
+        )
+        await service.change_status(
+            InvestigationId("inv-1"), InvestigationStatus.SUSPENDED
+        )
+        with pytest.raises(InvalidLifecycleTransitionError):
+            await service.change_status(
+                InvestigationId("inv-1"), InvestigationStatus.COMPLETED
+            )
+
+    asyncio.run(scenario())
+
+
+def test_completed_can_reopen_to_active() -> None:
+    # Completion is reversible on significant new evidence (planner-agent §10).
+    async def scenario() -> None:
+        service = _make_service()
+        await service.create(_investigation("inv-1"))
+        await service.change_status(
+            InvestigationId("inv-1"), InvestigationStatus.ACTIVE
+        )
+        await service.change_status(
+            InvestigationId("inv-1"), InvestigationStatus.COMPLETED
+        )
+        reopened = await service.change_status(
+            InvestigationId("inv-1"), InvestigationStatus.ACTIVE
+        )
+        assert reopened.status is InvestigationStatus.ACTIVE
+
+    asyncio.run(scenario())
+
+
+def test_archived_is_terminal() -> None:
+    async def scenario() -> None:
+        service = _make_service()
+        await service.create(_investigation("inv-1"))
+        await service.change_status(
+            InvestigationId("inv-1"), InvestigationStatus.ACTIVE
+        )
+        await service.change_status(
+            InvestigationId("inv-1"), InvestigationStatus.ARCHIVED
+        )
+        with pytest.raises(InvalidLifecycleTransitionError):
+            await service.change_status(
+                InvestigationId("inv-1"), InvestigationStatus.ACTIVE
+            )
+
+    asyncio.run(scenario())
+
+
 def test_change_status_only_modifies_status() -> None:
     async def scenario() -> None:
         service = _make_service()
@@ -379,5 +500,130 @@ def test_get_report_unknown_raises() -> None:
         service = _make_service()
         with pytest.raises(ReportNotFoundError):
             await service.get_report(ReportId("missing"))
+
+    asyncio.run(scenario())
+
+
+# --------------------------------------------------------------------- outcome
+
+
+def _outcome(
+    investigation_id: str,
+    findings: tuple[str, ...] = (),
+) -> InvestigationOutcome:
+    return InvestigationOutcome(
+        id=InvestigationOutcomeId(f"out-{investigation_id}"),
+        investigation_id=InvestigationId(investigation_id),
+        confidence=Confidence(0.8),
+        recommendation="contain the affected host",
+        status=InvestigationOutcomeStatus.SYNTHESIZED,
+        created_at=_NOW,
+        contributing_findings=tuple(FindingId(f) for f in findings),
+    )
+
+
+def test_create_and_get_outcome() -> None:
+    async def scenario() -> None:
+        service = _make_service()
+        await service.create(_investigation("inv-1"))
+        created = await service.create_outcome(_outcome("inv-1"))
+        assert created.recommendation == "contain the affected host"
+        fetched = await service.get_outcome(InvestigationId("inv-1"))
+        assert fetched == created
+
+    asyncio.run(scenario())
+
+
+def test_outcome_is_unique_per_investigation() -> None:
+    async def scenario() -> None:
+        service = _make_service()
+        await service.create(_investigation("inv-1"))
+        await service.create_outcome(_outcome("inv-1"))
+        with pytest.raises(DuplicateOutcomeError):
+            await service.create_outcome(_outcome("inv-1"))
+
+    asyncio.run(scenario())
+
+
+def test_outcome_requires_existing_investigation() -> None:
+    async def scenario() -> None:
+        service = _make_service()
+        with pytest.raises(InvestigationNotFoundError):
+            await service.create_outcome(_outcome("missing"))
+
+    asyncio.run(scenario())
+
+
+def test_outcome_validates_contributing_findings() -> None:
+    async def scenario() -> None:
+        service = _make_service()
+        await service.create(_investigation("inv-1"))
+        with pytest.raises(FindingNotFoundError):
+            await service.create_outcome(_outcome("inv-1", findings=("missing",)))
+
+    asyncio.run(scenario())
+
+
+def test_get_outcome_when_none_exists_raises() -> None:
+    async def scenario() -> None:
+        service = _make_service()
+        await service.create(_investigation("inv-1"))
+        with pytest.raises(OutcomeNotFoundError):
+            await service.get_outcome(InvestigationId("inv-1"))
+
+    asyncio.run(scenario())
+
+
+# ----------------------------------------------------------------------- trace
+
+
+def _trace_entry(entry_id: str, investigation_id: str) -> TraceEntry:
+    return TraceEntry(
+        id=TraceEntryId(entry_id),
+        investigation_id=InvestigationId(investigation_id),
+        kind=TraceEntryKind.PLANNER_DECISION,
+        actor=ActorRef("planner-agent"),
+        summary="decided GetInvestigationAction",
+        reference="act-1",
+        created_at=_NOW,
+    )
+
+
+def test_record_and_list_trace_in_append_order() -> None:
+    async def scenario() -> None:
+        service = _make_service()
+        await service.create(_investigation("inv-1"))
+        first = await service.record_trace(_trace_entry("t-1", "inv-1"))
+        second = await service.record_trace(_trace_entry("t-2", "inv-1"))
+        entries = await service.list_trace(InvestigationId("inv-1"))
+        assert entries == (first, second)
+
+    asyncio.run(scenario())
+
+
+def test_trace_requires_existing_investigation() -> None:
+    async def scenario() -> None:
+        service = _make_service()
+        with pytest.raises(InvestigationNotFoundError):
+            await service.record_trace(_trace_entry("t-1", "missing"))
+
+    asyncio.run(scenario())
+
+
+def test_trace_rejects_blank_summary() -> None:
+    async def scenario() -> None:
+        service = _make_service()
+        await service.create(_investigation("inv-1"))
+        blank = TraceEntry(
+            id=TraceEntryId("t-1"),
+            investigation_id=InvestigationId("inv-1"),
+            kind=TraceEntryKind.ANALYST_NOTE,
+            actor=ActorRef("analyst-1"),
+            summary="   ",
+            reference="note",
+            created_at=_NOW,
+        )
+        with pytest.raises(InvestigationValidationError):
+            await service.record_trace(blank)
 
     asyncio.run(scenario())

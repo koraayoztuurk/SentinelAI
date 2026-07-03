@@ -8,6 +8,7 @@ the infrastructure adapters that implement them.
 from app.application.investigation.errors import (
     DuplicateEvidenceError,
     DuplicateInvestigationError,
+    DuplicateOutcomeError,
     EvidenceNotFoundError,
     EvidenceOwnershipError,
     FindingNotFoundError,
@@ -15,6 +16,7 @@ from app.application.investigation.errors import (
     InvestigationNotFoundError,
     InvestigationServiceError,
     InvestigationValidationError,
+    OutcomeNotFoundError,
     ReportNotFoundError,
 )
 from app.application.investigation.service import InvestigationService
@@ -31,4 +33,6 @@ __all__ = [
     "EvidenceOwnershipError",
     "FindingNotFoundError",
     "ReportNotFoundError",
+    "OutcomeNotFoundError",
+    "DuplicateOutcomeError",
 ]

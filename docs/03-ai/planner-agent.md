@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Planner Agent
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-03
 ---
 
 # SentinelAI Planner Agent
@@ -99,6 +99,10 @@ domain object. It references domain entities by identifier rather than embedding
 The Investigation State is **assembled outside the Planner Agent** — by the Investigation Workspace /
 Context Builder — and is supplied to the Planner Agent **already assembled**. The Planner Agent only
 **reasons over** the provided state; it never assembles, retrieves or persists it.
+
+"Investigation Workspace" here names the Application Domain investigation-context capability (owned
+by the Investigation Service, ADR-004), not the frontend page of the same name. Within the AI
+Runtime, assembled state reaches the loop through the **State Assembler** port (ADR-010).
 
 ---
 
@@ -803,3 +807,4 @@ Planning responsibilities should remain stable even if planning algorithms evolv
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Planner Agent document created |
+| 1.1.0 | 2026-07-03 | Terminology disambiguated: Investigation Workspace (Application Domain capability) vs the frontend page; State Assembler port referenced (ADR-010) |

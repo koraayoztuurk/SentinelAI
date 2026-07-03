@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Memory Service
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-03
 ---
 
 # SentinelAI Memory Service
@@ -177,21 +177,23 @@ Memory operations follow a consistent execution flow.
 
 ## Memory Creation
 
+Memory creation follows the derived-representation propagation model (ADR-012): the request path writes **only** the authoritative store; embedding production and Vector Database synchronization happen asynchronously through the transactional outbox.
+
 ```mermaid
 flowchart TD
 
 BackendComponent --> MemoryService
 
-MemoryService --> PostgreSQL
-
-PostgreSQL --> EmbeddingGeneration
-
-EmbeddingGeneration --> VectorDB
-
-VectorDB --> MemoryService
+MemoryService -->|Memory Item + outbox record, one transaction| PostgreSQL
 
 MemoryService --> BackendComponent
+
+PostgreSQL -.->|async, idempotent projector| EmbeddingGeneration
+
+EmbeddingGeneration -.-> VectorDB
 ```
+
+No request path writes to both PostgreSQL and the Vector Database (constraint AC-14). A projection failure never affects the persisted Memory Item; unprocessed outbox records remain observable and are retried.
 
 ---
 
@@ -221,6 +223,14 @@ MemoryService --> MemoryAgent
 Embeddings are derived artifacts generated from authoritative Memory Items.
 
 Embeddings should never become the primary representation of organizational knowledge.
+
+---
+
+## Embedding Port Ownership (ADR-012)
+
+Embedding production is invoked through a narrow **embedding port owned by the Memory Service's own layer** (the application layer). The infrastructure layer implements that port; the concrete adapter may internally use an AI provider.
+
+The Memory Service never imports AI Runtime components (enforced constraint AC-04); the AI Runtime's provider-neutral embedding port serves AI-side consumers only.
 
 ---
 
@@ -531,3 +541,4 @@ However, the service responsibilities defined in this document should remain sta
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Memory Service specification created |
+| 1.1.0 | 2026-07-03 | Memory creation flow aligned with ADR-012 (transactional outbox; no dual-write on any request path); embedding port ownership fixed in the application layer (AC-04 compatible) |

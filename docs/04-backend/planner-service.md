@@ -1,556 +1,239 @@
 ---
 title: SentinelAI Planner Service
-version: 1.0.0
+version: 2.0.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-03
 ---
 
 # SentinelAI Planner Service
 
-> This document defines the backend service responsible for coordinating investigation workflows within SentinelAI. The Planner Service orchestrates backend services while remaining independent of AI reasoning and language model implementation.
+> This document defines the backend component responsible for executing Planner Actions within SentinelAI. The Planner Service is the single, validated execution boundary between the AI Runtime and the backend services. Its composition with the Planner Agent is decided by ADR-010.
 
 ---
 
 # 1. Purpose
 
-The Planner Service coordinates backend workflows initiated by the Planner Agent.
+The Planner Service executes the decisions produced by the Planner Agent.
 
-Rather than performing investigation reasoning, the service executes investigation plans by interacting with backend services.
+It is an **orchestration seam** (ADR-010), not a business-capability service: it owns no business data, persists no state and performs no reasoning.
 
-The Planner Service acts as the orchestration layer between AI components and backend infrastructure.
+Each request executes exactly **one Planner Action** against the backend service that owns the requested operation, and returns a provenance-bearing execution result.
 
-Its primary objective is reliable workflow execution.
+Its primary objective is reliable, observable, deterministic single-action execution.
 
 ---
 
-# 2. Responsibilities
+# 2. Control Model
+
+The Planner Service follows the **single-action control model** (normative per ADR-010):
+
+- One request executes one Planner Action.
+- The service holds no multi-step plans and persists no workflow state.
+- Multi-step, adaptive investigation is realized exclusively by the **Planner Agent's iterative decision loop**, hosted by the AI Runtime's Investigation Loop: the agent selects the next action, the Planner Service executes that single action and returns its result, and the agent decides the following action after observing the result.
+- Execution order, dependencies between actions, redundancy avoidance and lifecycle control (continuing, completing or escalating an investigation) are therefore the Planner Agent's responsibility across successive cycles — never the Planner Service's.
+
+Stateful, multi-step workflow orchestration inside the Planner Service is explicitly rejected (ADR-010, Alternatives Considered).
+
+---
+
+# 3. Responsibilities
 
 The Planner Service is responsible for:
 
-- coordinating investigation workflows
-- executing investigation tasks
-- invoking backend services
-- monitoring workflow execution
-- collecting service responses
-- returning execution results
+- validating a single Planner Action before dispatch
+- dispatching the action to the owning backend service
+- isolating downstream service failures into a structured execution result
+- returning the execution result with its originating service preserved
+- exposing execution observability through operational logging
 
-The Planner Service executes plans.
+The Planner Service executes decisions.
 
-It does not generate plans.
-
----
-
-## Control Model
-
-The Planner Service executes **one Planner Action per request** (a single-action model). It does not
-hold or execute multi-step plans as a unit, and it does not persist workflow state.
-
-Multi-step, adaptive investigation is realised by the **Planner Agent's iterative decision loop**:
-the Planner Agent selects the next action, the Planner Service executes that single action and
-returns its result, and the Planner Agent then decides the following action. Execution order and
-dependencies between actions are therefore decided by the Planner Agent across successive cycles,
-not orchestrated as a stored multi-step workflow inside the Planner Service. References to
-"workflow", "steps" and "execution order" elsewhere in this document describe this agent-driven
-iterative loop, not a persisted multi-step plan executed by the service.
+It does not make them.
 
 ---
 
-# 3. High-Level Architecture
+# 4. High-Level Architecture
 
 ```mermaid
 flowchart TD
 
-PlannerAgent --> PlannerService
+InvestigationLoop[AI Runtime — Investigation Loop]
 
-PlannerService --> MemoryService
+InvestigationLoop --> PlannerAgent
+
+PlannerAgent -->|one Planner Action| PlannerService
+
+PlannerService --> InvestigationService
 
 PlannerService --> GraphService
 
-PlannerService --> InvestigationService
+PlannerService --> MemoryService
+
+PlannerService -->|one execution result| InvestigationLoop
 ```
 
----
-
-# 4. Service Boundaries
-
-The Planner Service intentionally limits its responsibilities.
-
-Maintaining clear service boundaries improves modularity and simplifies workflow execution.
+The caller of the Planner Service is the AI Runtime (the Investigation Loop composing the Planner Agent, ADR-010). Exposure of Planner Action execution through the public API is a communication concern of the Backend API and is a separate, still-open decision (ADR-010, Notes).
 
 ---
+
+# 5. Service Boundaries
 
 ## The Planner Service Is Responsible For
 
-- workflow execution
-- service orchestration
-- execution monitoring
-- task coordination
+- single Planner Action validation
+- single Planner Action execution
+- failure isolation
+- execution-result provenance
 
 ---
 
 ## The Planner Service Is Not Responsible For
 
-- AI reasoning
-- graph processing
-- memory persistence
+- AI reasoning and planning (Planner Agent)
+- loop composition, cycle budgeting and termination (AI Runtime — Investigation Loop)
+- business data ownership and persistence (Investigation, Graph and Memory Services)
 - report generation
 - language model interaction
 
-These responsibilities belong to other architectural components.
+---
+
+## Statelessness
+
+The Planner Service is **stateless**. It owns no storage, persists no execution state and retains nothing between requests. Execution remains observable through operational logging rather than a persisted workflow store. Investigation business state remains owned by the Investigation Service.
 
 ---
 
-# 5. Workflow Ownership
+# 6. Planner Action Contract
 
-The Planner Service owns workflow execution.
+The Planner Service receives a single **Planner Action** per request.
 
-Workflow ownership does not imply ownership of investigation data.
-
-Business data always remains within the responsible backend service.
-
-It does not own investigation knowledge.
-
-Knowledge remains within dedicated backend services.
-
----
-
-## Execution State
-
-The Planner Service is **stateless**. It does not persist workflow or execution state and owns no
-storage. Each request executes a single Planner Action and returns its result; nothing is retained
-between requests. Execution remains observable through logging rather than a persisted workflow
-store. Investigation business state continues to be owned by the Investigation Service.
-
----
-
-## Workflow Responsibilities
-
-The Planner Service:
-
-- receives execution plans
-- invokes backend services
-- coordinates execution order
-- aggregates execution results
-- returns execution summaries
-
----
-
-## Service Coordination
-
-The Planner Service may coordinate:
-
-- Memory Service
-- Graph Service
-- Investigation Service
-- Future backend services
-
-The Planner Service should not bypass service boundaries.
-
-
----
-
-# 6. Core Operations
-
-The Planner Service exposes workflow orchestration capabilities to AI components.
-
-Operations focus on execution rather than decision-making.
-
----
-
-## Workflow Operations
-
-Supported operations include:
-
-- start workflow
-- execute workflow step
-- pause workflow
-- resume workflow
-- cancel workflow
-- complete workflow
-
-Workflow execution should remain observable throughout its lifecycle.
-
-Under the single-action model, the only operation the Planner Service performs per request is the
-execution of one Planner Action. Lifecycle control (start / pause / resume / cancel / complete) is
-expressed by the Planner Agent's decision loop — by issuing the next action, withholding further
-actions, or issuing a control action — rather than by stateful workflow operations on the
-(stateless) Planner Service.
-
----
-
-## Task Coordination
-
-Supported operations include:
-
-- dispatch service requests
-- monitor task execution
-- collect execution results
-- detect execution failures
-
-Task coordination should remain deterministic whenever possible.
-
-Task execution should preserve execution order whenever workflow dependencies exist.
-
----
-
-## Execution Monitoring
-
-The Planner Service monitors:
-
-- workflow progress
-- service availability
-- execution status
-- task completion
-
-Execution state should remain continuously observable.
-
-
----
-
-# 7. Workflow Execution
-
-Workflow execution follows a consistent orchestration process.
-
-```mermaid
-flowchart TD
-
-PlannerAgent --> PlannerService
-
-PlannerService --> MemoryService
-
-PlannerService --> GraphService
-
-PlannerService --> InvestigationService
-
-MemoryService --> PlannerService
-
-GraphService --> PlannerService
-
-InvestigationService --> PlannerService
-
-PlannerService --> PlannerAgent
-```
-
-Workflow execution is orchestration-oriented.
-
-The Planner Service coordinates backend services without becoming the owner of their data or business logic.
-
----
-
-# 8. Service Coordination
-
-The Planner Service coordinates backend services without assuming ownership of their data.
-
-Each backend service remains responsible for its own business domain.
-
----
-
-## Sequential Execution
-
-Some workflows require services to execute in a predefined order.
-
-Execution order should preserve workflow correctness.
-
----
-
-## Parallel Execution
-
-Independent service requests may execute concurrently.
-
-Parallel execution should reduce investigation latency without affecting correctness.
-
----
-
-## Result Aggregation
-
-Execution results are combined into a unified workflow response.
-
-The Planner Service should preserve the origin of every service response.
-
-Aggregation should not modify business data.
-
-Aggregated results should preserve the originating service for every returned artifact.
-
-Under the single-action model, each request returns one **execution result** for the action: the
-originating backend service, the action identifier, the execution status (Completed or Failed), and
-the service response or a structured error. Combining results across multiple actions is the Planner
-Agent's responsibility across its decision loop, not a function performed inside the Planner Service.
-
-
----
-
-# 9. Failure Management
-
-Workflow execution should remain resilient to individual service failures.
-
-Failures should be isolated whenever possible.
-
----
-
-## Service Failure
-
-Failure of one backend service should not automatically terminate the entire workflow.
-
-Recovery strategies should be workflow-dependent.
-
----
-
-## Retry Strategy
-
-Temporary failures may trigger controlled retry mechanisms.
-
-Retries should remain observable.
-
----
-
-## Partial Results
-
-When appropriate, the Planner Service may return partial workflow results.
-
-Returned responses should clearly indicate incomplete execution.
-
----
-
-## Timeout Handling
-
-Long-running service operations should respect configurable timeout policies.
-
-Timeouts should remain explicit rather than silent.
-
-
----
-
-# 10. Workflow State
-
-Every workflow progresses through observable execution states.
-
-Workflow state enables monitoring, debugging and recovery.
-
----
-
-## Workflow Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> Pending
-    Pending --> Running
-    Running --> Completed
-    Running --> Failed
-    Running --> Cancelled
-```
-
----
-
-## State Transitions
-
-State transitions should be deterministic.
-
-Every transition should be recorded for auditability.
-
-The lifecycle above describes the **execution status of a single Planner Action** — an
-application-layer, in-memory status. It is **not** a persisted workflow object and is **not** the
-domain `TaskStatus`. Because the Planner Service is stateless, "recorded for auditability" is
-satisfied through observability logging of each action's execution rather than a persisted workflow
-store.
-
----
-
-## Recovery
-
-Interrupted workflows should support controlled recovery whenever possible.
-
-Recovery should preserve workflow consistency.
-
-Recovered workflows should resume from the last consistent execution state whenever possible.
-
----
-
-# 11. Service Contract
-
-The Planner Service exposes a consistent workflow execution interface to AI components.
-
-Backend workflows should always be executed through the Planner Service.
-
----
-
-## Inputs
-
-The Planner Service receives a single **Planner Action** per request (see Control Model).
-
-A Planner Action is a transient, application-layer structure (not a domain object). It is one of:
+A Planner Action is a transient, application-layer structure (not a domain object, per the Domain Model). It is one of:
 
 - a **service-invocation action**, containing:
-  - an action identifier (for correlation and observability)
+  - an action identifier (caller-supplied, for correlation and observability)
   - an investigation reference
   - a target backend service (Investigation, Graph or Memory)
   - the operation to invoke on that service
   - the operation inputs
   - optional execution constraints (for example, a timeout)
-- a **control action** (no service call), such as completing the investigation or escalating to the
-  analyst.
+- a **control action** (no service call): complete or escalate. Control actions signal the Planner Agent's loop decision; the Planner Service records and acknowledges them so that every planner decision remains observable through the same execution boundary.
 
-The target service and operation must be drawn from that service's documented operations. The
-action carries sufficient information to execute a deterministic, single-action operation.
+The target service and operation must be drawn from that service's documented operations.
 
 ---
+
+# 7. Action Validation
+
+Every Planner Action is validated before dispatch:
+
+- the action identifier is present
+- the target is one of the known backend services
+- the requested operation is a supported operation of that service
+- the required operation inputs are present
+- any execution constraints are satisfiable
+
+Validation failures are reported explicitly as precondition errors and never reach a backend service.
+
+Cross-action concerns — ordering, dependency satisfaction, duplicate-action detection — are not validated here: they belong to the Planner Agent, which sequences actions across cycles.
+
+---
+
+# 8. Execution and Failure Isolation
+
+Execution follows one consistent flow per request:
+
+1. Validate the Planner Action.
+2. Dispatch it to the owning backend service.
+3. Capture the outcome as an execution result.
+4. Return the result to the caller.
+
+## Execution Result
+
+Each request returns one **execution result** carrying:
+
+- the action identifier
+- the originating backend service (absent for control actions)
+- the execution status (Completed or Failed)
+- the service response on success, or a structured error on failure
+
+The execution status is an application-layer, in-memory status of a single action. It is **not** a persisted workflow object and is **not** the domain `TaskStatus`.
+
+## Failure Isolation
+
+A downstream service failure never propagates as an exception: it is isolated into a **failed execution result** with a stable error code and message. The Planner Agent observes the failure through the next assembled Investigation State and decides how to respond — retry, alternative action or escalation (Planner Agent §12). Recovery strategy is therefore a planning concern, not an execution concern.
+
+Timeout constraints, when supplied, must be explicit rather than silent; timeout and retry semantics are deferred (see the implementation tracker).
+
+---
+
+# 9. Service Contract
+
+## Inputs
+
+One Planner Action per request (see §6).
 
 ## Outputs
 
-The Planner Service may return:
-
-- workflow status
-- execution results
-- service responses
-- execution metadata
-- workflow summary
-
-Returned data should remain independent of backend service implementations.
-
----
+One execution result per request (see §8), independent of backend service implementations.
 
 ## Success Criteria
 
 Successful execution should:
 
-- preserve workflow consistency
-- coordinate backend services correctly
-- expose execution metadata
-- return deterministic workflow results
-
----
+- execute exactly the requested action against exactly the owning service
+- preserve the originating service and action identifier in the result
+- return deterministic results for equivalent actions over equivalent state
 
 ## Failure Conditions
 
-Examples include:
+- invalid Planner Action (precondition error, never dispatched)
+- unavailable or failing backend service (failed execution result)
+- unsatisfiable execution constraints (precondition error)
 
-- unavailable backend services
-- workflow validation failures
-- execution timeouts
-- incomplete service responses
-
-Failures should remain observable and recoverable.
+Failures are always explicit: as precondition errors before dispatch, or as failed execution results after dispatch.
 
 ---
 
-# 12. Workflow Validation
+# 10. Performance Considerations
 
-The Planner Service validates workflows before execution.
-
-Validation prevents invalid execution plans from consuming backend resources.
-
----
-
-## Plan Validation
-
-Validation includes:
-
-- required workflow steps
-- supported operations
-- valid execution order
-- service availability
-- duplicate workflow steps
-
-Under the single-action model, the Planner Service validates each Planner Action before dispatch:
-the target is one of the known backend services; the requested operation is a supported operation of
-that service; the required operation inputs are present; and any execution constraints are
-satisfiable. Cross-action ordering, dependency satisfaction and duplicate-step detection are the
-Planner Agent's responsibility (it sequences actions across cycles), not the stateless Planner
-Service.
+- The service adds no state and no coordination overhead of its own; latency is dominated by the dispatched backend operation.
+- Only the single owning backend service participates in a request; no fan-out occurs inside the Planner Service.
+- Concurrency across actions, when useful, is a Planner Agent / Investigation Loop concern (issuing independent actions), not a Planner Service concern.
+- Execution metrics remain observable through operational logging for performance analysis.
 
 ---
 
-## Dependency Validation
+# 11. Future Evolution
 
-Workflow dependencies should be satisfied before execution begins.
+Future capabilities may include:
 
-Invalid dependency chains should prevent workflow execution.
+- the full Planner Action operation catalogue (aligned with the Planner Agent's action vocabulary)
+- timeout and retry semantics for execution constraints
+- richer execution-result metadata
 
----
-
-## Constraint Validation
-
-Execution constraints should be verified before dispatching backend requests.
-
-Validation failures should be reported explicitly.
+Future capabilities must preserve the single-action control model and the statelessness of the service; multi-step or persisted workflow execution would require superseding ADR-010.
 
 ---
 
-# 13. Performance Considerations
-
-The Planner Service should optimize workflow execution without compromising correctness.
-
----
-
-## Parallel Execution
-
-Independent service operations should execute concurrently whenever possible.
-
-Parallel execution should only be used when service dependencies allow concurrent execution.
-
----
-
-## Scheduling
-
-Workflow scheduling should minimize unnecessary waiting between backend services.
-
----
-
-## Resource Utilization
-
-The Planner Service should avoid unnecessary service invocations.
-
-Only required backend services should participate in a workflow.
-
----
-
-## Monitoring
-
-Workflow execution metrics should remain observable for performance analysis and optimization.
-
----
-
-# 14. Future Evolution
-
-Future Planner Service capabilities may include:
-
-- dynamic workflow optimization
-- priority-based scheduling
-- distributed workflow execution
-- workflow templates
-- event-driven orchestration
-- adaptive execution strategies
-- workflow checkpoints
-
-Future capabilities should extend workflow orchestration without changing service responsibilities.
-
----
-
-# 15. Design Principles Applied
-
-The Planner Service follows the engineering principles established throughout SentinelAI.
+# 12. Design Principles Applied
 
 | Principle | Planner Service Application |
 |-----------|-----------------------------|
-| Separation of Responsibilities | Workflow execution is isolated from AI reasoning and backend persistence. |
-| Modularity | Backend services are orchestrated through a dedicated workflow service. |
-| Explainability | Workflow execution preserves execution history and service responses. |
-| Scalability | Independent backend services may execute concurrently. |
-| Technology Independence | Workflow orchestration remains independent of specific frameworks or messaging systems. |
-| Reliability | Workflow execution supports validation, monitoring and controlled recovery. |
-| Architecture Before Framework | Service behavior is defined independently of orchestration libraries. |
+| Separation of Responsibilities | Decision-making (AI Runtime) and execution (backend) remain separate components with a typed contract. |
+| Single Source of Truth | No second store of investigation progress exists; business state stays with the owning services. |
+| Explainability | Every executed action returns a provenance-bearing result; every decision passes through one observable boundary. |
+| Simplicity Is a Feature | One action per request, no persisted workflow machinery. |
+| Technology Independence | The execution seam is independent of orchestration libraries and messaging systems. |
+| Architecture Before Framework | The control model is fixed by ADR-010, independent of implementation technology. |
 
 ---
 
 # Closing Statement
 
-The Planner Service provides the orchestration layer connecting AI decision-making with backend execution.
+The Planner Service is the validated, stateless execution boundary between AI decision-making and backend execution.
 
-By coordinating backend services through well-defined workflows, SentinelAI achieves reliable, observable and scalable investigation execution while preserving clear service boundaries.
-
-Future implementations may introduce new orchestration technologies or execution models.
-
-However, the workflow responsibilities defined in this document should remain stable regardless of implementation details.
+By executing exactly one Planner Action per request and leaving all multi-step behavior to the Planner Agent's decision loop, SentinelAI keeps investigation progress in a single authoritative place while making every planner decision observable and reproducible.
 
 ---
 
@@ -559,3 +242,4 @@ However, the workflow responsibilities defined in this document should remain st
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Planner Service specification created |
+| 2.0.0 | 2026-07-03 | Rewritten around the single-action control model (ADR-010); stateful multi-step workflow orchestration content removed; caller and composition ownership defined |

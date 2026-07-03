@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Graph Service
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-03
 ---
 
 # SentinelAI Graph Service
@@ -387,6 +387,27 @@ Traversal limits prevent excessive resource consumption.
 
 ---
 
+# 11a. Schema Evolution and Vocabulary Ownership
+
+The graph model evolves over time; its evolution must be as governed as the relational model's (which has a migration mechanism).
+
+## Versioned Schema Bootstrap and Migration
+
+Graph structural definitions — constraints, indexes and their changes — are applied through **versioned, ordered, idempotent migration steps** owned by the Graph Service. The current schema version is recorded in the graph itself, so any environment's graph state is identifiable and reproducible. Ad-hoc, unversioned structural changes are not permitted.
+
+## Relationship and Entity-Type Vocabulary
+
+The Knowledge Graph requires a consistent relationship vocabulary (Knowledge Graph §4). The **Graph Service owns the canonical vocabulary** of relationship types and entity types:
+
+- Types are open string value objects at the domain level, but the Graph Service validates writes against the canonical vocabulary.
+- New types are added to the vocabulary explicitly; semantically equivalent duplicates are rejected.
+- A type is deprecated, never deleted: existing relationships keep their historical type, and deprecated types are excluded from new writes.
+- Vocabulary changes are versioned alongside schema migrations.
+
+Concrete migration tooling is deferred with the Neo4j adapter (implementation tracker); the versioned-migration and vocabulary-ownership model above is fixed now so the adapter is built against it.
+
+---
+
 # 12. Future Evolution
 
 Future Graph Service capabilities may include:
@@ -436,3 +457,4 @@ However, the service responsibilities defined in this document should remain sta
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Graph Service specification created |
+| 1.1.0 | 2026-07-03 | Schema evolution defined (§11a): versioned, idempotent graph migrations and Graph Service ownership of the canonical relationship/entity-type vocabulary (audit finding E-03) |

@@ -1,9 +1,9 @@
 ---
 title: Development Roadmap
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-28
+last_updated: 2026-07-03
 ---
 
 # Development Roadmap
@@ -348,6 +348,38 @@ Cross-phase dependencies should strengthen architectural evolution without weake
 The Development Roadmap establishes the following principles governing architectural implementation.
 
 These principles remain independent of project management methodologies, engineering organizations and implementation technologies.
+
+---
+
+## Vertical Slice First (Normative)
+
+**No new horizontal breadth may begin before at least one end-to-end vertical slice is operational.**
+
+A vertical slice is, at architecture level: one authoritative store with its concrete adapter, one agent decision loop wired at runtime, one concrete AI provider, and one user-visible flow running without mocks.
+
+Rationale (architecture audit, finding D-02): breadth-first execution accumulated the full architectural surface — four stores, multi-agent, RAG, memory — with no slice exercising any of it end to end. Every additional horizontal layer adds unvalidated assumptions that the first real slice would revise wholesale. This rule inverts the ordering: validation before expansion.
+
+The rule governs sequencing decisions; it does not prescribe tasks or schedules.
+
+---
+
+## Delivery Record (Public Mirror)
+
+The roadmap carries the public summary of delivery reality, so the repository can describe its own execution state:
+
+| Capability Slice | State |
+|---|---|
+| Architecture documentation & ADR governance (ADR-001…014) | Delivered |
+| Backend skeleton: domain model, services, API boundary, auth/audit seams (deny-by-default) | Delivered (in-memory verified) |
+| AI composition: agents, RAG pipeline, Investigation Loop, Retrieval Flow, Investigation Trace | Delivered (in-memory verified) |
+| Frontend: workspace/dashboard over the single communication boundary | Delivered (dev runs on mocks) |
+| Concrete persistence adapters (PostgreSQL/Neo4j/Qdrant/Redis) | Deferred — next vertical slice |
+| Concrete AI providers (LLM/embedding/external knowledge) | Deferred — next vertical slice |
+| Runtime wiring (DI) of the AI compositions; loop invocation surface | Deferred — next vertical slice |
+| Specialized agents, Decision Engine | Deferred |
+| Real authentication/authorization policy, durable audit sink | Deferred |
+
+This table is a mirror of the maintainer's implementation record and is updated whenever a slice's state changes; detailed engineering history remains in the maintainer's tracker.
 
 ---
 

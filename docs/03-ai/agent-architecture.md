@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Agent Architecture
-version: 1.0.0
+version: 1.2.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-03
 ---
 
 # SentinelAI Agent Architecture
@@ -440,8 +440,11 @@ The AI Runtime exposes replaceable interfaces for:
 
 - language model providers
 - embedding providers
+- external knowledge providers (threat intelligence, CVE, MITRE ATT&CK)
 
 This preserves technology independence throughout the platform.
+
+Every provider implementation must honor the resilience contract (ADR-013): bounded execution time, failures surfaced as the port's error type — never an indefinite hang. Inside the Investigation Loop, a provider failure degrades to an observable escalation; it never corrupts investigation state.
 
 ---
 
@@ -556,6 +559,12 @@ Investigation State. Agents receive it as an already-assembled input and only re
 never assemble or persist it. Its concrete contract is defined in Planner Agent §4 — it is an
 application/AI-layer operational structure (not a domain object) that references domain entities by
 identifier.
+
+**Terminology.** "Investigation Workspace" in this document names the **Application Domain
+investigation-context capability** (owned by the Investigation Service, ADR-004) — not the frontend
+page of the same name, which is a presentation surface only (Frontend Architecture). The seam through
+which the AI Runtime consumes assembled state is the **State Assembler** port of the Investigation
+Loop (ADR-010); the Workspace/Context Builder is the intended implementation behind that port.
 
 ---
 
@@ -919,10 +928,12 @@ Given the same investigation context and evidence, an agent should aim to produc
 
 Minor variations in natural language are acceptable, but the underlying findings and evidence should remain stable.
 
-The generic agent execution result is a **framework-neutral** envelope (status, output, error — see
-the Agent Runtime). A concrete agent may produce a typed structured product (for example the Planner
-Agent's Planner Action); that product is **represented through** the neutral result envelope, **without
-coupling** the generic result contract to any specific product type.
+The generic agent execution result is a **framework-neutral, typed** envelope (status, product,
+error — see the Agent Runtime). A concrete agent produces its typed structured product (for example
+the Planner Agent's Planner Action); that product is **represented through** the neutral result
+envelope, **without coupling** the generic result contract to any specific product type. The envelope
+belongs to the runtime: an agent returns its product or raises — it never builds a failure envelope
+itself, and the Agent Runtime is the **single execution path** that contains every failure (ADR-013).
 
 ---
 
@@ -1102,3 +1113,5 @@ Every new agent introduced into SentinelAI should strengthen the architecture th
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Agent Architecture document created |
+| 1.1.0 | 2026-07-03 | Terminology disambiguated: "Investigation Workspace" (Application Domain capability) vs the frontend page vs the State Assembler port (ADR-010) |
+| 1.2.0 | 2026-07-03 | Aligned with ADR-013: typed result envelope owned by the runtime (single execution path), provider resilience contract, external knowledge provider interface added |
