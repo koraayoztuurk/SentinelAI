@@ -101,10 +101,10 @@
         "title": "ApiResponse[MemoryItemResponse]",
         "type": "object"
       },
-      "ApiResponse_PlannerExecutionResponse_object__": {
+      "ApiResponse_OutcomeResponse_": {
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/PlannerExecutionResponse_object_"
+            "$ref": "#/components/schemas/OutcomeResponse"
           },
           "meta": {
             "$ref": "#/components/schemas/ResponseMeta"
@@ -118,7 +118,7 @@
           "data",
           "meta"
         ],
-        "title": "ApiResponse[PlannerExecutionResponse[object]]",
+        "title": "ApiResponse[OutcomeResponse]",
         "type": "object"
       },
       "ApiResponse_RelationshipResponse_": {
@@ -159,6 +159,26 @@
           "meta"
         ],
         "title": "ApiResponse[ReportResponse]",
+        "type": "object"
+      },
+      "ApiResponse_RunResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RunResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[RunResponse]",
         "type": "object"
       },
       "ApiResponse_list_EntityResponse__": {
@@ -305,57 +325,29 @@
         "title": "ApiResponse[list[ReportResponse]]",
         "type": "object"
       },
-      "ChangeInvestigationStatusActionRequest": {
-        "description": "Transition an investigation's lifecycle status through the Planner.",
+      "ApiResponse_list_TraceEntryResponse__": {
         "properties": {
-          "action": {
-            "const": "change_investigation_status",
-            "title": "Action",
-            "type": "string"
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TraceEntryResponse"
+            },
+            "title": "Data",
+            "type": "array"
           },
-          "investigation_id": {
-            "title": "Investigation Id",
-            "type": "string"
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
           },
-          "new_status": {
-            "$ref": "#/components/schemas/InvestigationStatus"
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
           }
         },
         "required": [
-          "action",
-          "investigation_id",
-          "new_status"
+          "data",
+          "meta"
         ],
-        "title": "ChangeInvestigationStatusActionRequest",
+        "title": "ApiResponse[list[TraceEntryResponse]]",
         "type": "object"
-      },
-      "ControlActionRequest": {
-        "description": "Execute a control decision (complete / escalate).",
-        "properties": {
-          "action": {
-            "const": "control",
-            "title": "Action",
-            "type": "string"
-          },
-          "kind": {
-            "$ref": "#/components/schemas/ControlKind"
-          }
-        },
-        "required": [
-          "action",
-          "kind"
-        ],
-        "title": "ControlActionRequest",
-        "type": "object"
-      },
-      "ControlKind": {
-        "description": "A control decision that signals the Planner Agent's loop (no service call).",
-        "enum": [
-          "complete",
-          "escalate"
-        ],
-        "title": "ControlKind",
-        "type": "string"
       },
       "EntityAttributesUpdateRequest": {
         "description": "Replacement descriptive attributes for an entity.",
@@ -538,55 +530,6 @@
         "title": "EvidenceResponse",
         "type": "object"
       },
-      "ExecutionErrorBody": {
-        "description": "A failed action's structured error.",
-        "properties": {
-          "code": {
-            "title": "Code",
-            "type": "string"
-          },
-          "message": {
-            "title": "Message",
-            "type": "string"
-          }
-        },
-        "required": [
-          "code",
-          "message"
-        ],
-        "title": "ExecutionErrorBody",
-        "type": "object"
-      },
-      "FindNeighborsActionRequest": {
-        "description": "Retrieve neighbouring entities through the Planner.",
-        "properties": {
-          "action": {
-            "const": "find_neighbors",
-            "title": "Action",
-            "type": "string"
-          },
-          "depth": {
-            "title": "Depth",
-            "type": "integer"
-          },
-          "entity_id": {
-            "title": "Entity Id",
-            "type": "string"
-          },
-          "max_nodes": {
-            "title": "Max Nodes",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "action",
-          "entity_id",
-          "depth",
-          "max_nodes"
-        ],
-        "title": "FindNeighborsActionRequest",
-        "type": "object"
-      },
       "FindingCreateRequest": {
         "description": "Client-supplied fields for creating a finding.",
         "properties": {
@@ -761,46 +704,6 @@
           "status"
         ],
         "title": "FindingUpdateRequest",
-        "type": "object"
-      },
-      "GetInvestigationActionRequest": {
-        "description": "Retrieve an investigation through the Planner.",
-        "properties": {
-          "action": {
-            "const": "get_investigation",
-            "title": "Action",
-            "type": "string"
-          },
-          "investigation_id": {
-            "title": "Investigation Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "action",
-          "investigation_id"
-        ],
-        "title": "GetInvestigationActionRequest",
-        "type": "object"
-      },
-      "GetMemoryActionRequest": {
-        "description": "Retrieve a Memory Item through the Planner.",
-        "properties": {
-          "action": {
-            "const": "get_memory",
-            "title": "Action",
-            "type": "string"
-          },
-          "memory_id": {
-            "title": "Memory Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "action",
-          "memory_id"
-        ],
-        "title": "GetMemoryActionRequest",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1153,27 +1056,52 @@
         "title": "MemoryUpdateRequest",
         "type": "object"
       },
-      "PlannerExecutionResponse_object_": {
+      "OutcomeResponse": {
+        "description": "Flat projection of an Investigation Outcome (read-only).",
         "properties": {
-          "action_id": {
-            "title": "Action Id",
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "contributing_findings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Contributing Findings",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
             "type": "string"
           },
-          "error": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ExecutionErrorBody"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "detected_conflicts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Detected Conflicts",
+            "type": "array"
           },
-          "execution_status": {
-            "title": "Execution Status",
+          "id": {
+            "title": "Id",
             "type": "string"
           },
-          "target": {
+          "investigation_id": {
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "open_questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Open Questions",
+            "type": "array"
+          },
+          "recommendation": {
+            "title": "Recommendation",
+            "type": "string"
+          },
+          "report_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -1182,24 +1110,26 @@
                 "type": "null"
               }
             ],
-            "title": "Target"
+            "title": "Report Id"
           },
-          "value": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Value"
+          "status": {
+            "title": "Status",
+            "type": "string"
           }
         },
         "required": [
-          "action_id",
-          "target",
-          "execution_status"
+          "id",
+          "investigation_id",
+          "confidence",
+          "recommendation",
+          "status",
+          "created_at",
+          "contributing_findings",
+          "detected_conflicts",
+          "open_questions",
+          "report_id"
         ],
-        "title": "PlannerExecutionResponse[object]",
+        "title": "OutcomeResponse",
         "type": "object"
       },
       "RelationshipConfidenceUpdateRequest": {
@@ -1393,6 +1323,133 @@
         ],
         "title": "ResponseStatus",
         "type": "string"
+      },
+      "RunActionResult": {
+        "description": "Compact projection of one executed action within a run.",
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "execution_status": {
+            "title": "Execution Status",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "action_id",
+          "target",
+          "execution_status",
+          "error_code"
+        ],
+        "title": "RunActionResult",
+        "type": "object"
+      },
+      "RunResponse": {
+        "description": "Summary of one Investigation Loop run (``LoopOutcome`` projection).\n\n``end`` is the loop's terminal condition (completed / escalated /\nexhausted); ``failure_code`` carries the stable code when the run\nescalated on an agent/provider failure (ADR-013), else ``null``. The full\nstep-by-step explanation lives in the Investigation Trace.",
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/RunActionResult"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "cycles": {
+            "title": "Cycles",
+            "type": "integer"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          }
+        },
+        "required": [
+          "end",
+          "cycles",
+          "failure_code",
+          "actions"
+        ],
+        "title": "RunResponse",
+        "type": "object"
+      },
+      "TraceEntryResponse": {
+        "description": "Flat projection of an Investigation Trace entry (read-only).",
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "investigation_id": {
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "investigation_id",
+          "kind",
+          "actor",
+          "summary",
+          "reference",
+          "created_at"
+        ],
+        "title": "TraceEntryResponse",
+        "type": "object"
       },
       "ValidationError": {
         "properties": {
@@ -2195,6 +2252,49 @@
         ]
       }
     },
+    "/api/v1/investigations/{investigation_id}/outcome": {
+      "get": {
+        "description": "Return the investigation's synthesized outcome (0..1).\n\nRead-only over HTTP: outcome creation stays a service-internal operation\nuntil the Decision Engine arrives. A missing outcome is a stable error\n(``investigation.outcome_not_found``), distinct from an unknown\ninvestigation.",
+        "operationId": "get_outcome_api_v1_investigations__investigation_id__outcome_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_OutcomeResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Outcome",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
     "/api/v1/investigations/{investigation_id}/reports": {
       "get": {
         "operationId": "list_reports_api_v1_investigations__investigation_id__reports_get",
@@ -2338,6 +2438,49 @@
         ]
       }
     },
+    "/api/v1/investigations/{investigation_id}/run": {
+      "post": {
+        "description": "Run the Investigation Loop synchronously within the cycle budget.\n\nThe AI Runtime decides and executes one action per cycle; every decision,\nexecution and outcome is recorded into the Investigation Trace. A provider\nfailure never fails the request: the run returns an ``escalated`` outcome\nwith its stable ``failure_code`` (ADR-013) and the investigation remains\nintact.",
+        "operationId": "run_investigation_api_v1_investigations__investigation_id__run_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_RunResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Investigation",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
     "/api/v1/investigations/{investigation_id}/status": {
       "post": {
         "operationId": "change_investigation_status_api_v1_investigations__investigation_id__status_post",
@@ -2385,6 +2528,49 @@
           }
         },
         "summary": "Change Investigation Status",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/trace": {
+      "get": {
+        "description": "Return the investigation's explainability trace in append order.\n\nAn investigation without trace entries yields an empty list, not an\nerror. The trace is read-only over HTTP: entries are produced by the\nplatform (the Investigation Loop and, later, other recorded steps).",
+        "operationId": "list_trace_api_v1_investigations__investigation_id__trace_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_TraceEntryResponse__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Trace",
         "tags": [
           "investigation"
         ]
@@ -2607,74 +2793,6 @@
         ]
       }
     },
-    "/api/v1/planner/actions": {
-      "post": {
-        "operationId": "execute_action_api_v1_planner_actions_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "discriminator": {
-                  "mapping": {
-                    "change_investigation_status": "#/components/schemas/ChangeInvestigationStatusActionRequest",
-                    "control": "#/components/schemas/ControlActionRequest",
-                    "find_neighbors": "#/components/schemas/FindNeighborsActionRequest",
-                    "get_investigation": "#/components/schemas/GetInvestigationActionRequest",
-                    "get_memory": "#/components/schemas/GetMemoryActionRequest"
-                  },
-                  "propertyName": "action"
-                },
-                "oneOf": [
-                  {
-                    "$ref": "#/components/schemas/ControlActionRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/GetInvestigationActionRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/ChangeInvestigationStatusActionRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/FindNeighborsActionRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/GetMemoryActionRequest"
-                  }
-                ],
-                "title": "Body"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_PlannerExecutionResponse_object__"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Execute Action",
-        "tags": [
-          "planner"
-        ]
-      }
-    },
     "/health": {
       "get": {
         "description": "Return the application's liveness status and identity.",
@@ -2699,7 +2817,7 @@
     },
     "/health/ready": {
       "get": {
-        "description": "Report whether the backend has completed startup and can accept traffic.\n\nReadiness reflects startup completion \u2014 the persistence registry has been built\non ``app.state`` during the lifespan. It deliberately does not probe the\ndatabases: the backend runs without them (the persistence resources are created\nlazily), so readiness means \"initialized\", distinct from liveness.",
+        "description": "Report whether the backend can serve business traffic.\n\nReadiness reflects startup completion (the persistence registry built on\n``app.state`` during the lifespan) and reachability of the bound\nauthoritative store: since the runtime persistence binding (ES-042) the\nbusiness endpoints require PostgreSQL, so readiness probes it with a\nshort-timeout round trip. Distinct from liveness (``/health``), which\nstays store-independent.",
         "operationId": "readiness_health_ready_get",
         "responses": {
           "200": {

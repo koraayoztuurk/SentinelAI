@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     app_port: int = 8000
     log_level: str = "INFO"
     log_format: str = "text"
+    # Cycle budget of the synchronous investigation run surface (ES-044,
+    # slice decision V-1): small by default, configurable via RUN_CYCLE_BUDGET.
+    run_cycle_budget: int = 3
 
     @property
     def environment(self) -> Environment:

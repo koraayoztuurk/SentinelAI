@@ -55,23 +55,27 @@ def test_error_and_success_traffic_interleave_without_degradation() -> None:
     app = create_app()
     app.dependency_overrides[require_authorization] = lambda: None
 
-    # The context manager runs the lifespan, so readiness reflects startup.
+    # The context manager runs the lifespan, so the live persistence binding
+    # (ES-042) is active — but no PostgreSQL is reachable in this suite.
     with TestClient(app) as client:
         for _ in range(10):
-            # Business endpoint: unbound persistence degrades to a stable 503.
+            # Business endpoint: the unreachable store degrades to a stable 503.
             failed = client.post(
                 "/api/v1/investigations",
                 json={"title": "Phish", "owner": "analyst-1", "priority": "high"},
             )
             assert failed.status_code == 503
             assert (
-                failed.json()["error"]["code"] == "api.persistence_not_configured"
+                failed.json()["error"]["code"] == "api.persistence_unavailable"
             )
 
             # Operational surfaces stay healthy between the failures.
             assert client.get("/health").status_code == 200
 
-        assert client.get("/health/ready").status_code == 200
+        # Readiness keeps serving and truthfully reports the store as down.
+        ready = client.get("/health/ready")
+        assert ready.status_code == 503
+        assert ready.json() == {"status": "not_ready", "postgres": "unavailable"}
 
 
 def _duration_count(metrics_text: str) -> int:

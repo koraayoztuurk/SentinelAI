@@ -12,6 +12,8 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from app.ai.orchestration.loop import LoopOutcome
+from app.application.planner.actions import ExecutionResult
 from app.domain.enums import FindingStatus, InvestigationStatus
 from app.domain.evidence import Evidence
 from app.domain.finding import Finding
@@ -24,7 +26,9 @@ from app.domain.identifiers import (
     ReportId,
 )
 from app.domain.investigation import Investigation
+from app.domain.investigation_outcome import InvestigationOutcome
 from app.domain.report import Report
+from app.domain.trace import TraceEntry
 from app.domain.value_objects import (
     ActorRef,
     Confidence,
@@ -275,4 +279,114 @@ class ReportResponse(BaseModel):
             author=report.author.value,
             created_at=report.created_at,
             version=report.version,
+        )
+
+
+# ----------------------------------------------------------------------- trace
+
+
+class TraceEntryResponse(BaseModel):
+    """Flat projection of an Investigation Trace entry (read-only)."""
+
+    id: str
+    investigation_id: str
+    kind: str
+    actor: str
+    summary: str
+    reference: str
+    created_at: datetime
+
+    @classmethod
+    def from_domain(cls, entry: TraceEntry) -> "TraceEntryResponse":
+        return cls(
+            id=entry.id.value,
+            investigation_id=entry.investigation_id.value,
+            kind=entry.kind.value,
+            actor=entry.actor.value,
+            summary=entry.summary,
+            reference=entry.reference,
+            created_at=entry.created_at,
+        )
+
+
+# --------------------------------------------------------------------- outcome
+
+
+class OutcomeResponse(BaseModel):
+    """Flat projection of an Investigation Outcome (read-only)."""
+
+    id: str
+    investigation_id: str
+    confidence: float
+    recommendation: str
+    status: str
+    created_at: datetime
+    contributing_findings: list[str]
+    detected_conflicts: list[str]
+    open_questions: list[str]
+    report_id: str | None
+
+    @classmethod
+    def from_domain(cls, outcome: InvestigationOutcome) -> "OutcomeResponse":
+        return cls(
+            id=outcome.id.value,
+            investigation_id=outcome.investigation_id.value,
+            confidence=outcome.confidence.value,
+            recommendation=outcome.recommendation,
+            status=outcome.status.value,
+            created_at=outcome.created_at,
+            contributing_findings=[
+                f.value for f in outcome.contributing_findings
+            ],
+            detected_conflicts=list(outcome.detected_conflicts),
+            open_questions=list(outcome.open_questions),
+            report_id=outcome.report_id.value if outcome.report_id else None,
+        )
+
+
+# ------------------------------------------------------------------------- run
+
+
+class RunActionResult(BaseModel):
+    """Compact projection of one executed action within a run."""
+
+    action_id: str
+    target: str | None
+    execution_status: str
+    error_code: str | None
+
+    @classmethod
+    def from_execution_result(cls, result: ExecutionResult) -> "RunActionResult":
+        return cls(
+            action_id=result.action_id,
+            target=result.target.value if result.target is not None else None,
+            execution_status=result.status.value,
+            error_code=result.error.code if result.error is not None else None,
+        )
+
+
+class RunResponse(BaseModel):
+    """Summary of one Investigation Loop run (``LoopOutcome`` projection).
+
+    ``end`` is the loop's terminal condition (completed / escalated /
+    exhausted); ``failure_code`` carries the stable code when the run
+    escalated on an agent/provider failure (ADR-013), else ``null``. The full
+    step-by-step explanation lives in the Investigation Trace.
+    """
+
+    end: str
+    cycles: int
+    failure_code: str | None
+    actions: list[RunActionResult]
+
+    @classmethod
+    def from_outcome(cls, outcome: LoopOutcome) -> "RunResponse":
+        return cls(
+            end=outcome.end.value,
+            cycles=outcome.cycles,
+            failure_code=outcome.failure_code,
+            actions=[
+                RunActionResult.from_execution_result(result)
+                for result in outcome.results
+            ],
         )

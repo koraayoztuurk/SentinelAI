@@ -12,6 +12,7 @@ import { QueryClient, queryOptions } from "@tanstack/react-query";
 import { loadInvestigationDashboard } from "../communication/dashboard";
 import { loadInvestigationWorkspace } from "../communication/workspace";
 import { loadEntityNeighborhood } from "../communication/graph";
+import { loadInvestigationTrace } from "../communication/trace";
 
 export function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -32,6 +33,7 @@ export const queryKeys = {
   workspace: (id: string) => ["workspace", id] as const,
   entityNeighborhood: (entityId: string) =>
     ["graph", "neighborhood", entityId] as const,
+  trace: (id: string) => ["trace", id] as const,
 };
 
 // Query option builders — the only place per-query options live. Hooks consume
@@ -48,6 +50,13 @@ export function workspaceQuery(id: string) {
   return queryOptions({
     queryKey: queryKeys.workspace(id),
     queryFn: ({ signal }) => loadInvestigationWorkspace(id, signal),
+  });
+}
+
+export function traceQuery(id: string) {
+  return queryOptions({
+    queryKey: queryKeys.trace(id),
+    queryFn: ({ signal }) => loadInvestigationTrace(id, signal),
   });
 }
 
@@ -78,4 +87,22 @@ export function invalidateEntityNeighborhood(
   return client.invalidateQueries({
     queryKey: queryKeys.entityNeighborhood(entityId),
   });
+}
+
+export function invalidateTrace(client: QueryClient, id: string): Promise<void> {
+  return client.invalidateQueries({ queryKey: queryKeys.trace(id) });
+}
+
+// A run and an evidence attachment change investigation-scoped server state
+// across regions; refreshing the workspace family in one place keeps the
+// invalidation vocabulary centralized.
+export function invalidateInvestigationData(
+  client: QueryClient,
+  id: string,
+): Promise<void> {
+  return Promise.all([
+    invalidateWorkspace(client, id),
+    invalidateDashboard(client, id),
+    invalidateTrace(client, id),
+  ]).then(() => undefined);
 }

@@ -8,11 +8,14 @@ import { ApiError } from "../communication/errors";
 import { loadInvestigationWorkspace } from "../communication/workspace";
 import type { WorkspaceViewModel } from "../communication/workspace";
 
-// The page is exercised against a mocked communication loader (MSW powers the dev
-// browser demo). This keeps the page's loading/loaded/error rendering and the
-// selection synchronization deterministic.
+// The page is exercised against mocked communication loaders, keeping the
+// loading/loaded/error rendering and the selection synchronization
+// deterministic without any network.
 vi.mock("../communication/workspace", () => ({
   loadInvestigationWorkspace: vi.fn(),
+}));
+vi.mock("../communication/trace", () => ({
+  loadInvestigationTrace: vi.fn(() => Promise.resolve([])),
 }));
 
 const mockedLoad = vi.mocked(loadInvestigationWorkspace);
@@ -98,9 +101,13 @@ describe("InvestigationWorkspacePage", () => {
     expect(
       await screen.findByText("Suspicious lateral movement on finance subnet"),
     ).toBeInTheDocument();
-    // Deferred / source-less regions render as placeholders.
     expect(screen.getByText("Graph")).toBeInTheDocument();
+    // AI Insights is a live region since ES-047 (run + trace).
     expect(screen.getByText("AI Insights")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Run investigation" }),
+    ).toBeInTheDocument();
+    // The Memory region remains a placeholder (no backend source yet).
     expect(screen.getByText("Memory")).toBeInTheDocument();
   });
 

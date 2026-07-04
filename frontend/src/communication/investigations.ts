@@ -38,6 +38,34 @@ export interface EvidenceDto {
   readonly content: string;
 }
 
+export interface InvestigationCreateInput {
+  readonly title: string;
+  readonly owner: string;
+  readonly priority: string;
+}
+
+export function createInvestigation(
+  input: InvestigationCreateInput,
+): Promise<InvestigationDto> {
+  return apiClient.post<InvestigationDto>("/api/v1/investigations", input);
+}
+
+export interface EvidenceCreateInput {
+  readonly source: string;
+  readonly integrity: string;
+  readonly content: string;
+}
+
+export function attachEvidence(
+  investigationId: string,
+  input: EvidenceCreateInput,
+): Promise<EvidenceDto> {
+  return apiClient.post<EvidenceDto>(
+    `/api/v1/investigations/${encodeURIComponent(investigationId)}/evidence`,
+    input,
+  );
+}
+
 export function getInvestigation(
   id: string,
   signal?: AbortSignal,

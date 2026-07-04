@@ -14,6 +14,7 @@ from app import __version__
 from app.application.audit import LoggingAuditRecorder
 from app.config.settings import get_settings
 from app.core.logging import configure_logging
+from app.dependencies.services import bind_live_services
 from app.lifespan import lifespan
 from app.presentation.api.audit import AuditMiddleware
 from app.presentation.api.context import RequestContextMiddleware
@@ -35,6 +36,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.state.audit_recorder = LoggingAuditRecorder()
+    # Runtime persistence binding (ES-042): the live service providers attach
+    # to the presentation dependency seams here, at the composition root.
+    bind_live_services(app)
 
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(AuditMiddleware)

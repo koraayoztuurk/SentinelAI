@@ -19,12 +19,55 @@ from app.application.authorization.errors import AuthorizationError
 
 
 @dataclass(frozen=True, slots=True)
+class OperationContext:
+    """The operation context (authentication-authorization §6b).
+
+    Records on whose behalf an operation runs: the verified identity
+    (subject + kind) and the request correlation identifier. Established at
+    the API boundary, passed explicitly to the components that need it,
+    immutable for the operation's lifetime and never persisted as such —
+    persisted records copy the fields they need. Introduced with its first
+    consumer, the concrete authorization policy (ES-046).
+    """
+
+    subject: str
+    identity_kind: str
+    correlation_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class AuthorizationRequest:
-    """The operational context evaluated for a single authorization decision."""
+    """The operational context evaluated for a single authorization decision.
+
+    Extended additively by ES-046: ``correlation_id`` is carried from the
+    operation context (§6b) and ``investigation_id`` names the
+    investigation-scoped resource of the operation when the boundary can
+    identify one (§6a) — ``None`` for non-investigation-scoped operations.
+    """
 
     subject: str
     identity_kind: str
     operation: str
+    correlation_id: str = ""
+    investigation_id: str | None = None
+
+    @classmethod
+    def for_context(
+        cls,
+        context: OperationContext,
+        *,
+        operation: str,
+        investigation_id: str | None = None,
+    ) -> "AuthorizationRequest":
+        """Build the decision request from the boundary's operation context."""
+
+        return cls(
+            subject=context.subject,
+            identity_kind=context.identity_kind,
+            operation=operation,
+            correlation_id=context.correlation_id,
+            investigation_id=investigation_id,
+        )
 
 
 class Authorizer(Protocol):

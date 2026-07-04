@@ -1,9 +1,9 @@
 ---
 title: SentinelAI API Design
-version: 1.2.0
+version: 1.3.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-04
 ---
 
 # SentinelAI API Design
@@ -262,11 +262,15 @@ Represents graph-based investigation data.
 
 ---
 
-## Planner Action Resource
+## Investigation Run Resource
 
-Represents the execution of a single Planner Action by the Planner Service (ADR-010).
+Represents one synchronous execution of the Investigation Loop for an investigation (`POST /api/v1/investigations/{id}/run`).
 
-**Contract status: transitional, not part of the stable public API.** The documented caller of the Planner Service is the AI Runtime's Investigation Loop; this resource exists only until that loop has a runtime invocation surface. Clients must not build on it: it will be superseded by an investigation-level execution surface, and no compatibility commitment applies to it. External clients driving raw Planner Actions would invert ADR-002's coordination model (every execution request originates from the Planner) and is not a supported usage.
+The run surface is the investigation-level invocation surface ADR-010 anticipated: the AI Runtime's Planner decision loop decides and executes one action per cycle within a small, configurable cycle budget, records every decision, execution and outcome into the Investigation Trace, and returns a run summary (terminal condition — completed / escalated / exhausted —, cycle count, per-action results and the stable failure code when the run escalated on a provider failure, ADR-013).
+
+A provider failure is never an HTTP error: the run responds successfully with an `escalated` outcome and the investigation remains intact.
+
+The formerly documented transitional Planner Action Resource (`POST /api/v1/planner/actions`) was removed when this surface arrived (its stated supersession); the Planner Service remains the application-layer execution boundary behind the loop and is not directly exposed. External clients driving raw Planner Actions would invert ADR-002's coordination model and remain unsupported.
 
 ---
 
@@ -590,3 +594,4 @@ However, the architectural responsibilities defined in this document should rema
 | 1.0.0 | 2026-06-26 | Initial API Design specification created |
 | 1.1.0 | 2026-07-03 | Planner delegation aligned with the single-action control model (ADR-010); Workflow Resource replaced by the Planner Action Resource |
 | 1.2.0 | 2026-07-03 | Contract Synchronization defined (§14a): committed OpenAPI artifact as the single contract source with freshness enforcement; consumer copies become derivation targets (audit finding E-05) |
+| 1.3.0 | 2026-07-04 | Investigation Run Resource added (investigation-level Investigation Loop surface, ADR-010/ADR-013); the transitional Planner Action Resource removed as its documented supersession (ES-044, slice decision V-2) |

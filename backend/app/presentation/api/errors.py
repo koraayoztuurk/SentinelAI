@@ -19,6 +19,17 @@ class ServiceNotConfiguredError(SentinelAIError):
     code = "api.persistence_not_configured"
 
 
+class PersistenceUnavailableError(SentinelAIError):
+    """Raised when the bound persistence store cannot be reached at runtime.
+
+    Distinct from :class:`ServiceNotConfiguredError`: the runtime binding
+    exists (ES-042) but PostgreSQL is unreachable — an operational condition,
+    not a configuration gap. Translated to HTTP 503.
+    """
+
+    code = "api.persistence_unavailable"
+
+
 class AuthenticationError(SentinelAIError):
     """Raised when a request cannot be associated with a verified identity.
 

@@ -14,6 +14,7 @@ injected. ``require_identity`` is the enforcement seam applied to the protected
 ``/api/v1`` router.
 """
 
+import hmac
 import logging
 from dataclasses import dataclass
 from enum import Enum
@@ -21,10 +22,17 @@ from typing import Protocol
 
 from fastapi import Depends, Request
 
+from app.application.secrets import (
+    SecretName,
+    SecretNotFoundError,
+    SecretProvider,
+)
 from app.presentation.api.context import current_context
 from app.presentation.api.errors import AuthenticationError
 
 logger = logging.getLogger(__name__)
+
+DEV_AUTH_TOKEN = SecretName("DEV_AUTH_TOKEN")
 
 
 class IdentityKind(Enum):
@@ -72,6 +80,43 @@ class UnconfiguredAuthenticator:
 
     async def authenticate(self, request: Request) -> AuthenticatedIdentity:
         raise AuthenticationError("No authentication provider is configured.")
+
+
+class SharedTokenAuthenticator:
+    """Development-grade shared-token bearer authenticator (ES-046, V-3).
+
+    Credential shape: ``Authorization: Bearer <subject>:<token>``, where
+    ``<token>`` must match the shared ``DEV_AUTH_TOKEN`` secret resolved
+    through the ``SecretProvider`` port (never configuration, never logged).
+    The subject is caller-declared — development-grade by design: possession
+    of the shared secret gates entry, per-subject credentials belong to the
+    production identity provider (second phase). Secure by default: a missing
+    secret, a missing/malformed header or a wrong token all yield 401; error
+    messages never carry credential material.
+    """
+
+    def __init__(self, secrets: SecretProvider) -> None:
+        self._secrets = secrets
+
+    async def authenticate(self, request: Request) -> AuthenticatedIdentity:
+        header = request.headers.get("Authorization", "")
+        scheme, _, credential = header.partition(" ")
+        if scheme.lower() != "bearer" or not credential.strip():
+            raise AuthenticationError("Missing or malformed bearer credential.")
+        subject, separator, token = credential.strip().partition(":")
+        if not separator or not subject.strip() or not token:
+            raise AuthenticationError("Malformed bearer credential.")
+        try:
+            expected = self._secrets.resolve(DEV_AUTH_TOKEN).reveal().strip()
+        except SecretNotFoundError as exc:
+            raise AuthenticationError(
+                "No authentication provider is configured."
+            ) from exc
+        if not hmac.compare_digest(token.encode(), expected.encode()):
+            raise AuthenticationError("Invalid credential.")
+        return AuthenticatedIdentity(
+            subject=subject.strip(), kind=IdentityKind.HUMAN
+        )
 
 
 def get_authenticator() -> Authenticator:

@@ -1,31 +1,26 @@
 // Application entry point.
 //
-// In development, the Mock Service Worker is started before rendering so the app
-// runs against a mocked Backend API. The worker is dynamically imported and guarded
-// by `import.meta.env.DEV`, so it is never included in the production bundle.
+// The app talks to the real Backend API (ES-047): in development the Vite dev
+// server proxies `/api` to the local backend, in containers nginx does — no
+// mocking layer runs in the browser. The api client's pluggable token source
+// is bound here to the persisted development credential (ES-046 dev auth).
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
+import { setAuthTokenSource } from "./communication/apiClient";
+import { getDevAuthCredential } from "./state/devAuth";
 import "./index.css";
 
-async function enableMocking(): Promise<void> {
-  if (!import.meta.env.DEV) {
-    return;
-  }
-  const { worker } = await import("./mocks/browser");
-  await worker.start({ onUnhandledRequest: "bypass" });
-}
+setAuthTokenSource(getDevAuthCredential);
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
   throw new Error("Root element #root was not found.");
 }
 
-void enableMocking().then(() => {
-  createRoot(rootElement).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  );
-});
+createRoot(rootElement).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);

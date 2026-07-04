@@ -39,6 +39,42 @@ jobs:
           name: backend-coverage
           path: backend/htmlcov
 
+  backend-live:
+    name: Backend (live persistence)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sentinelai
+          POSTGRES_USER: sentinelai
+          POSTGRES_PASSWORD: ci_only_password
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U sentinelai -d sentinelai"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: sentinelai
+      POSTGRES_USER: sentinelai
+      POSTGRES_PASSWORD: ci_only_password
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Live persistence tests (opt-in marker)
+        run: pytest -m live
+
   frontend:
     name: Frontend (validate)
     runs-on: ubuntu-latest

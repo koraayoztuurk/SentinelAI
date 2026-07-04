@@ -22,6 +22,7 @@ from app.application.authorization import (
     AuthorizationRequest,
     Authorizer,
     DenyAllAuthorizer,
+    OperationContext,
 )
 from app.presentation.api.auth import AuthenticatedIdentity, require_identity
 from app.presentation.api.context import current_context
@@ -46,12 +47,27 @@ async def require_authorization(
     identity: AuthenticatedIdentity = Depends(require_identity),
     authorizer: Authorizer = Depends(get_authorizer),
 ) -> None:
-    """Evaluate and record the authorization decision (enforcement seam)."""
+    """Evaluate and record the authorization decision (enforcement seam).
 
-    authorization = AuthorizationRequest(
+    The boundary establishes the §6b operation context (verified identity +
+    request correlation) and carries it explicitly into the decision; when
+    the matched route names an investigation, the resource reference travels
+    with the request so the owner-scoping policy (§6a) can evaluate it.
+    """
+
+    context = OperationContext(
         subject=identity.subject,
         identity_kind=identity.kind.value,
+        correlation_id=current_context(request).correlation_id,
+    )
+    request.state.operation_context = context
+    investigation_id = request.path_params.get("investigation_id")
+    authorization = AuthorizationRequest.for_context(
+        context,
         operation=build_operation(request),
+        investigation_id=(
+            investigation_id if isinstance(investigation_id, str) else None
+        ),
     )
     request.state.authorization = authorization
     await authorizer.authorize(authorization)

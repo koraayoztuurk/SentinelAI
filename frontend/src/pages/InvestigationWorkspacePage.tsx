@@ -15,6 +15,7 @@ import { Button } from "../ui/Button";
 import { useInvestigationWorkspace } from "../state/useInvestigationWorkspace";
 import { WorkspaceProvider } from "../state/workspaceContext";
 import { OverviewSection } from "../sections/workspace/OverviewSection";
+import { AiInsightsSection } from "../sections/workspace/AiInsightsSection";
 import { EvidenceSection } from "../sections/workspace/EvidenceSection";
 import { FindingsSection } from "../sections/workspace/FindingsSection";
 import { TimelineSection } from "../sections/workspace/TimelineSection";
@@ -30,7 +31,13 @@ function WorkspaceSkeleton() {
   );
 }
 
-function WorkspaceContent({ viewModel }: { readonly viewModel: WorkspaceViewModel }) {
+function WorkspaceContent({
+  investigationId,
+  viewModel,
+}: {
+  readonly investigationId: string;
+  readonly viewModel: WorkspaceViewModel;
+}) {
   return (
     <WorkspaceProvider>
       <div className="grid gap-5">
@@ -38,6 +45,7 @@ function WorkspaceContent({ viewModel }: { readonly viewModel: WorkspaceViewMode
         <div className="grid gap-5 lg:grid-cols-2">
           <FindingsSection findings={viewModel.findings} />
           <EvidenceSection
+            investigationId={investigationId}
             evidence={viewModel.evidence}
             findingEvidence={viewModel.findingEvidence}
           />
@@ -45,7 +53,7 @@ function WorkspaceContent({ viewModel }: { readonly viewModel: WorkspaceViewMode
         <TimelineSection timeline={viewModel.timeline} />
         <GraphSection seedEntities={viewModel.seedEntities} />
         <div className="grid gap-5 md:grid-cols-2">
-          <PlaceholderRegion title="AI Insights" />
+          <AiInsightsSection investigationId={investigationId} />
           <PlaceholderRegion title="Memory" />
         </div>
       </div>
@@ -87,7 +95,9 @@ export function InvestigationWorkspacePage() {
         </div>
       )}
 
-      {viewModel && <WorkspaceContent viewModel={viewModel} />}
+      {viewModel && (
+        <WorkspaceContent investigationId={id} viewModel={viewModel} />
+      )}
     </div>
   );
 }

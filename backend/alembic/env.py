@@ -1,10 +1,9 @@
 """Alembic migration environment (PostgreSQL, async).
 
 Configures Alembic to run migrations against the PostgreSQL database described by
-:class:`~app.config.database.PostgresSettings`. No revisions exist yet: table
-schemas are owned by the backend services and introduced by their specifications
-(ES-005/006). ``target_metadata`` is therefore ``None`` until a service registers
-its metadata here.
+:class:`~app.config.database.PostgresSettings`. ``target_metadata`` is the
+aggregated ORM metadata of every service-owned schema
+(:mod:`app.infrastructure.persistence.postgres.metadata`).
 """
 
 import asyncio
@@ -16,6 +15,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 from app.config.database import get_postgres_settings
+from app.infrastructure.persistence.postgres.metadata import metadata
 
 config = context.config
 
@@ -24,8 +24,7 @@ if config.config_file_name is not None:
 
 config.set_main_option("sqlalchemy.url", get_postgres_settings().dsn)
 
-# No service-owned table metadata is registered in the persistence foundation.
-target_metadata = None
+target_metadata = metadata
 
 
 def run_migrations_offline() -> None:

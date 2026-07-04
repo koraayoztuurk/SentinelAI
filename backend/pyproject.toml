@@ -19,6 +19,9 @@ dependencies = [
     "neo4j>=5",
     "qdrant-client>=1.9",
     "redis>=5",
+    # Direct HTTP client of the Gemini LLM adapter (ES-043); already present
+    # transitively via qdrant-client, declared because we import it.
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
@@ -50,7 +53,10 @@ warn_return_any = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--strict-markers"
+# Live-infrastructure tests are opt-in: the default run deselects them so the
+# suite stays green without databases. Select them with `pytest -m live`
+# (a command-line -m overrides the one below).
+addopts = '--strict-markers -m "not live and not live_ai"'
 # Validation taxonomy (testing-strategy §5). `--strict-markers` makes an
 # unregistered marker an error, so the taxonomy stays explicit.
 markers = [
@@ -59,6 +65,8 @@ markers = [
     "architecture: Architecture Validation — boundaries and dependency rules (ES-033).",
     "operational: Operational Validation — health, readiness, metrics, config and startup.",
     "ai: AI Validation — behavioral validation of AI capabilities (ES-035).",
+    "live: Live-infrastructure validation — requires a reachable PostgreSQL (opt-in, ES-040).",
+    "live_ai: Live AI-provider validation — requires GOOGLE_API_KEY and network (opt-in, ES-043).",
 ]
 
 [tool.coverage.run]

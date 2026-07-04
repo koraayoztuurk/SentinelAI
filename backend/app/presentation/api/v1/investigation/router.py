@@ -8,6 +8,7 @@ in the standard response envelope. No business logic lives here.
 
 from fastapi import APIRouter, Depends, status
 
+from app.ai.orchestration.runner import InvestigationRunner
 from app.application.investigation import (
     EvidenceNotFoundError,
     InvestigationService,
@@ -23,6 +24,7 @@ from app.presentation.api.generation import (
 )
 from app.presentation.api.response import ApiResponse, build_success
 from app.presentation.api.v1.investigation.dependencies import (
+    get_investigation_runner,
     get_investigation_service,
 )
 from app.presentation.api.v1.investigation.schemas import (
@@ -34,8 +36,11 @@ from app.presentation.api.v1.investigation.schemas import (
     InvestigationCreateRequest,
     InvestigationResponse,
     InvestigationStatusChangeRequest,
+    OutcomeResponse,
     ReportCreateRequest,
     ReportResponse,
+    RunResponse,
+    TraceEntryResponse,
 )
 
 investigation_router = APIRouter(tags=["investigation"])
@@ -87,6 +92,80 @@ async def change_investigation_status(
         InvestigationId(investigation_id), body.status
     )
     return build_success(InvestigationResponse.from_domain(investigation), context)
+
+
+# ------------------------------------------------------------------------- run
+
+
+@investigation_router.post(
+    "/investigations/{investigation_id}/run",
+    response_model=ApiResponse[RunResponse],
+)
+async def run_investigation(
+    investigation_id: str,
+    runner: InvestigationRunner = Depends(get_investigation_runner),
+    context: RequestContext = Depends(get_request_context),
+) -> ApiResponse[RunResponse]:
+    """Run the Investigation Loop synchronously within the cycle budget.
+
+    The AI Runtime decides and executes one action per cycle; every decision,
+    execution and outcome is recorded into the Investigation Trace. A provider
+    failure never fails the request: the run returns an ``escalated`` outcome
+    with its stable ``failure_code`` (ADR-013) and the investigation remains
+    intact.
+    """
+
+    outcome = await runner.run(InvestigationId(investigation_id))
+    return build_success(RunResponse.from_outcome(outcome), context)
+
+
+# ----------------------------------------------------------------------- trace
+
+
+@investigation_router.get(
+    "/investigations/{investigation_id}/trace",
+    response_model=ApiResponse[list[TraceEntryResponse]],
+)
+async def list_trace(
+    investigation_id: str,
+    service: InvestigationService = Depends(get_investigation_service),
+    context: RequestContext = Depends(get_request_context),
+) -> ApiResponse[list[TraceEntryResponse]]:
+    """Return the investigation's explainability trace in append order.
+
+    An investigation without trace entries yields an empty list, not an
+    error. The trace is read-only over HTTP: entries are produced by the
+    platform (the Investigation Loop and, later, other recorded steps).
+    """
+
+    entries = await service.list_trace(InvestigationId(investigation_id))
+    return build_success(
+        [TraceEntryResponse.from_domain(entry) for entry in entries], context
+    )
+
+
+# --------------------------------------------------------------------- outcome
+
+
+@investigation_router.get(
+    "/investigations/{investigation_id}/outcome",
+    response_model=ApiResponse[OutcomeResponse],
+)
+async def get_outcome(
+    investigation_id: str,
+    service: InvestigationService = Depends(get_investigation_service),
+    context: RequestContext = Depends(get_request_context),
+) -> ApiResponse[OutcomeResponse]:
+    """Return the investigation's synthesized outcome (0..1).
+
+    Read-only over HTTP: outcome creation stays a service-internal operation
+    until the Decision Engine arrives. A missing outcome is a stable error
+    (``investigation.outcome_not_found``), distinct from an unknown
+    investigation.
+    """
+
+    outcome = await service.get_outcome(InvestigationId(investigation_id))
+    return build_success(OutcomeResponse.from_domain(outcome), context)
 
 
 # -------------------------------------------------------------------- evidence

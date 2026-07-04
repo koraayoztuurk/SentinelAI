@@ -9,6 +9,7 @@ never leak into the application or domain layers. Unknown codes fall back to 400
 from app.application.authorization.errors import AuthorizationError
 from app.application.graph.errors import (
     EntityNotFoundError,
+    GraphStoreUnavailableError,
     RelationshipNotFoundError,
 )
 from app.application.investigation.errors import (
@@ -20,6 +21,7 @@ from app.application.investigation.errors import (
     InvalidLifecycleTransitionError,
     InvestigationNotFoundError,
     InvestigationValidationError,
+    OutcomeNotFoundError,
     ReportNotFoundError,
 )
 from app.application.memory.errors import (
@@ -28,6 +30,7 @@ from app.application.memory.errors import (
     MemoryNotFoundError,
 )
 from app.application.planner.errors import InvalidActionError
+from app.application.secrets import SecretNotFoundError
 from app.domain.exceptions import (
     BlankValueError,
     InvalidConfidenceError,
@@ -35,6 +38,7 @@ from app.domain.exceptions import (
 )
 from app.presentation.api.errors import (
     AuthenticationError,
+    PersistenceUnavailableError,
     ServiceNotConfiguredError,
 )
 from app.shared.exceptions import SentinelAIError
@@ -46,6 +50,7 @@ _STATUS_BY_CODE: dict[str, int] = {
     EvidenceNotFoundError.code: 404,
     FindingNotFoundError.code: 404,
     ReportNotFoundError.code: 404,
+    OutcomeNotFoundError.code: 404,
     DuplicateInvestigationError.code: 409,
     DuplicateEvidenceError.code: 409,
     InvalidLifecycleTransitionError.code: 409,
@@ -63,6 +68,11 @@ _STATUS_BY_CODE: dict[str, int] = {
     InvalidConfidenceError.code: 422,
     MissingSupportingEvidenceError.code: 422,
     ServiceNotConfiguredError.code: 503,
+    PersistenceUnavailableError.code: 503,
+    GraphStoreUnavailableError.code: 503,
+    # A missing provider secret is a server-side configuration condition
+    # (e.g. the run surface without GOOGLE_API_KEY), not a client error.
+    SecretNotFoundError.code: 503,
 }
 
 

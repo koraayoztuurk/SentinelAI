@@ -7,6 +7,7 @@ binding yet: the default dependency reports this explicitly via
 dependency with an in-memory-backed service.
 """
 
+from app.ai.orchestration.runner import InvestigationRunner
 from app.application.investigation import InvestigationService
 from app.presentation.api.errors import ServiceNotConfiguredError
 
@@ -16,4 +17,12 @@ def get_investigation_service() -> InvestigationService:
 
     raise ServiceNotConfiguredError(
         "The Investigation Service has no runtime persistence binding."
+    )
+
+
+def get_investigation_runner() -> InvestigationRunner:
+    """Return the Investigation run composition (FastAPI dependency)."""
+
+    raise ServiceNotConfiguredError(
+        "The Investigation Loop has no runtime binding."
     )

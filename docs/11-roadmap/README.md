@@ -1,9 +1,9 @@
 ---
 title: Development Roadmap
-version: 1.1.0
+version: 1.2.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-04
 ---
 
 # Development Roadmap
@@ -372,12 +372,15 @@ The roadmap carries the public summary of delivery reality, so the repository ca
 | Architecture documentation & ADR governance (ADR-001…014) | Delivered |
 | Backend skeleton: domain model, services, API boundary, auth/audit seams (deny-by-default) | Delivered (in-memory verified) |
 | AI composition: agents, RAG pipeline, Investigation Loop, Retrieval Flow, Investigation Trace | Delivered (in-memory verified) |
-| Frontend: workspace/dashboard over the single communication boundary | Delivered (dev runs on mocks) |
-| Concrete persistence adapters (PostgreSQL/Neo4j/Qdrant/Redis) | Deferred — next vertical slice |
-| Concrete AI providers (LLM/embedding/external knowledge) | Deferred — next vertical slice |
-| Runtime wiring (DI) of the AI compositions; loop invocation surface | Deferred — next vertical slice |
+| Frontend: workspace/dashboard over the single communication boundary | Delivered (live slice) |
+| PostgreSQL persistence: Investigation family + versioned MemoryItem, Alembic migrations, live-test strip | Delivered (live slice) |
+| Concrete AI provider: Gemini LLM adapter (bounded execution, total error mapping, key via SecretProvider) | Delivered (live slice) |
+| Runtime wiring (DI): live services, Investigation Loop run surface, Trace/Outcome read API | Delivered (live slice) |
+| Dev-grade shared-token authentication + owner-scoped authorization (operation context §6b) | Delivered (live slice; production IdP deferred) |
+| Browser flow without mocks: create → evidence → run → trace visible (escalated/exhausted presented) | Delivered (live slice) |
+| Neo4j/Qdrant/Redis adapters; embedding + outbox propagation (ADR-012) | Deferred — second slice |
 | Specialized agents, Decision Engine | Deferred |
-| Real authentication/authorization policy, durable audit sink | Deferred |
+| Production identity provider, durable audit sink | Deferred |
 
 This table is a mirror of the maintainer's implementation record and is updated whenever a slice's state changes; detailed engineering history remains in the maintainer's tracker.
 
@@ -587,3 +590,5 @@ The Development Roadmap should continue to evolve together with SentinelAI while
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial Development Roadmap specification created |
+| 1.1.0 | 2026-07-03 | Vertical Slice First made normative; Delivery Record public mirror added (row recorded retroactively — the frontmatter carried the bump) |
+| 1.2.0 | 2026-07-04 | Delivery Record updated: first vertical slice operational — PostgreSQL persistence, Gemini provider, loop run surface, Trace/Outcome API, dev-grade auth and the mock-free browser flow delivered (live slice); the Vertical Slice First gate is satisfied |

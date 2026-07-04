@@ -44,9 +44,12 @@ def test_unexpected_failure_is_contained_per_request() -> None:
         # The failure detail never leaks to the caller.
         assert "unplanned infrastructure failure" not in response.text
 
-        # The platform keeps serving after the failure.
+        # The platform keeps serving after the failure. Readiness responds
+        # with a well-formed body (503: no live store exists in this suite).
         assert client.get("/health").status_code == 200
-        assert client.get("/health/ready").status_code == 200
+        ready = client.get("/health/ready")
+        assert ready.status_code == 503
+        assert ready.json()["status"] == "not_ready"
 
 
 def test_containment_is_consistent_across_repeated_failures() -> None:

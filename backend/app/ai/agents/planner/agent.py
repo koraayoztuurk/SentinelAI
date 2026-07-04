@@ -84,14 +84,32 @@ class PlannerAgent:
 
     @staticmethod
     def _build_request(state: InvestigationState) -> LLMRequest:
-        # Prompt content is an implementation detail; kept minimal.
+        # Prompt content is an implementation detail of the documented
+        # transformation boundary (planner-agent §6). It describes the exact
+        # JSON vocabulary `_to_action` accepts so a real provider can play;
+        # anything else still resolves to escalate.
         prompt = (
-            "Select the next planner action and respond as JSON.\n"
+            "You are the planner of a security investigation platform.\n"
+            "Select exactly one next action and respond with ONLY a JSON "
+            "object (no prose, no code fences), one of:\n"
+            '{"action":"control","control":"complete"} — objectives are '
+            "satisfied or no further useful action exists\n"
+            '{"action":"get_investigation"} — re-read the investigation\n'
+            '{"action":"get_memory","memory_id":"<id>"} — read one known '
+            "memory item\n"
+            '{"action":"find_neighbors","entity_id":"<id>","depth":1,'
+            '"max_nodes":10} — explore one known entity\'s neighbours\n'
+            "Use only identifiers that appear in the state below. If the "
+            "history shows an action already failed, do not repeat it.\n"
+            "Investigation state:\n"
             f"investigation_id={state.investigation_id.value}\n"
             f"status={state.status}\n"
             f"objectives={list(state.objectives)}\n"
             f"confidence={state.confidence.value}\n"
-            f"pending_tasks={[task.value for task in state.pending_tasks]}"
+            f"evidence_ids={[e.value for e in state.evidence_ids]}\n"
+            f"finding_ids={[f.value for f in state.finding_ids]}\n"
+            f"pending_tasks={[task.value for task in state.pending_tasks]}\n"
+            f"history={list(state.history)}"
         )
         return LLMRequest(prompt=prompt)
 

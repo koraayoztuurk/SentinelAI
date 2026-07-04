@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from neo4j import AsyncDriver
 from qdrant_client import AsyncQdrantClient
 from redis.asyncio import Redis
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.config.database import (
@@ -53,6 +54,16 @@ class PersistenceRegistry:
         await self.neo4j_driver.close()
         await self.qdrant_client.close()
         await self.redis_client.aclose()
+
+    async def ping_postgres(self) -> None:
+        """Perform a trivial PostgreSQL round trip (readiness probing).
+
+        Raises whatever the driver raises when the store is unreachable; the
+        caller decides how to report it.
+        """
+
+        async with self.engine.connect() as connection:
+            await connection.execute(text("SELECT 1"))
 
 
 def build_registry() -> PersistenceRegistry:
