@@ -1,103 +1,120 @@
 ```text
         🛡️  SentinelAI
 
-      AI-Native Cyber Investigation Platform
- Graph Intelligence • Multi-Agent AI • RAG • Memory
+  Yapay Zeka Destekli Siber Güvenlik Araştırma Platformu
+Bilgi Grafiği • Çoklu-Ajan AI • RAG • Uzun Süreli Hafıza
 ```
 
-> **An architecture-first, AI-native cyber investigation platform for intelligent threat analysis, graph-based investigations and explainable security reasoning.**
-
-SentinelAI is an open architecture project that explores how artificial intelligence can enhance cyber investigations through structured reasoning, contextual memory and knowledge-driven analysis.
-
-Rather than treating AI as a standalone assistant, SentinelAI integrates specialized AI agents, knowledge graphs, Retrieval-Augmented Generation (RAG) and long-term memory into a unified investigation platform designed to support security analysts throughout the entire investigation lifecycle.
-
-The project follows an **Architecture First** philosophy, where architectural consistency, explicit ownership and long-term maintainability guide every technical decision before implementation begins.
+![Architecture](https://img.shields.io/badge/Mimari-First-2563eb)
+![Documentation](https://img.shields.io/badge/Dok%C3%BCmantasyon-v1.0-success)
+![Status](https://img.shields.io/badge/Durum-Aktif%20Geli%C5%9Ftirme-orange)
+![License](https://img.shields.io/badge/Lisans-Belirlenecek-lightgrey)
 
 ---
 
-![Architecture](https://img.shields.io/badge/Architecture-First-2563eb)
-![Documentation](https://img.shields.io/badge/Documentation-v1.0-success)
-![Status](https://img.shields.io/badge/Status-Active%20Development-orange)
-![License](https://img.shields.io/badge/License-TBD-lightgrey)
+## İçindekiler
+
+- [Takım İsmi](#takım-i̇smi)
+- [Takım Elemanları](#takım-elemanları)
+- [Ürün İsmi](#ürün-i̇smi)
+- [Ürün Açıklaması](#ürün-açıklaması)
+- [Ürün Özellikleri](#ürün-özellikleri)
+- [Hedef Kitle](#hedef-kitle)
+- [Product Backlog / Süreç Yönetimi](#product-backlog--süreç-yönetimi)
+- [Sprint 1](#sprint-1)
+- [Sprint 2](#sprint-2)
+- [Sprint 3](#sprint-3)
+- [Teknik Detaylar](#teknik-detaylar)
 
 ---
 
-## Contents
+## Takım İsmi
 
-- [Overview](#overview)
-- [Why SentinelAI?](#why-sentinelai)
-- [Core Capabilities](#core-capabilities)
-- [High-Level Architecture](#high-level-architecture)
-- [Repository Structure](#repository-structure)
-- [Documentation](#documentation)
-- [Technology Stack](#technology-stack)
-- [Development Status](#development-status)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [License](#license)
+**Bilmem**
 
 ---
 
-## Overview
+## Takım Elemanları
 
-Cyber investigations often require analysts to correlate information across multiple security tools, threat intelligence sources and organizational knowledge. This process is frequently fragmented, time-consuming and highly dependent on manual analysis.
-
-SentinelAI addresses this challenge by bringing together graph-based knowledge representation, AI-assisted reasoning and persistent investigation memory into a single platform. Instead of switching between disconnected tools, analysts interact with a unified investigation workspace where AI agents assist with planning, evidence correlation and contextual reasoning.
-
-The platform is designed to remain transparent, explainable and human-centered. AI supports the investigation process by providing recommendations and contextual insights, while analysts retain full control over investigation decisions.
+| Ad Soyad | Rol | Sosyal |
+|:---:|:---:|:---:|
+| Koray Öztürk | Product Owner / Scrum Master / Developer | [![LinkedIn](https://github.com/user-attachments/assets/3baa645a-33bc-4786-8327-cb0f92356f0a)](https://www.linkedin.com/in/korayoztuurk) |
 
 ---
 
-## Why SentinelAI?
+## Ürün İsmi
 
-Modern cyber investigations are becoming increasingly complex. Security analysts must correlate information across endpoints, network telemetry, threat intelligence feeds, vulnerability reports and historical investigations while making time-critical decisions.
-
-Although many security tools provide detection and visualization capabilities, few offer a unified environment that combines contextual understanding, structured reasoning and long-term investigation knowledge.
-
-SentinelAI was created to explore how modern AI systems can assist analysts throughout the investigation process rather than acting as isolated chat assistants.
-
-By combining knowledge graphs, Retrieval-Augmented Generation (RAG), long-term memory and specialized AI agents, SentinelAI aims to provide an investigation environment where context is preserved, reasoning is transparent and every recommendation remains explainable.
-
-The objective is not to replace human analysts, but to augment their decision-making capabilities by reducing repetitive investigation tasks and improving access to relevant knowledge.
+**SentinelAI**
 
 ---
 
-## Core Capabilities
+## Ürün Açıklaması
 
-| Capability | Description |
-|------------|-------------|
-| **Graph-Based Investigations** | Explore relationships between entities, alerts, indicators and evidence through an interactive knowledge graph. |
-| **AI Investigation Planning** | Generate structured investigation plans using specialized AI agents. |
-| **Knowledge Graph Reasoning** | Connect isolated evidence into meaningful investigative context. |
-| **Retrieval-Augmented Generation (RAG)** | Retrieve relevant documentation, procedures and historical knowledge during investigations. |
-| **Long-Term Investigation Memory** | Preserve investigation context across sessions for continuous reasoning. |
-| **Multi-Agent Architecture** | Coordinate specialized AI agents responsible for planning, reasoning and investigation support. |
-| **Threat Intelligence Correlation** | Relate indicators, adversaries and investigation artifacts through contextual analysis. |
-| **Explainable AI Assistance** | Provide transparent reasoning and recommendations that analysts can inspect and validate. |
-| **Architecture Governance** | Manage architectural evolution through RFCs, ADRs and explicit ownership. |
+SentinelAI, siber güvenlik analistlerinin tehdit araştırmalarını uçtan uca yürütebilmesi için tasarlanmış, **mimari-öncelikli (architecture-first)** bir yapay zeka platformudur.
 
+Siber güvenlik araştırmaları genellikle birden fazla güvenlik aracı, tehdit istihbaratı kaynağı ve kurumsal bilgi arasında manuel korelasyon gerektirir; bu süreç parçalı, zaman alıcı ve büyük ölçüde analistin dikkatine bağlıdır. SentinelAI, yapay zekayı tek başına bir sohbet asistanı olarak değil; bilgi grafiği (knowledge graph) tabanlı ilişki analizini, uzmanlaşmış AI ajanlarını, Retrieval-Augmented Generation (RAG) yaklaşımını ve uzun süreli araştırma hafızasını tek bir araştırma çalışma alanında birleştiren bütünleşik bir platform olarak konumlandırır.
 
+Analistler, birbirinden kopuk araçlar arasında geçiş yapmak yerine; AI ajanlarının planlama, kanıt korelasyonu ve bağlamsal akıl yürütme konusunda destek verdiği tek bir araştırma çalışma alanında (investigation workspace) çalışır. Platform şeffaf, açıklanabilir ve insan merkezli kalacak şekilde tasarlanmıştır: AI, öneriler ve bağlamsal içgörüler sunarak araştırma sürecini destekler, ancak araştırma kararlarının tam kontrolü analistte kalır.
+
+Amaç analistin yerini almak değil; tekrarlayan korelasyon işlerini azaltarak ve ilgili bilgiye erişimi hızlandırarak karar verme sürecini güçlendirmektir.
 
 ---
 
-## High-Level Architecture
+## Ürün Özellikleri
 
-SentinelAI follows an **Architecture First** approach in which architectural decisions are established before implementation begins.
+- **Grafik Tabanlı Araştırma:** Varlıklar, uyarılar, göstergeler ve kanıtlar arasındaki ilişkilerin interaktif bir bilgi grafiği (Neo4j) üzerinden keşfi.
+- **Yapay Zeka Destekli Araştırma Planlaması:** Uzmanlaşmış AI ajanları kullanılarak yapılandırılmış araştırma planları üretilmesi.
+- **Bilgi Grafiği Akıl Yürütmesi:** Birbirinden izole kanıtların anlamlı bir araştırma bağlamına bağlanması.
+- **Retrieval-Augmented Generation (RAG) ve Semantik Hafıza:** Qdrant üzerinde embedding tabanlı semantik arama ile ilgili doküman, prosedür ve geçmiş bilgiye araştırma sırasında erişim.
+- **Uzun Süreli Araştırma Hafızası:** Versiyonlanmış `MemoryItem` modeliyle oturumlar arası bağlamın korunması, sürekli akıl yürütmeye izin verilmesi.
+- **Çoklu-Ajan Mimarisi:** Planlama, akıl yürütme ve araştırma desteğinden sorumlu, birbirinden ayrık sorumluluklara sahip uzman AI ajanlarının (Planner Agent, Agent Runtime) koordinasyonu.
+- **Tehdit İstihbaratı Korelasyonu:** Göstergelerin, tehdit aktörlerinin ve araştırma bulgularının bağlamsal analiz yoluyla ilişkilendirilmesi (port hazır, dış sağlayıcı entegrasyonu sonraki kapsamda).
+- **Açıklanabilir Yapay Zeka:** Her AI kararının ve yürütme sonucunun analistin inceleyip doğrulayabileceği şeffaf bir **Investigation Trace** üzerinden izlenebilmesi; sağlayıcı hatasında akışın sessizce çökmek yerine güvenli bir "escalated" durumuna geçmesi.
+- **Mimari Yönetişim:** Mimari evrimin ADR (Architectural Decision Record) ve RFC (Request for Comments) süreçleriyle, açık sahiplik ilkesiyle yönetilmesi.
+
+---
+
+## Hedef Kitle
+
+- Siber güvenlik analistleri ve SOC (Security Operations Center) ekipleri
+- Tehdit istihbaratı (threat intelligence) araştırmacıları
+- AI destekli güvenlik araçlarını değerlendiren güvenlik mühendisleri
+
+---
+
+## Product Backlog / Süreç Yönetimi
+
+Bu projede klasik bir Jira/Trello/Miro backlog panosu **kullanılmamıştır**. Mimari-öncelikli bir platformda iş büyüklüğünün satır sayısından çok "hangi sözleşmeyi/ADR'yi karşılıyor" ve "çıkış ölçütü nedir" sorularına bağlı olduğu değerlendirilerek; backlog birimi olarak **Engineering Slice (ES)** kullanılmış, ilerleme append-only bir mühendislik defterinde (`workdocs/SentinelAI-Implementation-Tracker.md`) ve kamuya açık bir teslimat kaydında (`docs/11-roadmap/README.md` → Delivery Record) tutulmuştur.
+
+- **Backlog / teslimat kaydı:** [`docs/11-roadmap/README.md`](docs/11-roadmap/README.md)
+- **Dahili ES defteri (source of truth):** `workdocs/SentinelAI-Implementation-Tracker.md`
+- **Dilim planları:** `workdocs/VERTICAL-SLICE-PLAN-2026-07-03.md`, `workdocs/SECOND-VERTICAL-SLICE-PLAN-2026-07-05.md`
+
+---
+
+## Teknik Detaylar
+
+<details>
+<summary><strong>Mimari, teknoloji yığını ve yol haritası detayları için tıklayın</strong></summary>
+
+### Mimari Genel Bakış
+
+SentinelAI, implementasyondan önce mimari kararların netleştirildiği bir **Architecture First** yaklaşımı izler.
 
 ```mermaid
 flowchart TB
 
-    U["Presentation Domain<br/>Dashboard • Investigation Workspace • Visualization"]
+    U["Sunum Katmanı<br/>Dashboard • Araştırma Çalışma Alanı • Görselleştirme"]
 
-    A["Application Domain<br/>Investigation • Graph • Memory • Planner Services"]
+    A["Uygulama Katmanı<br/>Investigation • Graph • Memory • Planner Servisleri"]
 
-    AI["AI Domain<br/>Agents • RAG • Long-Term Memory"]
+    AI["AI Katmanı<br/>Ajanlar • RAG • Uzun Süreli Hafıza"]
 
-    G["Graph Intelligence<br/>ThreatGraph • Knowledge Graph"]
+    G["Graph Intelligence<br/>ThreatGraph • Bilgi Grafiği"]
 
-    D["Data Layer<br/>PostgreSQL • Neo4j • Qdrant"]
+    D["Veri Katmanı<br/>PostgreSQL • Neo4j • Qdrant"]
 
-    S["Security, DevOps & Observability"]
+    S["Güvenlik, DevOps ve Gözlemlenebilirlik"]
 
     U --> A
 
@@ -110,271 +127,221 @@ flowchart TB
     D --> S
 ```
 
+Platform şu ana mimari alanlara ayrılmıştır:
 
-The platform is organized into several major architectural domains:
+- **Sunum Katmanı** — Kullanıcı arayüzleri, dashboard ve araştırma çalışma alanları.
+- **Uygulama Katmanı** — İş servisleri, araştırma iş akışları ve API orkestrasyonu.
+- **AI Katmanı** — Çoklu-ajan akıl yürütme, planlama, hafıza yönetimi ve RAG.
+- **Graph Intelligence** — Bilgi grafiği modelleme, ilişki analizi ve grafik tabanlı araştırmalar.
+- **Güvenlik Katmanı** — Kimlik doğrulama, yetkilendirme, denetim ve güvenlik yönetişimi.
+- **DevOps Katmanı** — Dağıtım, yapılandırma yönetimi, gözlemlenebilirlik ve platform operasyonları.
 
-- **Presentation Domain** — User interfaces, dashboards and investigation workspaces.
-- **Application Domain** — Business services, investigation workflows and API orchestration.
-- **AI Domain** — Multi-agent reasoning, planning, memory management and Retrieval-Augmented Generation (RAG).
-- **Graph Intelligence** — Knowledge graph modeling, relationship analysis and graph-based investigations.
-- **Security Domain** — Authentication, authorization, auditing and security governance.
-- **DevOps Domain** — Deployment, configuration management, observability and platform operations.
+Her alanın sorumluluk ve sahiplik sınırları açıkça tanımlanmıştır; bu da uzun vadeli sürdürülebilirliği ve mimari tutarlılığı güvence altına alır.
 
-Each domain has clearly defined responsibilities and ownership boundaries, ensuring long-term maintainability and architectural consistency.
+### Mimari İlkeler
 
+- **Architecture First** — Mimari kararlar implementasyon kararlarından önce gelir.
+- **Açık Sahiplik** — Her mimari kavramın tek ve net bir sahibi vardır.
+- **Sorumlulukların Ayrılması** — AI, Uygulama Katmanı, Sunum Katmanı, Güvenlik ve DevOps birbirinden bağımsız mimari alanlar olarak kalır.
+- **Kademeli Evrim** — Mimari, kontrollü ve izlenebilir değişikliklerle evrilir.
+- **Yönetişim Odaklı Geliştirme** — Mimari evrim RFC ve ADR süreçleriyle yönetilir.
+- **Teknolojiden Bağımsızlık** — Mimari kararlar, mümkün olduğunca belirli framework/teknoloji seçimlerinden bağımsız kalır.
 
----
+### Teknoloji Yığını
 
+| Katman | Teknoloji |
+|-------|----------------------|
+| **Backend** | FastAPI, Python |
+| **Frontend** | React, TypeScript |
+| **AI Runtime** | Sağlayıcıdan bağımsız LLM/embedding portlarına sahip, in-process Python runtime (ADR-005/ADR-010; ileride bir orkestrasyon framework'ü sorumlulukları değiştirmeden eklenebilir) |
+| **Graph Veritabanı** | Neo4j |
+| **Vektör Veritabanı** | Qdrant |
+| **İlişkisel Veritabanı** | PostgreSQL |
+| **Önbellekleme** | Redis |
+| **Konteynerleştirme** | Docker |
+| **Reverse Proxy** | Nginx |
+| **Gözlemlenebilirlik** | Prometheus, Grafana |
+| **CI/CD** | GitHub Actions |
 
-## Architecture Principles
-
-SentinelAI is designed around several core architectural principles:
-
-- **Architecture First** — Architectural decisions precede implementation decisions.
-- **Explicit Ownership** — Every architectural concept has a single, clearly defined owner.
-- **Separation of Responsibilities** — AI, Application Domain, Presentation Domain, Security and DevOps remain independent architectural domains.
-- **Incremental Evolution** — The architecture evolves through controlled and traceable changes.
-- **Governance-Driven Development** — Architectural evolution is managed through RFCs, ADRs and structured documentation.
-- **Technology Independence** — Architectural decisions remain independent of specific frameworks and implementation technologies whenever possible.
-
----
-
-## Repository Structure
-
-The repository is organized into independent engineering and architecture domains. Documentation, research, implementation and infrastructure evolve together while remaining aligned through a shared **Architecture First** philosophy.
+### Repo Yapısı
 
 ```text
 SentinelAI/
 │
-├── assets/             # Images, diagrams and project resources
-├── backend/            # Backend services and APIs
-├── datasets/           # Sample datasets and experimental data
-├── docs/               # Architecture, governance and engineering documentation
-├── frontend/           # Web application
-├── infrastructure/     # Docker, deployment and infrastructure resources
-├── notebooks/          # Research and experimentation notebooks
-├── research/           # Research papers, references and design studies
-├── scripts/            # Development and automation scripts
+├── assets/             # Görseller, diyagramlar ve proje kaynakları
+├── backend/            # Backend servisleri ve API'ler
+├── datasets/           # Örnek veri setleri
+├── docs/               # Mimari, yönetişim ve mühendislik dokümantasyonu
+├── frontend/           # Web uygulaması
+├── infrastructure/     # Docker, dağıtım ve altyapı kaynakları
+├── notebooks/          # Araştırma ve deney notebook'ları
+├── research/           # Araştırma makaleleri ve tasarım çalışmaları
+├── scripts/            # Geliştirme ve otomasyon script'leri
 └── README.md
 ```
 
+### Dokümantasyon Yapısı
 
----
+| Klasör | İçerik |
+| ------------------- | ----------------------------------------------------------- |
+| **00-project**      | Proje vizyonu, tasarım ilkeleri ve charter |
+| **01-product**      | Ürün kavramları ve ThreatGraph tanımı |
+| **02-architecture** | Üst seviye sistem mimarisi |
+| **03-ai**           | Çoklu-ajan mimarisi, hafıza, bilgi grafiği ve RAG |
+| **04-backend**      | Backend mimarisi, servisler ve domain modeli |
+| **05-frontend**     | Frontend mimarisi, UI durum yönetimi ve araştırma çalışma alanı |
+| **06-devops**       | Dağıtım, ortamlar, yapılandırma ve gözlemlenebilirlik |
+| **07-security**     | Güvenlik mimarisi, kimlik doğrulama ve tehdit modellemesi |
+| **08-testing**      | Test stratejisi, entegrasyon ve AI doğrulama |
+| **09-decisions**    | Mimari Karar Kayıtları (ADR) |
+| **10-rfc**          | RFC yönetişimi |
+| **11-roadmap**      | Geliştirme yol haritası ve implementasyon stratejisi |
 
-## Running with Docker
+### Geliştirme Durumu
 
-The platform's deployment units are containerized (ES-028). A root `docker-compose.yml`
-maps the architectural deployment units onto containers: **Presentation** (frontend),
-**Application** including the in-process AI Runtime (backend) and **Data**
-(PostgreSQL, Neo4j, Qdrant, Redis). The frontend serves the SPA and reverse-proxies
-`/api` and `/health` to the backend, so the browser talks to a single same-origin
-boundary (no CORS).
+SentinelAI, **Mimari ve Temel** aşamasından **canlı implementasyon** aşamasına geçmiştir: mimari tasarım, yönetişim modeli ve mühendislik stratejisi implementasyondan önce tamamlanmıştır; implementasyon artık kontrollü ve doğrulanabilir dikey dilimlerle ilerlemektedir.
+
+| Alan | Durum |
+| ----------------------------------- | -------------- |
+| Proje vizyonu ve mimari dokümantasyon | ✅ Tamamlandı |
+| Mimari yönetişim (ADR & RFC) | ✅ Tamamlandı |
+| Mimari denetim (Faz 1) ve boşluk analizi (Faz 2) | ✅ Tamamlandı |
+| İlk Dikey Dilim — PostgreSQL, Gemini LLM, canlı Investigation Loop, dev-grade auth, mock'suz UI akışı (ES-040–047) | ✅ Tamamlandı |
+| İkinci Dikey Dilim / Milestone A — Neo4j canlı graph deposu (ES-048) | ✅ Tamamlandı |
+| İkinci Dikey Dilim / Milestone A — Gemini embedding sağlayıcısı (ES-049) | ✅ Tamamlandı |
+| İkinci Dikey Dilim / Milestone A — Qdrant transactional outbox & projector (ES-050) | ✅ Tamamlandı |
+| RAG retrieval'in agent/planner tarafından tüketimi | 🚧 Devam ediyor |
+| Çoklu-Ajan genişlemesi & Decision Engine (Milestone B) | ⏳ Başlamadı |
+
+Platformun temel uçtan uca iddiası — önerilen bir AI kararının yürütülmesi, kalıcı olarak izlenmesi ve tarayıcıda mock'suz görünmesi — artık canlı olarak kanıtlanmıştır. Sonraki aşama, Bilgi Katmanı'nı (RAG retrieval) tamamlamaya ve agent/karar katmanını genişletmeye odaklanmaktadır.
+
+### Yol Haritası
+
+- **Faz 1 — Temel:** Repo kurulumu, geliştirme ortamı, temel altyapı, CI/CD temeli.
+- **Faz 2 — Çekirdek Platform:** Backend servisleri, frontend uygulaması, graph altyapısı, kimlik doğrulama ve güvenlik.
+- **Faz 3 — AI Platformu:** Çoklu-ajan runtime, bilgi grafiği entegrasyonu, RAG, uzun süreli hafıza.
+- **Faz 4 — Production Hazırlığı:** Performans optimizasyonu, gözlemlenebilirlik, güvenlik sertleştirme, kapsamlı test, production dağıtımı.
+
+Detaylı implementasyon planlaması `docs/11-roadmap` dizinindedir.
+
+### Docker ile Çalıştırma
+
+Platformun dağıtım birimleri konteynerleştirilmiştir. Kök dizindeki `docker-compose.yml`, mimari dağıtım birimlerini konteynerlere eşler: **Sunum** (frontend), in-process AI Runtime dahil **Uygulama** (backend) ve **Veri** (PostgreSQL, Neo4j, Qdrant, Redis). Frontend, SPA'yı sunar ve `/api` ile `/health` uçlarını backend'e ters proxy'ler; böylece tarayıcı tek bir same-origin sınırıyla konuşur (CORS yok).
 
 ```bash
-cp .env.example .env                       # optional; the stack also runs on defaults
+cp .env.example .env                       # opsiyonel; stack varsayılanlarla da çalışır
 
 docker compose up --build                  # backend + frontend
-docker compose --profile data up --build   # + the data tier (PostgreSQL/Neo4j/Qdrant/Redis)
+docker compose --profile data up --build   # + veri katmanı (PostgreSQL/Neo4j/Qdrant/Redis)
 ```
 
-The application is served at **http://localhost:8080**:
+Uygulama **http://localhost:8080** adresinde yayında olur:
 
 ```bash
-curl http://localhost:8080/health          # {"status":"ok","name":"SentinelAI",...} (proxied to the backend)
+curl http://localhost:8080/health          # {"status":"ok","name":"SentinelAI",...}
 ```
 
-The data tier is opt-in through the `data` compose profile; the backend starts lazily
-and does not require the databases to be running. Tear down with `docker compose down`
-(add `--profile data` to remove the data services too, `-v` to drop their volumes).
+Veri katmanı `data` compose profiliyle opsiyoneldir; backend, veritabanları çalışmasa da başlar. `docker compose down` ile kapatılır (veri servislerini de kaldırmak için `--profile data`, volume'leri silmek için `-v` eklenir).
 
-### Continuous integration & deployment
+### Katkıda Bulunma
 
-Continuous integration (`.github/workflows/ci.yml`, ES-030) validates each deployment
-unit independently and confirms the deployment artifacts build: the backend
-(`ruff` / `mypy` / `pytest`), the frontend (`lint` / `typecheck` / `test` / `build`)
-and the Docker images (`docker compose build`). Images are built for validation only —
-they are not pushed to a registry, and there is no automated environment deploy yet.
+SentinelAI, **Architecture First** iş akışıyla geliştirilmektedir. Katkıda bulunmadan önce `docs/` dizinindeki mimari dokümantasyona aşina olunması önerilir. Mimari değişiklikler; evrim önerisi için **RFC**, kabul edilen kararların kaydı için **ADR** yönetişim modelini takip etmelidir.
 
-For a production-shaped run, layer the production overlay on top of the base compose
-with a real `.env` (non-development environments must replace every `change_me` secret
-— the backend fails fast on startup otherwise):
+### Lisans
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile data up -d
-```
+Proje lisansı, ilk kamuya açık sürümden önce belirlenecektir.
+
+</details>
 
 ---
 
-## Documentation
+## Sprint 1
 
-SentinelAI places architecture at the center of the development process. Before implementation begins, every major architectural domain is documented, reviewed and governed through a structured documentation model.
+<details>
+<summary><strong>Sprint 1 detaylarını görmek için tıklayın</strong></summary>
 
-The documentation is organized into dedicated domains, each with a clearly defined responsibility.
+**Sprint tarih aralığı:** 19 Haziran 2026 – 5 Temmuz 2026
 
-| Directory           | Description                                                 |
-| ------------------- | ----------------------------------------------------------- |
-| **00-project**      | Project vision, design principles and charter               |
-| **01-product**      | Product concepts and ThreatGraph definition                 |
-| **02-architecture** | High-level system architecture                              |
-| **03-ai**           | Multi-agent architecture, memory, knowledge graph and RAG   |
-| **04-backend**      | Backend architecture, services and domain model             |
-| **05-frontend**     | Frontend architecture, UI state and investigation workspace |
-| **06-devops**       | Deployment, environments, configuration and observability   |
-| **07-security**     | Security architecture, authentication and threat modeling   |
-| **08-testing**      | Testing strategy, integration and AI validation             |
-| **09-decisions**    | Architectural Decision Records (ADRs)                       |
-| **10-rfc**          | Request for Comments (RFC) governance                       |
-| **11-roadmap**      | Development roadmap and implementation strategy             |
+### Sprint Notları
 
-The documentation defines not only the system architecture, but also the governance model through ADRs, RFCs and a structured development roadmap, ensuring that architectural evolution remains deliberate, traceable and consistent.
+- Proje **Architecture First** ilkesiyle yürütüldü: implementasyona başlamadan önce tüm mimari alanlar (proje vizyonu, ürün, sistem mimarisi, AI, backend, frontend, DevOps, security, testing) dokümante edildi ve ADR/RFC yönetişim modeliyle onaylandı.
+- Backlog birimi olarak klasik "story point" yerine **Engineering Slice (ES)** kullanıldı: her ES; kapsam, bağımlılık gerekçesi, karşıladığı ADR/sözleşme ve çıkış ölçütü (exit criteria) dörtlüsüyle tanımlanan, tek başına doğrulanabilir bir teslim birimidir.
+- Sprint içinde iki denetim fazı (Faz 1: mimari denetim, Faz 2: boşluk analizi) tamamlanıp, roadmap'in "Vertical Slice First" kuralına göre **ilk dikey dilim** (ES-040 – ES-047) planlandı ve uygulandı; ardından **ikinci dikey dilimin** temel taşları (Neo4j, Gemini embedding, Qdrant) erken başlatılıp tamamlandı.
+- AI destekli çalışma (Claude) bu sprint boyunca **Principal Software Architect** rolünde kullanıldı: mimari tutarlılığı korumak, sorumluluk sınırlarını denetlemek ve yalnızca açıkça istendiğinde implementasyona yardımcı olmak üzere sınırlandırıldı.
 
+### Sprint İçinde Tamamlanması Beklenen Birim
 
----
+Faz 1 + Faz 2 (mimari denetim ve boşluk analizi) + ilk dikey dilimin tamamı (8 ES)
 
-## Documentation Highlights
+### Birim Tamamlama Mantığı
 
-Current documentation includes:
+Klasik Fibonacci puanlama, mimari-öncelikli bir projede anlamlı bulunmadığı için tercih edilmedi. Bunun yerine her ES kendi çıkış ölçütüyle kapatıldı: Sprint sonunda **50 Engineering Slice (ES-001 – ES-050)** append-only tracker'a işlendi ve hiçbiri bir sonraki ES tarafından geri açılmadı — bu da mimari kararların geriye dönük tutarlılığının bir göstergesidir.
 
-- ✅ Architecture documentation covering the entire platform lifecycle
-- ✅ AI architecture and multi-agent design
-- ✅ Backend, Frontend and Graph architecture
-- ✅ DevOps and Security architecture
-- ✅ Testing strategy and validation model
-- ✅ Architectural Decision Records (ADR)
-- ✅ Request for Comments (RFC) governance
-- ✅ Development Roadmap
-- ✅ Cross-document governance review
+### Daily Scrum
 
-The documentation is designed to evolve together with the implementation through a structured governance model based on RFCs and ADRs.
+Bireysel bir proje olduğundan klasik toplantı formatında daily scrum yapılmadı. Bunun yerine her çalışma oturumu bir ES'in geliştirme akışıyla başladı ve ilerleme `workdocs/SentinelAI-Implementation-Tracker.md` dosyasına günlük olarak, **append-only** biçimde işlendi.
 
+### Sprint Board Güncellemesi
 
----
+Klasik bir görsel board yerine, ilerleme aşağıdaki dokümanlarla takip edildi:
 
-## Planned Technology Stack
+- [`docs/11-roadmap/README.md`](docs/11-roadmap/README.md) — kamuya açık teslimat kaydı (Delivery Record)
+- `workdocs/SentinelAI-Implementation-Tracker.md` — append-only ES kaydı (dahili çalışma dokümanı)
+- `workdocs/VERTICAL-SLICE-PLAN-2026-07-03.md` — ilk dikey dilimin (ES-040…047) sıralama planı
+- `workdocs/SECOND-VERTICAL-SLICE-PLAN-2026-07-05.md` — ikinci dikey dilimin (Milestone A) planı
 
-| Layer | Planned Technologies |
-|-------|----------------------|
-| **Backend** | FastAPI, Python |
-| **Frontend** | React, TypeScript |
-| **AI Runtime** | In-process Python runtime with provider-neutral LLM/embedding ports (framework-independent by design, ADR-005/ADR-010; an orchestration framework may be adopted later without changing responsibilities) |
-| **Graph Database** | Neo4j |
-| **Vector Database** | Qdrant |
-| **Relational Database** | PostgreSQL |
-| **Caching** | Redis |
-| **Containerization** | Docker |
-| **Reverse Proxy** | Nginx |
-| **Observability** | Prometheus, Grafana |
-| **CI/CD** | GitHub Actions |
+### Ürün Durumu
 
-Technology choices may evolve over time while preserving the architectural principles established throughout the documentation.
+| Alan | Durum |
+|---|---|
+| Proje vizyonu, mimari ve yönetişim dokümantasyonu (`docs/00-project` … `docs/11-roadmap`) | ✅ Tamamlandı |
+| Faz 1 — Mimari Denetim (bulgular A1–A10, B1–B10) | ✅ Tamamlandı |
+| Faz 2 — Boşluk Analizi (M/E/D bulguları) | ✅ Tamamlandı |
+| İlk Dikey Dilim (ES-040–047): PostgreSQL tek otoriter depo, Gemini LLM, canlı Investigation Loop, dev-grade auth, tarayıcıdan mock'suz akış | ✅ Tamamlandı (2026-07-04) |
+| İkinci Dikey Dilim / Milestone A — Neo4j gerçek graph deposu (ES-048) | ✅ Tamamlandı |
+| İkinci Dikey Dilim / Milestone A — Gemini embedding adaptörü (ES-049) | ✅ Tamamlandı |
+| İkinci Dikey Dilim / Milestone A — Qdrant transactional outbox + projector (ES-050) | ✅ Tamamlandı |
+| RAG — semantik sorgunun agent/planner tarafından tüketimi | 🚧 Planlandı (sonraki ES) |
+| Milestone B — Decision Engine ve uzman agent genişlemesi | ⏳ Başlamadı |
+| Backend test durumu | ✅ 352 test yeşil, `ruff` temiz, `mypy --strict` temiz (157 dosya) |
 
+### Sprint Review
 
----
+- Sprint sonunda platform, ilk kez kendi çekirdek iddiasını uçtan uca kanıtladı: bir AI kararı üretiliyor, yürütülüyor, Investigation Trace'e kalıcı olarak yazılıyor ve tarayıcıdan **mock'suz** görünüyor.
+- LLM sağlayıcısı (Gemini) hata verdiğinde akış sessizce çökmek yerine güvenli bir **ESCALATED** durumuna geriliyor.
+- Roadmap'in "Vertical Slice First" kuralı ilk dilimle birlikte kilidini açtı; bu sayede ikinci dilimin (Neo4j + Qdrant) temel taşları da bu sprint içinde erken başlatılıp tamamlandı — planlanandan hızlı bir ilerleme.
+- Sprint Review katılımcısı: Koray Öztürk.
 
+### Sprint Retrospective
 
-## Development Status
+- **İyi giden:** Mimariyi implementasyondan önce netleştirmek, her ES için kod ile dokümanın (ADR, `openapi.json`, roadmap Delivery Record) eşzamanlı güncellenmesi sürecin tutarlılığını korudu; hiçbir ES bir öncekini geçersiz kılmadı.
+- **Geliştirilecek:** Bireysel bir proje olduğundan klasik Scrum seremonileri (daily toplantı, retrospektif toplantısı) ekip formunda gerçekleşmedi; bunların yerine tracker + ADR/RFC belgeleri kanıt olarak kullanıldı.
+- **Sonraki sprint için kararlaştırılanlar:** Milestone A'nın kalanı (RAG retrieval'in agent tarafından tüketimi), ardından Milestone B (Decision Engine, uzman agent'lar) önceliklendirilecek.
 
-SentinelAI is currently in the **Architecture & Foundation** stage of development.
-
-The architectural design, governance model and engineering strategy have been completed before implementation, following the project's **Architecture First** philosophy.
-
-### Current Progress
-
-| Area                                | Status         |
-| ----------------------------------- | -------------- |
-| Project Vision                      | ✅ Complete     |
-| Architecture Documentation          | ✅ Complete     |
-| AI Architecture                     | ✅ Complete     |
-| Backend Architecture                | ✅ Complete     |
-| Frontend Architecture               | ✅ Complete     |
-| DevOps Architecture                 | ✅ Complete     |
-| Security Architecture               | ✅ Complete     |
-| Testing Architecture                | ✅ Complete     |
-| Architecture Governance (ADR & RFC) | ✅ Complete     |
-| Development Roadmap                 | ✅ Complete     |
-| Implementation                      | 🚧 In Progress |
-
-The next phase focuses on transforming the approved architecture into a production-ready implementation while preserving the governance and architectural principles established throughout the project.
-
-
+</details>
 
 ---
 
+## Sprint 2
 
-## Development Roadmap
+<details>
+<summary><strong>Sprint 2 detaylarını görmek için tıklayın</strong></summary>
 
-The project evolves through clearly defined architectural phases rather than isolated implementation efforts.
+*Bu bölüm Sprint 2 sonunda doldurulacaktır.*
 
-* **Phase 1 — Foundation**
-
-  * Repository setup
-  * Development environment
-  * Core infrastructure
-  * CI/CD foundation
-
-* **Phase 2 — Core Platform**
-
-  * Backend services
-  * Frontend application
-  * Graph infrastructure
-  * Authentication & security
-
-* **Phase 3 — AI Platform**
-
-  * Multi-agent runtime
-  * Knowledge graph integration
-  * Retrieval-Augmented Generation (RAG)
-  * Long-term memory
-
-* **Phase 4 — Production Readiness**
-
-  * Performance optimization
-  * Observability
-  * Security hardening
-  * Comprehensive testing
-  * Production deployment
-
-Detailed implementation planning is available in the `docs/11-roadmap` directory.
-
-
+</details>
 
 ---
 
+## Sprint 3
 
-## Contributing
+<details>
+<summary><strong>Sprint 3 detaylarını görmek için tıklayın</strong></summary>
 
-SentinelAI is being developed using an **Architecture First** workflow.
+*Bu bölüm Sprint 3 sonunda doldurulacaktır.*
 
-Before contributing, contributors are encouraged to become familiar with the architectural documentation located in the `docs/` directory.
-
-Architectural changes should follow the governance model established through:
-
-* **RFC (Request for Comments)** for proposing architectural evolution.
-* **ADR (Architectural Decision Records)** for documenting accepted architectural decisions.
-
-Implementation contributions should remain consistent with the approved architecture and governance model.
-
-Major architectural changes should begin with an RFC before implementation.
-
-Detailed contribution guidelines will be published in `CONTRIBUTING.md`.
-
-
-
-## License
-
-The project license will be defined before the first public release.
+</details>
 
 ---
 
-## Acknowledgements
-
-SentinelAI is developed as an architecture-driven research and engineering project exploring the intersection of artificial intelligence, graph technologies and cybersecurity.
-
-The project emphasizes long-term maintainability, explicit architectural ownership and transparent engineering practices, demonstrating how complex AI systems can be designed through structured architecture before implementation.
-
-If you find this project interesting, consider giving it a ⭐ to support its development.
-
----
-
-⭐ SentinelAI is actively evolving.
-Feedback, ideas and architectural discussions are always welcome.
+⭐ SentinelAI aktif olarak geliştirilmeye devam ediyor.

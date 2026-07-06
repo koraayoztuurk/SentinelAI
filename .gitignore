@@ -143,7 +143,11 @@ temp/
 implementation/
 
 # -----------------------
-# Internal working documents: tracker, audit/gap reports, slice plan (never committed)
+# Internal working documents: audit/gap reports, slice plans (never committed).
+# Exception: the Implementation Tracker is committed — it's referenced from the
+# public README as the source-of-truth ES record, so it needs to exist in the repo.
 # -----------------------
 
-workdocs/
+workdocs/*
+!workdocs/README.md
+!workdocs/SentinelAI-Implementation-Tracker.md
