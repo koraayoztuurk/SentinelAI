@@ -39,10 +39,6 @@ services:
     profiles: ["data"]
     environment:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-change_me}
-      # Local dev only: accept short dev passwords. Neo4j 5 otherwise rejects
-      # any password under 8 characters and refuses to start. Production uses
-      # strong secrets and this override is absent (Milestone G hardening).
-      NEO4J_dbms_security_auth__minimum__password__length: "1"
     ports:
       # Loopback-only publish so the opt-in `live_neo4j` suite can reach the
       # graph store from the host (7687 = bolt; 7474 = browser, for debugging).

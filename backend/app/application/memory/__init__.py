@@ -5,6 +5,7 @@ Exposes the Memory Service and its error types. The repository contract lives in
 infrastructure adapter that implements it.
 """
 
+from app.application.memory.embedding import MemoryEmbedder, MemoryEmbeddingError
 from app.application.memory.errors import (
     DuplicateMemoryError,
     InvalidMemoryVersionError,
@@ -19,4 +20,6 @@ __all__ = [
     "MemoryNotFoundError",
     "DuplicateMemoryError",
     "InvalidMemoryVersionError",
+    "MemoryEmbedder",
+    "MemoryEmbeddingError",
 ]
