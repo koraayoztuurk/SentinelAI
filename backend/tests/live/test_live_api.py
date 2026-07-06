@@ -65,6 +65,7 @@ _ALL_TABLES = (
     "finding",
     "evidence",
     "investigation",
+    "memory_outbox",
     "memory_item",
 )
 

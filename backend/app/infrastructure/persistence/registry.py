@@ -75,6 +75,15 @@ class PersistenceRegistry:
         async with self.neo4j_driver.session() as session:
             await (await session.run("RETURN 1")).consume()
 
+    async def ping_qdrant(self) -> None:
+        """Perform a trivial Qdrant round trip (readiness probing).
+
+        Raises whatever the client raises when the store is unreachable; the
+        caller decides how to report it.
+        """
+
+        await self.qdrant_client.get_collections()
+
 
 def build_registry() -> PersistenceRegistry:
     """Create the persistence registry.

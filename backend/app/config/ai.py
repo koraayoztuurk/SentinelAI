@@ -56,6 +56,9 @@ class GeminiEmbeddingSettings(BaseSettings):
     model: str = "gemini-embedding-001"
     # Bounded provider execution time (ADR-013).
     timeout_seconds: float = 30.0
+    # Fixed output dimension (requested via the API's ``outputDimensionality``)
+    # so the Qdrant collection's vector size is deterministic (ES-050).
+    dimensions: int = 768
 
 
 @lru_cache

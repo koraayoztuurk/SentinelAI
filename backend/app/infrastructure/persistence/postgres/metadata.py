@@ -13,7 +13,15 @@ from app.infrastructure.persistence.postgres.investigation import (
     orm as investigation_orm,
 )
 from app.infrastructure.persistence.postgres.memory import orm as memory_orm
+from app.infrastructure.persistence.postgres.memory import (
+    outbox_orm as memory_outbox_orm,
+)
 
-__all__ = ["metadata", "investigation_orm", "memory_orm"]
+__all__ = [
+    "metadata",
+    "investigation_orm",
+    "memory_orm",
+    "memory_outbox_orm",
+]
 
 metadata: MetaData = base.Base.metadata

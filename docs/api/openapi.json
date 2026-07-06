@@ -844,6 +844,11 @@
             "title": "Confidence",
             "type": "number"
           },
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
           "referenced_entities": {
             "default": [],
             "items": {
@@ -903,6 +908,10 @@
           "confidence": {
             "title": "Confidence",
             "type": "number"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -966,6 +975,7 @@
           "status",
           "created_at",
           "version",
+          "content",
           "supporting_evidence",
           "referenced_findings",
           "referenced_entities",
@@ -991,6 +1001,11 @@
           "confidence": {
             "title": "Confidence",
             "type": "number"
+          },
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -2817,7 +2832,7 @@
     },
     "/health/ready": {
       "get": {
-        "description": "Report whether the backend can serve business traffic.\n\nReadiness reflects startup completion (the persistence registry built on\n``app.state`` during the lifespan) and the reachability of the bound stores.\n**PostgreSQL is the authoritative core**: without it no business flow works,\nso it **gates** overall readiness. Neo4j (the graph store, bound since\nES-048) is **probed and reported truthfully** but does not gate readiness \u2014\ngraph operations degrade to contained failures by design (planner-service\n\u00a78), so a graph-store blip must not take the whole platform out of\nrotation. Distinct from liveness (``/health``), which is store-independent.",
+        "description": "Report whether the backend can serve business traffic.\n\nReadiness reflects startup completion (the persistence registry built on\n``app.state`` during the lifespan) and the reachability of the bound stores.\n**PostgreSQL is the authoritative core**: without it no business flow works,\nso it **gates** overall readiness. Neo4j (graph, ES-048) and Qdrant (derived\nsemantic memory, ES-050) are **probed and reported truthfully** but do not\ngate readiness \u2014 graph actions and retrieval degrade to contained failures\nby design, so a blip in either must not take the whole platform out of\nrotation. Distinct from liveness (``/health``), which is store-independent.",
         "operationId": "readiness_health_ready_get",
         "responses": {
           "200": {

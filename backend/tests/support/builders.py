@@ -182,6 +182,7 @@ def build_memory_item(
     confidence: float = 0.9,
     status: MemoryStatus = MemoryStatus.CANDIDATE,
     version: int = 1,
+    content: str = "",
     created_at: datetime = FIXED_TIME,
 ) -> MemoryItem:
     return MemoryItem(
@@ -192,6 +193,7 @@ def build_memory_item(
         status=status,
         created_at=created_at,
         version=version,
+        content=content,
     )
 
 

@@ -56,7 +56,7 @@ testpaths = ["tests"]
 # Live-infrastructure tests are opt-in: the default run deselects them so the
 # suite stays green without databases. Select them with `pytest -m live`
 # (a command-line -m overrides the one below).
-addopts = '--strict-markers -m "not live and not live_ai and not live_neo4j"'
+addopts = '--strict-markers -m "not live and not live_ai and not live_neo4j and not live_qdrant"'
 # Validation taxonomy (testing-strategy §5). `--strict-markers` makes an
 # unregistered marker an error, so the taxonomy stays explicit.
 markers = [
@@ -68,6 +68,7 @@ markers = [
     "live: Live-infrastructure validation — requires a reachable PostgreSQL (opt-in, ES-040).",
     "live_ai: Live AI-provider validation — requires GOOGLE_API_KEY and network (opt-in, ES-043).",
     "live_neo4j: Live graph-store validation — requires a reachable Neo4j (opt-in, ES-048).",
+    "live_qdrant: Live vector-store validation — requires PostgreSQL + Qdrant (opt-in, ES-050).",
 ]
 
 [tool.coverage.run]

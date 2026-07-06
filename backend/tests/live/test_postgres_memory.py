@@ -33,7 +33,7 @@ pytestmark = pytest.mark.live
 
 
 async def _reset(engine: AsyncEngine) -> None:
-    await truncate_tables(engine, "memory_item")
+    await truncate_tables(engine, "memory_outbox", "memory_item")
 
 
 def test_versioned_memory_lifecycle() -> None:

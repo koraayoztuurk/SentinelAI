@@ -12,7 +12,13 @@ from app.application.memory.errors import (
     MemoryNotFoundError,
     MemoryServiceError,
 )
+from app.application.memory.outbox import (
+    OutboxRecord,
+    OutboxRepository,
+    OutboxStatus,
+)
 from app.application.memory.service import MemoryService
+from app.application.memory.vector_store import MemoryVectorStore
 
 __all__ = [
     "MemoryService",
@@ -22,4 +28,8 @@ __all__ = [
     "InvalidMemoryVersionError",
     "MemoryEmbedder",
     "MemoryEmbeddingError",
+    "OutboxRecord",
+    "OutboxRepository",
+    "OutboxStatus",
+    "MemoryVectorStore",
 ]

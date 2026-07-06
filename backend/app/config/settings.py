@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # Cycle budget of the synchronous investigation run surface (ES-044,
     # slice decision V-1): small by default, configurable via RUN_CYCLE_BUDGET.
     run_cycle_budget: int = 3
+    # Memory embedding outbox projector (ES-050, ADR-012): the in-process
+    # background runner that drains the outbox into the vector store. Enabled by
+    # default; tests disable it and drive the projector directly.
+    outbox_projector_enabled: bool = True
+    outbox_poll_interval_seconds: float = 2.0
 
     @property
     def environment(self) -> Environment:

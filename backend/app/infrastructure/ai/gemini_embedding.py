@@ -92,6 +92,14 @@ class GeminiEmbeddingProvider:
         async with httpx.AsyncClient(
             timeout=timeout, transport=self._transport
         ) as client:
+            body: dict[str, object] = {
+                "model": f"models/{model}",
+                "content": {"parts": [{"text": text}]},
+            }
+            # A fixed output dimension keeps the vector size deterministic for
+            # the Qdrant collection (ES-050); 0 or negative means "model default".
+            if self._settings.dimensions > 0:
+                body["outputDimensionality"] = self._settings.dimensions
             return await client.post(
                 f"{_BASE_URL}/models/{model}:embedContent",
                 # The key travels only as a header, never in the URL, so it
@@ -99,10 +107,7 @@ class GeminiEmbeddingProvider:
                 # Stray whitespace from .env sources would be an illegal header
                 # value, so the key is trimmed at use.
                 headers={"x-goog-api-key": self._api_key.reveal().strip()},
-                json={
-                    "model": f"models/{model}",
-                    "content": {"parts": [{"text": text}]},
-                },
+                json=body,
             )
 
     @staticmethod

@@ -1,4 +1,4 @@
-"""PostgreSQL repository adapter for the versioned Memory Item (ES-041).
+"""PostgreSQL repository adapter for the versioned Memory Item (ES-041, ES-050).
 
 Concrete implementation of the Memory Service's repository port
 (:mod:`app.application.memory.repositories`) with the version semantics the
@@ -7,6 +7,14 @@ version, ``list_versions`` returns every version ascending, and ``update``
 modifies the matching version in place (used only for the latest-version
 status change in deprecation). Session/transaction ownership follows the
 Investigation-family adapters: one caller-supplied session per request.
+
+Transactional outbox (ES-050, ADR-012): every new Memory Item version (``add``
+— used by both create and version-supersede) records a ``memory_outbox`` intent
+**in the same session/transaction**, so the authoritative write and the intent
+to derive an embedding commit atomically (no request path writes to two stores —
+AC-14). Deprecation goes through ``update`` (in-place status change), which
+writes no outbox record: the embeddable text is unchanged, so no re-embed is
+owed.
 """
 
 from sqlalchemy import select
@@ -19,6 +27,9 @@ from app.infrastructure.persistence.postgres.memory.mappers import (
     memory_item_to_row,
 )
 from app.infrastructure.persistence.postgres.memory.orm import MemoryItemRow
+from app.infrastructure.persistence.postgres.memory.outbox_orm import (
+    MemoryOutboxRow,
+)
 
 
 class PostgresMemoryRepository:
@@ -29,6 +40,13 @@ class PostgresMemoryRepository:
 
     async def add(self, memory_item: MemoryItem) -> None:
         self._session.add(memory_item_to_row(memory_item))
+        # Same-transaction derivation intent (ADR-012 outbox).
+        self._session.add(
+            MemoryOutboxRow(
+                memory_id=memory_item.id.value,
+                memory_version=memory_item.version,
+            )
+        )
         await self._session.flush()
 
     async def get(self, memory_id: MemoryItemId) -> MemoryItem | None:

@@ -28,6 +28,7 @@ def memory_item_to_row(memory_item: MemoryItem) -> MemoryItemRow:
         confidence=memory_item.confidence.value,
         status=memory_item.status.value,
         created_at=memory_item.created_at,
+        content=memory_item.content,
         supporting_evidence=[e.value for e in memory_item.supporting_evidence],
         referenced_findings=[f.value for f in memory_item.referenced_findings],
         referenced_entities=[e.value for e in memory_item.referenced_entities],
@@ -46,6 +47,7 @@ def memory_item_to_domain(row: MemoryItemRow) -> MemoryItem:
         status=MemoryStatus(row.status),
         created_at=row.created_at,
         version=row.version,
+        content=row.content,
         supporting_evidence=tuple(
             EvidenceId(v) for v in row.supporting_evidence
         ),

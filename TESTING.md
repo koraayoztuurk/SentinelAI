@@ -31,11 +31,12 @@ Backend tests are categorized with pytest markers (registered in
 | `live`         | Live-infrastructure     | real PostgreSQL required — **opt-in** (ES-040)    |
 | `live_ai`      | Live AI provider        | `GOOGLE_API_KEY` + network — **opt-in** (ES-043)  |
 | `live_neo4j`   | Live graph store        | real Neo4j required — **opt-in** (ES-048)         |
+| `live_qdrant`  | Live vector store       | real PostgreSQL + Qdrant — **opt-in** (ES-050)    |
 
 Select a category with `pytest -m <marker>` (e.g. `pytest -m unit`). Unmarked tests
-are Domain Validation. The default run deselects the opt-in live markers
-(`addopts` carries `-m "not live and not live_ai and not live_neo4j"`), so the
-standard suite stays green without databases; a command-line `-m` overrides it. The specialized suites live at `tests/architecture/` (ES-033),
+are Domain Validation. The default run deselects the opt-in live markers (`addopts`
+carries `-m "not live and not live_ai and not live_neo4j and not live_qdrant"`), so
+the standard suite stays green without databases; a command-line `-m` overrides it. The specialized suites live at `tests/architecture/` (ES-033),
 `tests/integration/` (ES-034), `tests/ai_validation/` (ES-035) and
 `tests/operational/` (ES-036); the `operational` marker is also applied to the
 health/observability/configuration suites.
@@ -116,6 +117,24 @@ their nodes, so the target graph is disposable. Neo4j 5 rejects passwords under
 8 characters; the dev compose relaxes that policy so short local passwords work.
 CI runs the suite in the `backend-live-neo4j` job against a Neo4j service
 container.
+
+### Live Qdrant suite (opt-in)
+
+The `live_qdrant` suite (`backend/tests/live/test_memory_outbox_qdrant.py`)
+verifies the transactional outbox → idempotent projector → vector store pipeline
+(ADR-012) against a real PostgreSQL **and** a real Qdrant, with a **fake
+deterministic embedder** (no provider key — CI-able). Locally:
+
+```bash
+docker compose --profile data up -d postgres qdrant   # publishes 127.0.0.1:5432 + 6333
+cd backend
+# PowerShell: $env:POSTGRES_HOST="127.0.0.1"; $env:QDRANT_URL="http://127.0.0.1:6333"; pytest -m live_qdrant
+POSTGRES_HOST=127.0.0.1 QDRANT_URL=http://127.0.0.1:6333 pytest -m live_qdrant
+```
+
+The tests migrate PostgreSQL to head, truncate the memory tables and drop the
+Qdrant collection, so both stores are disposable. CI runs the suite in the
+`backend-live-qdrant` job against PostgreSQL + Qdrant service containers.
 
 ### Live AI suite (opt-in)
 

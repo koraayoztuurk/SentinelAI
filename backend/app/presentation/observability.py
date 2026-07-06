@@ -42,10 +42,10 @@ async def readiness(request: Request, response: Response) -> dict[str, str]:
     Readiness reflects startup completion (the persistence registry built on
     ``app.state`` during the lifespan) and the reachability of the bound stores.
     **PostgreSQL is the authoritative core**: without it no business flow works,
-    so it **gates** overall readiness. Neo4j (the graph store, bound since
-    ES-048) is **probed and reported truthfully** but does not gate readiness —
-    graph operations degrade to contained failures by design (planner-service
-    §8), so a graph-store blip must not take the whole platform out of
+    so it **gates** overall readiness. Neo4j (graph, ES-048) and Qdrant (derived
+    semantic memory, ES-050) are **probed and reported truthfully** but do not
+    gate readiness — graph actions and retrieval degrade to contained failures
+    by design, so a blip in either must not take the whole platform out of
     rotation. Distinct from liveness (``/health``), which is store-independent.
     """
 
@@ -56,11 +56,18 @@ async def readiness(request: Request, response: Response) -> dict[str, str]:
             "status": "not_ready",
             "postgres": "not_initialized",
             "neo4j": "not_initialized",
+            "qdrant": "not_initialized",
         }
 
     postgres = await _probe(registry.ping_postgres())
     neo4j = await _probe(registry.ping_neo4j())
-    body = {"status": "ready", "postgres": postgres, "neo4j": neo4j}
+    qdrant = await _probe(registry.ping_qdrant())
+    body = {
+        "status": "ready",
+        "postgres": postgres,
+        "neo4j": neo4j,
+        "qdrant": qdrant,
+    }
     if postgres != "ok":
         body["status"] = "not_ready"
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE

@@ -49,6 +49,7 @@ class MemoryCreateRequest(BaseModel):
     source_investigation_id: str
     confidence: float
     status: MemoryStatus
+    content: str = ""
     supporting_evidence: list[str] = []
     referenced_findings: list[str] = []
     referenced_entities: list[str] = []
@@ -63,6 +64,7 @@ class MemoryCreateRequest(BaseModel):
             status=self.status,
             created_at=created_at,
             version=1,
+            content=self.content,
             supporting_evidence=_evidence(self.supporting_evidence),
             referenced_findings=_findings(self.referenced_findings),
             referenced_entities=_entities(self.referenced_entities),
@@ -83,6 +85,7 @@ class MemoryUpdateRequest(BaseModel):
     status: MemoryStatus
     version: int
     created_at: datetime
+    content: str = ""
     supporting_evidence: list[str] = []
     referenced_findings: list[str] = []
     referenced_entities: list[str] = []
@@ -97,6 +100,7 @@ class MemoryUpdateRequest(BaseModel):
             status=self.status,
             created_at=self.created_at,
             version=self.version,
+            content=self.content,
             supporting_evidence=_evidence(self.supporting_evidence),
             referenced_findings=_findings(self.referenced_findings),
             referenced_entities=_entities(self.referenced_entities),
@@ -114,6 +118,7 @@ class MemoryItemResponse(BaseModel):
     status: str
     created_at: datetime
     version: int
+    content: str
     supporting_evidence: list[str]
     referenced_findings: list[str]
     referenced_entities: list[str]
@@ -129,6 +134,7 @@ class MemoryItemResponse(BaseModel):
             status=item.status.value,
             created_at=item.created_at,
             version=item.version,
+            content=item.content,
             supporting_evidence=[e.value for e in item.supporting_evidence],
             referenced_findings=[f.value for f in item.referenced_findings],
             referenced_entities=[e.value for e in item.referenced_entities],

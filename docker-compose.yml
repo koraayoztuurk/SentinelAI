@@ -50,6 +50,10 @@ services:
   qdrant:
     image: qdrant/qdrant
     profiles: ["data"]
+    ports:
+      # Loopback-only publish so the opt-in `live_qdrant` suite can reach the
+      # vector store from the host (6333 = REST/gRPC HTTP API).
+      - "127.0.0.1:6333:6333"
     volumes:
       - qdrant-data:/qdrant/storage
 

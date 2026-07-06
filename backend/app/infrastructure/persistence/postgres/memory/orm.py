@@ -31,6 +31,9 @@ class MemoryItemRow(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+    # The embeddable knowledge text (default empty); the derived embedding
+    # lives in the Vector Database, never in this authoritative row.
+    content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     supporting_evidence: Mapped[list[str]] = mapped_column(
         ARRAY(Text), nullable=False
     )
