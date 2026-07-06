@@ -48,8 +48,8 @@ from app.application.planner import PlannerService
 from app.config.ai import get_gemini_settings
 from app.config.settings import get_settings
 from app.infrastructure.ai.gemini import GeminiLLMProvider
-from app.infrastructure.persistence.neo4j.unavailable import (
-    UnavailableGraphRepository,
+from app.infrastructure.persistence.neo4j.repositories import (
+    Neo4jGraphRepository,
 )
 from app.infrastructure.persistence.postgres.investigation.repositories import (
     PostgresEvidenceRepository,
@@ -76,6 +76,7 @@ from app.presentation.api.errors import (
     ServiceNotConfiguredError,
 )
 from app.presentation.api.generation import SystemClock, Uuid4IdGenerator
+from app.presentation.api.v1.graph.dependencies import get_graph_service
 from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_runner,
     get_investigation_service,
@@ -138,19 +139,38 @@ async def live_memory_service(request: Request) -> AsyncIterator[MemoryService]:
         yield MemoryService(PostgresMemoryRepository(session))
 
 
-def _planner_service(session: AsyncSession) -> PlannerService:
+def _graph_service(request: Request) -> GraphService:
+    """The Graph Service over the live Neo4j adapter (ES-048).
+
+    The Neo4j driver is a long-lived registry resource (not request-scoped like
+    the PostgreSQL session); the adapter opens a session per operation. When the
+    graph store is unreachable the adapter raises ``graph.store_unavailable``,
+    which the Planner Service contains and the Graph API translates to 503.
+    """
+
+    return GraphService(Neo4jGraphRepository(_registry(request).neo4j_driver))
+
+
+def _planner_service(session: AsyncSession, request: Request) -> PlannerService:
     """The Planner Service over the live composition (loop executor, ES-044).
 
-    Investigation and Memory share the request's session/transaction; the
-    graph dependency is the explicit-contract unavailable store, so graph
-    actions produce contained failed results with a stable code.
+    Investigation and Memory share the request's PostgreSQL session/transaction;
+    the graph dependency is the live Neo4j adapter (ES-048), so ``find_neighbors``
+    returns real neighbours (and a contained failure only when Neo4j is
+    unreachable).
     """
 
     return PlannerService(
         _investigation_service(session),
-        GraphService(UnavailableGraphRepository()),
+        _graph_service(request),
         MemoryService(PostgresMemoryRepository(session)),
     )
+
+
+async def live_graph_service(request: Request) -> GraphService:
+    """Provide the Graph Service over the live Neo4j adapter (ES-048)."""
+
+    return _graph_service(request)
 
 
 async def live_investigation_runner(
@@ -175,7 +195,7 @@ async def live_investigation_runner(
         assembler = InvestigationStateAssembler(investigation)
         loop = InvestigationLoop(
             agent,
-            _planner_service(session),
+            _planner_service(session, request),
             assembler,
             Uuid4IdGenerator(),
             SystemClock(),
@@ -217,15 +237,16 @@ def bind_live_services(app: FastAPI) -> None:
     """Bind the live providers to the presentation dependency seams.
 
     ``dependency_overrides`` is FastAPI's runtime substitution point; tests
-    that install their own overrides after ``create_app`` still win. The
-    Graph Service seam is deliberately not bound (graph store out of slice —
-    its endpoints keep reporting 503).
+    that install their own overrides after ``create_app`` still win. The Graph
+    Service is bound to the live Neo4j adapter since ES-048 (its endpoints go
+    live; a graph-store outage surfaces as 503 ``graph.store_unavailable``).
     """
 
     app.dependency_overrides[get_investigation_service] = (
         live_investigation_service
     )
     app.dependency_overrides[get_memory_service] = live_memory_service
+    app.dependency_overrides[get_graph_service] = live_graph_service
     app.dependency_overrides[get_investigation_runner] = (
         live_investigation_runner
     )

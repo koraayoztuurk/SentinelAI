@@ -2817,7 +2817,7 @@
     },
     "/health/ready": {
       "get": {
-        "description": "Report whether the backend can serve business traffic.\n\nReadiness reflects startup completion (the persistence registry built on\n``app.state`` during the lifespan) and reachability of the bound\nauthoritative store: since the runtime persistence binding (ES-042) the\nbusiness endpoints require PostgreSQL, so readiness probes it with a\nshort-timeout round trip. Distinct from liveness (``/health``), which\nstays store-independent.",
+        "description": "Report whether the backend can serve business traffic.\n\nReadiness reflects startup completion (the persistence registry built on\n``app.state`` during the lifespan) and the reachability of the bound stores.\n**PostgreSQL is the authoritative core**: without it no business flow works,\nso it **gates** overall readiness. Neo4j (the graph store, bound since\nES-048) is **probed and reported truthfully** but does not gate readiness \u2014\ngraph operations degrade to contained failures by design (planner-service\n\u00a78), so a graph-store blip must not take the whole platform out of\nrotation. Distinct from liveness (``/health``), which is store-independent.",
         "operationId": "readiness_health_ready_get",
         "responses": {
           "200": {

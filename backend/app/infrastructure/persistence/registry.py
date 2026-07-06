@@ -65,6 +65,16 @@ class PersistenceRegistry:
         async with self.engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
 
+    async def ping_neo4j(self) -> None:
+        """Perform a trivial Neo4j round trip (readiness probing).
+
+        Raises whatever the driver raises when the store is unreachable; the
+        caller decides how to report it.
+        """
+
+        async with self.neo4j_driver.session() as session:
+            await (await session.run("RETURN 1")).consume()
+
 
 def build_registry() -> PersistenceRegistry:
     """Create the persistence registry.

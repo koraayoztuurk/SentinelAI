@@ -3,11 +3,16 @@
 Opt-in (`pytest -m live`): runs the real application (lifespan → persistence
 registry → live PostgreSQL adapters) against a reachable PostgreSQL and
 verifies the ES-042 exit criteria — investigation and memory endpoints work
-end to end without 503s (authorization overridden in test, as before), the
-planner composition executes ``get_memory`` against live data while
-``find_neighbors`` yields a contained failed result with the stable
-``graph.store_unavailable`` code (never an exception), readiness reflects the
-reachable store, and the Graph API itself stays explicitly unbound (503).
+end to end without 503s (authorization overridden in test, as before),
+readiness reflects the reachable PostgreSQL, and the Planner Service contains a
+graph-store-unavailable failure as a failed execution result (stable
+``graph.store_unavailable`` code, never an exception).
+
+The Graph store went live with ES-048: the live graph API and real
+``find_neighbors`` are covered by the ``live_neo4j`` suite (which requires a
+reachable Neo4j). This suite stays PostgreSQL-centric — it must pass whether or
+not Neo4j is up (CI's live lane provides PostgreSQL only) — so it drives the
+graph-unavailable failure-isolation path through an explicit unavailable repo.
 
 The planner checks drive the Planner Service composition directly: its
 transitional HTTP resource was removed by ES-044 (V-2) — the service remains
@@ -85,10 +90,14 @@ def test_live_stack_serves_investigation_memory_and_planner() -> None:
     asyncio.run(_reset_database())
 
     with _client() as client:
-        # Readiness reflects the reachable authoritative store.
+        # Readiness reflects the reachable authoritative store (PostgreSQL
+        # gates readiness; the neo4j field is reported but not asserted here —
+        # this suite does not require a live graph store).
         ready = client.get("/health/ready")
         assert ready.status_code == 200
-        assert ready.json() == {"status": "ready", "postgres": "ok"}
+        ready_body = ready.json()
+        assert ready_body["status"] == "ready"
+        assert ready_body["postgres"] == "ok"
 
         # Investigation family end to end — no 503, real persistence.
         created = client.post(
@@ -148,14 +157,10 @@ def test_live_stack_serves_investigation_memory_and_planner() -> None:
         assert history.status_code == 200
         assert [v["version"] for v in history.json()["data"]] == [1, 2]
 
-        # The Graph API itself stays explicitly unbound.
-        graph = client.get("/api/v1/graph/entities/ent-1")
-        assert graph.status_code == 503
-        assert graph.json()["error"]["code"] == "api.persistence_not_configured"
-
     # Planner composition against the live store (service seam, see module
-    # docstring): get_memory completes with live data; find_neighbors yields
-    # the contained graph.store_unavailable failure.
+    # docstring): get_memory completes with live data; find_neighbors over an
+    # explicitly-unavailable graph store yields the contained
+    # graph.store_unavailable failure (the failure-isolation contract).
     get_memory = asyncio.run(
         _execute_live_planner_action(
             GetMemoryAction(

@@ -72,10 +72,12 @@ def test_error_and_success_traffic_interleave_without_degradation() -> None:
             # Operational surfaces stay healthy between the failures.
             assert client.get("/health").status_code == 200
 
-        # Readiness keeps serving and truthfully reports the store as down.
+        # Readiness keeps serving and truthfully reports the stores as down.
         ready = client.get("/health/ready")
         assert ready.status_code == 503
-        assert ready.json() == {"status": "not_ready", "postgres": "unavailable"}
+        body = ready.json()
+        assert body["status"] == "not_ready"
+        assert body["postgres"] == "unavailable"
 
 
 def _duration_count(metrics_text: str) -> int:

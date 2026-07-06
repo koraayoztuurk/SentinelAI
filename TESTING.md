@@ -30,11 +30,12 @@ Backend tests are categorized with pytest markers (registered in
 | `ai`           | AI Validation           | behavioral validation of AI capabilities (ES-035) |
 | `live`         | Live-infrastructure     | real PostgreSQL required — **opt-in** (ES-040)    |
 | `live_ai`      | Live AI provider        | `GOOGLE_API_KEY` + network — **opt-in** (ES-043)  |
+| `live_neo4j`   | Live graph store        | real Neo4j required — **opt-in** (ES-048)         |
 
 Select a category with `pytest -m <marker>` (e.g. `pytest -m unit`). Unmarked tests
-are Domain Validation. The default run deselects `live` (`addopts` carries
-`-m "not live"`), so the standard suite stays green without databases; a
-command-line `-m` overrides it. The specialized suites live at `tests/architecture/` (ES-033),
+are Domain Validation. The default run deselects the opt-in live markers
+(`addopts` carries `-m "not live and not live_ai and not live_neo4j"`), so the
+standard suite stays green without databases; a command-line `-m` overrides it. The specialized suites live at `tests/architecture/` (ES-033),
 `tests/integration/` (ES-034), `tests/ai_validation/` (ES-035) and
 `tests/operational/` (ES-036); the `operational` marker is also applied to the
 health/observability/configuration suites.
@@ -92,6 +93,29 @@ The connection comes from the standard `POSTGRES_*` environment variables
 Alembic head and truncate the tables they touch, so the target database is
 disposable. CI runs the suite in the `backend-live` job against a PostgreSQL
 service container.
+
+### Live Neo4j suite (opt-in)
+
+The `live_neo4j` suite (`backend/tests/live/test_neo4j_graph.py`) verifies the
+concrete Neo4j graph adapter and the schema migration against a real graph
+store. Locally:
+
+```bash
+docker compose --profile data up -d neo4j   # publishes 127.0.0.1:7687
+cd backend
+# PowerShell: $env:NEO4J_URI="bolt://127.0.0.1:7687"; $env:NEO4J_PASSWORD="<compose pw>"; pytest -m live_neo4j
+NEO4J_URI=bolt://127.0.0.1:7687 NEO4J_PASSWORD=<compose pw> pytest -m live_neo4j
+```
+
+Both the host-run tests **and** the app under test read the standard `NEO4J_*`
+variables (`app.config.database.Neo4jSettings`), so a single pair of overrides
+configures everything: `NEO4J_URI` (the compose default URI uses the
+compose-internal hostname, unreachable from the host) and `NEO4J_PASSWORD` (to
+match the compose password). The tests bootstrap the graph schema and clear
+their nodes, so the target graph is disposable. Neo4j 5 rejects passwords under
+8 characters; the dev compose relaxes that policy so short local passwords work.
+CI runs the suite in the `backend-live-neo4j` job against a Neo4j service
+container.
 
 ### Live AI suite (opt-in)
 
