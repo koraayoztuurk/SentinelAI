@@ -84,11 +84,11 @@ Amaç analistin yerini almak değil; tekrarlayan korelasyon işlerini azaltarak 
 
 ## Product Backlog / Süreç Yönetimi
 
-Bu projede klasik bir Jira/Trello/Miro backlog panosu **kullanılmamıştır**. Mimari-öncelikli bir platformda iş büyüklüğünün satır sayısından çok "hangi sözleşmeyi/ADR'yi karşılıyor" ve "çıkış ölçütü nedir" sorularına bağlı olduğu değerlendirilerek; backlog birimi olarak **Engineering Slice (ES)** kullanılmış, ilerleme append-only bir mühendislik defterinde (`workdocs/SentinelAI-Implementation-Tracker.md`) ve kamuya açık bir teslimat kaydında (`docs/11-roadmap/README.md` → Delivery Record) tutulmuştur.
+Backlog [Jira'da (SentinalAI / SEN projesi)](https://korayozturk.atlassian.net/jira/core/projects/SEN/board) görev ve alt görev olarak tutulmaktadır. Mimari seviyedeki teknik detay ve doğrulama kayıtları için `workdocs/SentinelAI-Implementation-Tracker.md` (append-only mühendislik defteri) ve `docs/11-roadmap/README.md` (teslimat kaydı) referans alınır.
 
-- **Backlog / teslimat kaydı:** [`docs/11-roadmap/README.md`](docs/11-roadmap/README.md)
-- **Dahili ES defteri (source of truth):** `workdocs/SentinelAI-Implementation-Tracker.md`
-- **Dilim planları:** `workdocs/VERTICAL-SLICE-PLAN-2026-07-03.md`, `workdocs/SECOND-VERTICAL-SLICE-PLAN-2026-07-05.md`
+- **Jira backlog:** [SentinalAI / SEN projesi](https://korayozturk.atlassian.net/jira/core/projects/SEN/board)
+- **Teslimat kaydı:** [`docs/11-roadmap/README.md`](docs/11-roadmap/README.md)
+- **Mühendislik defteri:** `workdocs/SentinelAI-Implementation-Tracker.md`
 
 ---
 
@@ -264,31 +264,35 @@ Proje lisansı, ilk kamuya açık sürümden önce belirlenecektir.
 
 ### Sprint Notları
 
-- Proje **Architecture First** ilkesiyle yürütüldü: implementasyona başlamadan önce tüm mimari alanlar (proje vizyonu, ürün, sistem mimarisi, AI, backend, frontend, DevOps, security, testing) dokümante edildi ve ADR/RFC yönetişim modeliyle onaylandı.
-- Backlog birimi olarak klasik "story point" yerine **Engineering Slice (ES)** kullanıldı: her ES; kapsam, bağımlılık gerekçesi, karşıladığı ADR/sözleşme ve çıkış ölçütü (exit criteria) dörtlüsüyle tanımlanan, tek başına doğrulanabilir bir teslim birimidir.
-- Sprint içinde iki denetim fazı (Faz 1: mimari denetim, Faz 2: boşluk analizi) tamamlanıp, roadmap'in "Vertical Slice First" kuralına göre **ilk dikey dilim** (ES-040 – ES-047) planlandı ve uygulandı; ardından **ikinci dikey dilimin** temel taşları (Neo4j, Gemini embedding, Qdrant) erken başlatılıp tamamlandı.
-- AI destekli çalışma (Claude) bu sprint boyunca **Principal Software Architect** rolünde kullanıldı: mimari tutarlılığı korumak, sorumluluk sınırlarını denetlemek ve yalnızca açıkça istendiğinde implementasyona yardımcı olmak üzere sınırlandırıldı.
+- Faz 1 (mimari denetim) ve Faz 2 (boşluk analizi) tamamlandı; ilk dikey dilim (ES-040–047) uygulandı; ikinci dikey dilimin (Milestone A) ilk üç kalemi — Neo4j, Gemini embedding, Qdrant outbox (ES-048–050) — bu sprint içinde tamamlandı.
+- Backlog Jira'da (SentinalAI / SEN projesi) 8 üst-seviye görev ve 12 alt görev olarak işlendi; mimari seviyedeki teknik detay `workdocs/SentinelAI-Implementation-Tracker.md`'de tutuldu.
+- Her iş kalemi aynı akıştan geçti: Implementation Plan → Mimari İnceleme → Implementasyon → Doğrulama (`ruff` + `mypy --strict` + `pytest`) → Kod İncelemesi → Doküman Güncellemesi → Merge.
 
-### Sprint İçinde Tamamlanması Beklenen Birim
+### Sprint İçinde Tamamlanan İşler
 
-Faz 1 + Faz 2 (mimari denetim ve boşluk analizi) + ilk dikey dilimin tamamı (8 ES)
-
-### Birim Tamamlama Mantığı
-
-Klasik Fibonacci puanlama, mimari-öncelikli bir projede anlamlı bulunmadığı için tercih edilmedi. Bunun yerine her ES kendi çıkış ölçütüyle kapatıldı: Sprint sonunda **50 Engineering Slice (ES-001 – ES-050)** append-only tracker'a işlendi ve hiçbiri bir sonraki ES tarafından geri açılmadı — bu da mimari kararların geriye dönük tutarlılığının bir göstergesidir.
+Faz 1, Faz 2, İlk Dikey Dilim (8 ES) ve İkinci Dikey Dilim'in ilk 3 kalemi (ES-048–050) — Jira'da 14 görev "Tamamlandı" durumunda.
 
 ### Daily Scrum
 
-Bireysel bir proje olduğundan klasik toplantı formatında daily scrum yapılmadı. Bunun yerine her çalışma oturumu bir ES'in geliştirme akışıyla başladı ve ilerleme `workdocs/SentinelAI-Implementation-Tracker.md` dosyasına günlük olarak, **append-only** biçimde işlendi.
+İlerleme her gün `workdocs/SentinelAI-Implementation-Tracker.md`'ye append-only olarak işlendi ve Jira görev durumlarına yansıtıldı.
 
-### Sprint Board Güncellemesi
+### Sprint Board
 
-Klasik bir görsel board yerine, ilerleme aşağıdaki dokümanlarla takip edildi:
+Backlog ve board [Jira'da (SentinalAI / SEN projesi)](https://korayozturk.atlassian.net/jira/core/projects/SEN/board) tutulmaktadır.
 
-- [`docs/11-roadmap/README.md`](docs/11-roadmap/README.md) — kamuya açık teslimat kaydı (Delivery Record)
-- `workdocs/SentinelAI-Implementation-Tracker.md` — append-only ES kaydı (dahili çalışma dokümanı)
-- `workdocs/VERTICAL-SLICE-PLAN-2026-07-03.md` — ilk dikey dilimin (ES-040…047) sıralama planı
-- `workdocs/SECOND-VERTICAL-SLICE-PLAN-2026-07-05.md` — ikinci dikey dilimin (Milestone A) planı
+**Jira Pano Görünümü**
+
+<p align="center">
+  <img src="assets/sp1_3.png" width="45%" alt="Jira Pano — Yapılacaklar ve Tamam sütunları" />
+  <img src="assets/sp1_4.png" width="45%" alt="Jira Pano — devamı" />
+</p>
+
+**Jira Liste Görünümü**
+
+<p align="center">
+  <img src="assets/sp1_1.png" width="45%" alt="Jira Liste görünümü — görev durumları" />
+  <img src="assets/sp1_2.png" width="45%" alt="Jira Liste görünümü — devamı" />
+</p>
 
 ### Ürün Durumu
 
@@ -305,6 +309,12 @@ Klasik bir görsel board yerine, ilerleme aşağıdaki dokümanlarla takip edild
 | Milestone B — Decision Engine ve uzman agent genişlemesi | ⏳ Başlamadı |
 | Backend test durumu | ✅ 352 test yeşil, `ruff` temiz, `mypy --strict` temiz (157 dosya) |
 
+### Uygulama Ekran Görüntüsü
+
+<p align="center">
+  <img src="assets/sentinelai-workspace-screenshot.png" width="90%" alt="SentinelAI Investigation Workspace ekran görüntüsü" />
+</p>
+
 ### Sprint Review
 
 - Sprint sonunda platform, ilk kez kendi çekirdek iddiasını uçtan uca kanıtladı: bir AI kararı üretiliyor, yürütülüyor, Investigation Trace'e kalıcı olarak yazılıyor ve tarayıcıdan **mock'suz** görünüyor.
@@ -315,7 +325,7 @@ Klasik bir görsel board yerine, ilerleme aşağıdaki dokümanlarla takip edild
 ### Sprint Retrospective
 
 - **İyi giden:** Mimariyi implementasyondan önce netleştirmek, her ES için kod ile dokümanın (ADR, `openapi.json`, roadmap Delivery Record) eşzamanlı güncellenmesi sürecin tutarlılığını korudu; hiçbir ES bir öncekini geçersiz kılmadı.
-- **Geliştirilecek:** Bireysel bir proje olduğundan klasik Scrum seremonileri (daily toplantı, retrospektif toplantısı) ekip formunda gerçekleşmedi; bunların yerine tracker + ADR/RFC belgeleri kanıt olarak kullanıldı.
+- **Geliştirilecek:** Backlog Jira'ya taşındı; sonraki sprintte günlük ilerlemenin de Jira üzerinden (yorum/durum geçişleriyle) takip edilmesi hedefleniyor.
 - **Sonraki sprint için kararlaştırılanlar:** Milestone A'nın kalanı (RAG retrieval'in agent tarafından tüketimi), ardından Milestone B (Decision Engine, uzman agent'lar) önceliklendirilecek.
 
 </details>
