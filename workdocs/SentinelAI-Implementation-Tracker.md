@@ -60,6 +60,10 @@
 | ES-048 | Neo4j Graph Persistence: Migration Mechanism + Authoritative Adapter + Runtime Binding | ✅ Completed |
 | ES-049 | Application-Owned Embedding Port + Concrete Gemini Embedding Adapter | ✅ Completed |
 | ES-050 | Transactional Outbox + Idempotent Embedding Projector + Qdrant | ✅ Completed |
+| ES-051 | Live RAG Retrieval: Concrete Source-Backed Retriever + Run-Path Consumption | ✅ Completed |
+| ES-052 | Investigation-Scoped Memory Surface (Memory Listing API + Workspace Memory Region) | ✅ Completed |
+| ES-053 | Seed Utility & Second-Slice Demo (Milestone A closed) | ✅ Completed |
+| ES-054 | NVIDIA NIM LLM Provider (MiniMax-M3) + LLM Provider Selection + Dev Auto Sign-In | ✅ Completed |
 
 ---
 
@@ -1382,6 +1386,110 @@ ES-050 delivers ADR-012's core: the transactional outbox (written atomically wit
 the idempotent embedding projector (deterministic Qdrant point per item), the Qdrant collection and
 the background runner. Regeneration/versioning/GC, resilience hardening and AC-14 enforcement belong
 to later specifications.
+
+---
+
+## ES-051 (second slice, Part 3)
+
+- **Retrieval runs once per run** (owner decision): the runner executes the Retrieval Flow before
+  the loop and the assembler preserves the attached knowledge across cycles — one Memory Agent
+  call + one query embedding per run, not per cycle. Per-cycle (or planner-actioned) retrieval is
+  a future refinement that would need a cost/latency decision.
+- **Retrieval failure is log-only** (no trace entry on the failure path): `MemoryAgentError` /
+  `InsufficientContextError` are contained in the runner and the run proceeds without retrieved
+  knowledge. An empty knowledge base fails the pipeline's validation gate by design (the normal
+  early-investigation condition), so tracing every failure would spam the journal — revisit with
+  the Decision Engine.
+- **External strategy contributes nothing** (Milestone C): the composite retriever executes
+  semantic/structured/graph; `external` yields no items (never an error). `hybrid` expands to the
+  three organizational strategies.
+- **Knowledge-line content is bounded (300 chars)** in the planner prompt — context
+  compression/budget/ranking remain rag §16 deferrals.
+- **Semantic search is cross-investigation by design** (memory is the shared knowledge layer,
+  §6a; MemoryItem is "reusable across investigations") — no investigation filter on the vector
+  search; provenance carries the source. Deprecated Memory Items are filtered out of retrieval
+  (semantic + structured): deprecation marks knowledge no longer valid.
+- **`memory.vector_store_unavailable`** added (the Qdrant search maps driver/transport failures
+  to it, mirroring `graph.store_unavailable`); the projector's write path keeps its ES-050
+  containment unchanged. The new code is contained **per strategy** in the retriever, so a
+  vector-store outage silences semantic retrieval only.
+- **No re-ranking / no score thresholds**: matches map back to the authoritative Memory Items
+  (content never read from the derived store, §8a), cosine scores clamp to Confidence [0,1] and
+  are surfaced as-is. Quality evaluation remains out of scope (ES-035 stance).
+- Resource bounds are constants (semantic limit 5, graph seeds 3, neighbours 10) — configuration
+  surface deferred until a consumer needs to tune them.
+
+---
+
+## ES-052 (second slice, Part 4)
+
+- **Query-parameter listing** (`GET /api/v1/memory?investigation_id=…`): memory stays a
+  Memory-Service-owned top-level resource — a sub-resource under `/investigations` would imply
+  Investigation Service ownership (AC-07). No pagination (platform-wide list-pagination TD stands).
+- **Shared-knowledge read** (§6a): the listing is open to any authenticated identity — no owner
+  scoping on memory reads (isolation happens at promotion, not retrieval); the existing
+  OwnerScopedAuthorizer's `/api/v1/memory` prefix rule already covers the new operation.
+- **All statuses returned** (deprecated included, status visible in the UI) — the service listing
+  stays neutral; only *retrieval* (ES-051) filters deprecated knowledge.
+- **Memory region is read-only**: no memory authoring UX (create/update/deprecate from the
+  workspace) — knowledge promotion flows remain a later capability.
+- **Browser-pane caveat** (verification infra): the Claude preview tunnel strips `Authorization`
+  headers, so in-pane auth flows 401; verified instead via headless Chrome over CDP against the
+  live stack (real browser, no mocks).
+
+---
+
+## ES-053 (second slice, close)
+
+- **Seed is additive and non-destructive**: each run creates a fresh demo investigation (UUID id);
+  the ``demo-*`` graph entities are reused by canonical identity (idempotent creation); no
+  truncation of user data. Seeding goes through the **services**, never raw persistence.
+- **Derived-collection recreation on dimension mismatch**: the live test suites leave
+  ``memory_embeddings`` at their fake-embedder dimension (3) on the shared local Qdrant; the seed
+  recreates the collection at the configured dimension (768) — legitimate because the derived
+  representation is never authoritative (ADR-012). Earlier points are lost (bulk re-projection
+  stays an ES-050 deferral); a test-scoped collection name is backlogged.
+- **Key-less degrade**: without ``GOOGLE_API_KEY`` the seed leaves outbox records pending (the
+  app's background projector embeds them later) — the projector path is never faked.
+- **Environment gotcha (recorded for operators)**: PowerShell ``-match`` is case-insensitive and
+  the Turkish locale lowercases ``I`` to ``ı``, so ``[A-Z]`` classes silently fail on names like
+  ``GOOGLE_API_KEY`` — load ``.env`` lines with ``-cmatch``. (This had masked the env-var path of
+  the key; live_ai suites passed via their own ``.env`` fallback.)
+- **Demo happy-path caveat (external)**: on the closing day Gemini ``generateContent``
+  (gemini-3.5-flash) returned intermittent 503s over several hours, so the browser demo's run
+  ends **escalated** with the stable ``ai.llm_provider_error`` — the documented ADR-013 degrade
+  path, user-visible. The retrieval-wired happy path (real Memory Agent decision, real query
+  embedding, Qdrant search, chronological trace) is live-proven by the ``live_ai`` suite (4/4,
+  ES-051 entry); the browser walkthrough re-runs with one command when the provider has capacity.
+
+---
+
+## ES-054
+
+- **Model choice is owner-driven** (MiniMax-M3 on NVIDIA NIM; the Gemini capacity outages were
+  the trigger). `NVIDIA_MODEL` is configuration; the provider decision realizes ADR-005's
+  replaceable-port claim with a second concrete adapter. **Embedding stays on Gemini** — the
+  Qdrant collection's 768-dim vector space is bound to the embedding model (ES-050); switching
+  embedders is a separate re-projection decision.
+- **`LLM_PROVIDER` selection is composition-time config** (closed enum gemini|nvidia); an invalid
+  value fails at composition, not at startup — startup-time validation for provider selection
+  follows if the provider ever becomes a startup-constructed component (same stance as the ES-043
+  key-validation deferral). No retry/fallback chain between providers (Milestone G hardening).
+- **Reasoning normalization is adapter-owned**: M-class models may emit `<think>…</think>` inside
+  the answer content; the adapter strips it because `LLMResponse.text` is the answer contract —
+  strict-JSON consumers (planner/memory agents) must never parse provider-specific reasoning
+  artifacts. Reasoning-only responses map to `LLMProviderError`.
+- **Default execution bound 90s** (reasoning models answer slower than flash-class; ADR-013's
+  mandatory protections — bound + total error mapping — unchanged). `max_tokens` 8192 leaves room
+  for visible reasoning plus the answer.
+- **Dev auto sign-in is a dev-server-only convenience**: `VITE_DEV_AUTH_CREDENTIAL` in the
+  gitignored `frontend/.env.local`; production builds never receive the variable, the backend
+  security chain (ES-046) is untouched, and an explicitly entered credential always wins. The
+  vitest runtime force-empties the variable so the developer's real `.env.local` cannot leak into
+  tests.
+- `live_ai` does not yet cover the NVIDIA adapter (its gating is `GOOGLE_API_KEY`-shaped); the
+  real-provider proof is the ES-054 smoke + demo run — a provider-parameterized live lane is
+  future work.
 
 ---
 
@@ -2735,3 +2843,143 @@ Next ES
 - Verification: `ruff` clean, `mypy app` strict clean (157 files), default **352 passed** / 20
   deselected; **`live_qdrant` 2/2**; regression `live` **8/8** + `live_neo4j` **6/6** green (Postgres
   migrated through `0003`, memory `content` round-trips); `openapi.json` regenerated.
+
+---
+
+## ES-051
+
+- Live RAG retrieval delivered (second slice, Part 3; closes the ES-013 "concrete source-backed
+  retrievers" + "live DI/lifecycle wiring" deferrals and the ES-049 "AI-side query embedding"
+  consumer): the `Retriever` port has its first concrete implementation and the Retrieval Flow
+  now runs at runtime inside the investigation run path.
+- **CompositeRetriever** (`infrastructure/ai/retrieval.py`, infrastructure edge code implementing
+  the AI-layer port — the ES-043/049 provider pattern): **semantic** = objectives embedded via the
+  AI `EmbeddingProvider` (shared Gemini adapter) → `MemoryVectorStore.search` (new port operation)
+  → matches mapped back to the **authoritative** Memory Items; **structured** = latest Memory Items
+  of the investigation via the new `MemoryService.list_for_investigation`; **graph** = findings'
+  related-entity neighbourhood via the Graph Service (1 hop + incident relationships); `external`
+  deferred (Milestone C); `hybrid` expands to the organizational three. Per-strategy failure
+  containment; deprecated memory filtered; dangling §8a references observable-and-skipped.
+- **Vector-store read path**: `MemoryVectorMatch` + `search` on the application port; the Qdrant
+  adapter queries by cosine similarity, returns () for an absent collection, and maps
+  driver/transport failures to the new stable `memory.vector_store_unavailable` (the
+  `graph.store_unavailable` pattern).
+- **Memory listing**: `MemoryRepository.list_for_investigation` + service operation — latest
+  version per item, investigation-scoped, deterministic `(created_at, id)` order (needed by the
+  structured strategy now, by the ES-052 REST surface next).
+- **Run-path consumption**: `InvestigationState.knowledge` (additive), the planner prompt carries
+  `retrieved_knowledge`, `InvestigationStateAssembler.next_state` preserves knowledge across
+  cycles, and `InvestigationRunner` executes the Retrieval Flow **once per run** (owner decision)
+  with contained failure (run proceeds knowledge-less). DI composes MemoryAgent (shared Gemini
+  LLM), RagPipeline over the CompositeRetriever, and the RetrievalFlow with the Investigation
+  Service as trace sink — one RETRIEVAL trace entry per successful retrieval (ES-039 contract).
+- **Tests**: 9 CompositeRetriever unit tests (fakes + in-memory services), 5 runner retrieval
+  tests, assembler knowledge-preservation test, planner prompt knowledge test (ai_validation);
+  live: `live` gains the list_for_investigation round-trip (9/9), `live_qdrant` gains the
+  projected-then-retrieved semantic round-trip with a directional fake embedder (3/3),
+  `live_neo4j` regression green (6/6).
+- Verification: `ruff` clean, `mypy app` strict clean (158 files), default **368 passed** / 22
+  deselected; live suites 9/9 + 3/3 + 6/6; **`live_ai` 4/4** — the full live run now executes
+  through the retrieval-wired composition (real Memory Agent decision, real query embedding,
+  real Qdrant search) with the chronological trace intact. No REST contract change
+  (`openapi.json` freshness test green, AC-15).
+
+---
+
+## ES-052
+
+- Investigation-scoped Memory surface delivered (second slice, Part 4; closes the ES-025 "Memory
+  Region placeholder / no list-memory-by-investigation endpoint" deferral): the workspace Memory
+  region is live and the second slice is user-visible end to end.
+- **Backend**: `GET /api/v1/memory?investigation_id=<id>` over the ES-051
+  `MemoryService.list_for_investigation` (latest version per item, deterministic order, unknown
+  investigation => empty list — §8a structural reference). Thin controller reusing the
+  envelope/error foundation; `Query(min_length=1)` transport validation; the shared-knowledge
+  policy rule covers the operation unchanged. `openapi.json` regenerated (AC-15).
+- **Frontend**: `communication/memory.ts` (transitional DTO + `MemoryItemViewModel` +
+  `loadInvestigationMemory`), `memoryQuery` + `invalidateMemory` in the `state/query.ts` boundary
+  (memory joins `invalidateInvestigationData`, so runs/mutations refresh the region),
+  `useInvestigationMemory` hook, and `MemorySection` (type, status badge, content, version +
+  confidence; loading/error/empty states) replacing the placeholder in the workspace page.
+- **Test-infra fix**: the memory API test client rebuilt its id generator per request (a defaulted
+  lambda), so successive creates collided on "id-1" — the client now captures one shared counter
+  (the ES-034 closure-capture note strikes again).
+- **Tests**: 3 new memory API tests (latest-version listing, unknown-investigation empty,
+  missing-parameter 422); MemorySection component tests (items render with type/status/confidence,
+  empty state, contained load failure + retry); the presentation memory double gained
+  `list_for_investigation`.
+- Verification: `ruff` clean, `mypy app` strict clean (158 files), backend default **371 passed** /
+  22 deselected; frontend lint/`tsc -b` clean, **65 tests**, build green. Live browser proof
+  (headless Chrome via CDP against Vite dev + live backend + live stores, no mocks): dev credential
+  committed, workspace loads, the Memory region renders two live Memory Items with status badges
+  and confidence — screenshot captured. (The Claude preview tunnel strips `Authorization` headers,
+  so the in-pane flow 401s; the CDP run is the real-browser verification path.)
+
+---
+
+## ES-053
+
+- Seed utility & second-slice demo delivered (Milestone A closed): `backend/scripts/seed_demo.py`
+  produces a demonstrable environment on one command — PostgreSQL migrated to head, the Neo4j
+  graph schema bootstrapped (the utility is the ES-048 mechanism's documented second invoker),
+  and a consistent demo dataset seeded **through the services**: one investigation, 2 evidence
+  items, 2 confirmed findings (related entities), 3 graph entities + 2 relationships, 3
+  content-rich Memory Items.
+- **End-to-end real-embedding path proven** (the check ES-050 delegated here): the seeded Memory
+  Items' outbox records were projected into Qdrant with **real Gemini embeddings**
+  (`gemini-embedding-001`, 768-dim) — 6 points on the live store, including the previous run's
+  pending backlog (at-least-once outbox semantics visible in practice).
+- **Demo walkthrough (headless Chrome over CDP, live stack, no mocks)**: dev credential → the
+  seeded workspace renders every region live — overview, confirmed findings, evidence, derived
+  timeline, entity-seeded graph chips (`demo-host-1/ip/domain`), and the ES-052 Memory region
+  with the three knowledge items; "Run investigation" exercised the run surface (see the TD
+  entry: the provider's multi-hour 503 window made the run end in the documented
+  degrade-to-escalation, stable code visible in the outcome badge — the happy path stands proven
+  by `live_ai` 4/4 over the same composition).
+- The walkthrough instructions live in the script docstring + its final output (self-documenting;
+  workdocs stays limited to its two committed files).
+- Bookkeeping: roadmap **v1.3.0** — Delivery Record rows for the second slice flipped to
+  Delivered (Neo4j+Qdrant/ADR-012, live RAG retrieval, workspace Memory surface); README status
+  table gains the ES-051/052/053 rows; Jira SEN-4/SEN-20 closable.
+- Verification: `ruff` clean (seed script included), `mypy app` strict clean (158 files), default
+  **371 passed** / 22 deselected; seed run output verified against live stores; screenshotted
+  browser walkthrough over Vite dev + local uvicorn + compose data tier.
+
+---
+
+## ES-054
+
+- Second concrete LLM provider delivered (owner decision, triggered by multi-hour Gemini
+  `generateContent` 503 windows): `infrastructure/ai/nvidia.py` realizes the provider-neutral
+  `LLMProvider` port over the NVIDIA NIM OpenAI-compatible `/v1/chat/completions` API via httpx —
+  default model **minimaxai/minimax-m3** (`NVIDIA_MODEL` configurable). ADR-013 contract mirrored
+  from ES-043: bounded execution (default 90s — reasoning-model headroom), total error mapping,
+  key via SecretProvider (`NVIDIA_API_KEY`, Authorization-header-only, trimmed, never logged).
+  Reasoning normalization is adapter-owned: `<think>…</think>` blocks are stripped (the port's
+  `text` is the answer); reasoning-only responses map to `LLMProviderError`.
+- **Provider selection**: `LLM_PROVIDER=gemini|nvidia` (closed enum, `config/ai.py`), consumed by
+  the composition root's `_llm_provider()`; the planner and memory agents share the selected
+  instance. Embedding stays on Gemini (Qdrant 768-dim binding, ES-050). `.env` now selects nvidia.
+- **Memory-agent prompt enriched** (the ES-044 planner precedent applied to the second agent): the
+  minimal "respond as JSON" prompt made every real provider fail strategy selection (unrecognized
+  → empty plan → retrieval silently skipped — masked until now by scripted-response tests and the
+  contained failure path). The prompt now names the exact JSON shape and the strategy vocabulary;
+  ES-012/035 contract tests unchanged and green.
+- **Dev auto sign-in**: `VITE_DEV_AUTH_CREDENTIAL` in the gitignored `frontend/.env.local` signs
+  the sole developer in on dev-server builds (`devAuth` falls back to it when nothing is stored;
+  an explicitly entered credential wins; production builds never carry the variable; vitest
+  force-empties it so the real `.env.local` cannot leak into tests). Backend security chain
+  (ES-046) untouched.
+- **Tests**: 11 NVIDIA contract tests (`httpx.MockTransport`: happy path + think-strip +
+  reasoning-only + 429/503/choice-less/content-less/malformed/transport/bound/key hygiene +
+  missing-key configuration error), 2 devAuth fallback tests. Backend default **382 passed** /
+  22 deselected; `ruff` clean; `mypy app` strict clean (159 files); frontend **67 tests** green.
+- **Live proof (headless Chrome, no credential injected, live stack)**: auto sign-in renders
+  "Signed in: koray"; "Run investigation" on the seeded demo completes — trace shows
+  `retrieval: retrieved 15 item(s) via ['semantic','graph','structured']` (MiniMax-M3 strategy
+  selection → Gemini query embedding → Qdrant/graph/memory retrieval) →
+  `planner_decision: ControlAction` → `action_execution: completed` → `loop_outcome: completed
+  after 1 cycle(s)` — the full Milestone A happy path, user-visible with the new provider.
+- TD: no cross-provider fallback/retry chain (Milestone G); `live_ai` lane not yet
+  provider-parameterized; the compose backend image predates ES-051+ (rebuild when the container
+  flow is next needed).

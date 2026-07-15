@@ -20,7 +20,7 @@ from app.application.memory.errors import (
     MemoryNotFoundError,
 )
 from app.domain.enums import MemoryStatus
-from app.domain.identifiers import MemoryItemId
+from app.domain.identifiers import InvestigationId, MemoryItemId
 from app.infrastructure.persistence.postgres.engine import create_session_factory
 from app.infrastructure.persistence.postgres.memory.repositories import (
     PostgresMemoryRepository,
@@ -105,5 +105,68 @@ async def _memory_scenario() -> None:
         async with session_scope(factory) as session:
             with pytest.raises(MemoryNotFoundError):
                 await service(session).get(MemoryItemId("mem-unknown"))
+    finally:
+        await engine.dispose()
+
+
+def test_list_for_investigation_returns_latest_versions() -> None:
+    ensure_schema()
+    asyncio.run(_list_scenario())
+
+
+async def _list_scenario() -> None:
+    engine = live_engine()
+    try:
+        await _reset(engine)
+        factory = create_session_factory(engine)
+        service = _memory_service
+
+        # Two items for inv-A (one superseded), one for inv-B.
+        async with session_scope(factory) as session:
+            await service(session).create(
+                build_memory_item(
+                    "mem-a1", source_investigation_id="inv-A", content="v1"
+                )
+            )
+        async with session_scope(factory) as session:
+            await service(session).update(
+                build_memory_item(
+                    "mem-a1",
+                    version=2,
+                    source_investigation_id="inv-A",
+                    content="v2",
+                )
+            )
+        async with session_scope(factory) as session:
+            await service(session).create(
+                build_memory_item(
+                    "mem-a2", source_investigation_id="inv-A", content="other"
+                )
+            )
+        async with session_scope(factory) as session:
+            await service(session).create(
+                build_memory_item(
+                    "mem-b1", source_investigation_id="inv-B", content="theirs"
+                )
+            )
+
+        # Latest version per item, investigation-scoped, deterministic order.
+        async with session_scope(factory) as session:
+            items = await service(session).list_for_investigation(
+                InvestigationId("inv-A")
+            )
+        assert [(item.id.value, item.version) for item in items] == [
+            ("mem-a1", 2),
+            ("mem-a2", 1),
+        ]
+        assert items[0].content == "v2"
+
+        # An unknown investigation yields an empty result (§8a: identifiers
+        # are structural references, never validated here).
+        async with session_scope(factory) as session:
+            empty = await service(session).list_for_investigation(
+                InvestigationId("inv-unknown")
+            )
+        assert empty == ()
     finally:
         await engine.dispose()

@@ -2592,6 +2592,48 @@
       }
     },
     "/api/v1/memory": {
+      "get": {
+        "description": "List the latest Memory Item versions originating from an investigation.\n\nThe identifier is a structural cross-service reference\n(database-architecture \u00a78a): an unknown investigation yields an empty\nlist, not an error. Memory is the shared knowledge layer (\u00a76a), so the\nlisting is open to any authenticated identity.",
+        "operationId": "list_memory_api_v1_memory_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_MemoryItemResponse__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Memory",
+        "tags": [
+          "memory"
+        ]
+      },
       "post": {
         "operationId": "create_memory_api_v1_memory_post",
         "requestBody": {

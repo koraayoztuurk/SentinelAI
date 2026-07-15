@@ -7,8 +7,9 @@
 // investigation context (Frontend Architecture §11). The page binds only to the view
 // model — never to backend DTOs.
 //
-// Regions with no investigation-scoped backend source (AI Insights, Memory) render
-// placeholders, and the Graph region is delivered by Graph Visualization (ES-026).
+// Every region is live: AI Insights presents the trace + run interaction
+// (ES-047), Memory presents the investigation's organizational knowledge
+// (ES-052), and the Graph region is delivered by Graph Visualization (ES-026).
 
 import { Link, useParams } from "react-router-dom";
 import { Button } from "../ui/Button";
@@ -20,7 +21,7 @@ import { EvidenceSection } from "../sections/workspace/EvidenceSection";
 import { FindingsSection } from "../sections/workspace/FindingsSection";
 import { TimelineSection } from "../sections/workspace/TimelineSection";
 import { GraphSection } from "../sections/workspace/GraphSection";
-import { PlaceholderRegion } from "../sections/workspace/WorkspaceRegion";
+import { MemorySection } from "../sections/workspace/MemorySection";
 import type { WorkspaceViewModel } from "../communication/workspace";
 
 function WorkspaceSkeleton() {
@@ -54,7 +55,7 @@ function WorkspaceContent({
         <GraphSection seedEntities={viewModel.seedEntities} />
         <div className="grid gap-5 md:grid-cols-2">
           <AiInsightsSection investigationId={investigationId} />
-          <PlaceholderRegion title="Memory" />
+          <MemorySection investigationId={investigationId} />
         </div>
       </div>
     </WorkspaceProvider>

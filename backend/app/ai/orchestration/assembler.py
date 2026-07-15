@@ -17,7 +17,13 @@ Assembly decisions (ES-044, recorded in the tracker):
   earlier decisions.
 - **Tasks** — empty: no Task service exists (tracker: Task ownership is an
   open documentation gap).
+- **Knowledge** (ES-051) — retrieved-knowledge lines are attached by the
+  runner (once per run, before the loop); ``next_state`` preserves them across
+  cycles, so the planner keeps observing the same retrieved context without
+  re-retrieval.
 """
+
+from dataclasses import replace
 
 from app.ai.agents.planner.state import InvestigationState
 from app.application.investigation import InvestigationService
@@ -64,6 +70,12 @@ class InvestigationStateAssembler:
     async def next_state(
         self, state: InvestigationState, result: ExecutionResult
     ) -> InvestigationState:
-        """Re-assemble after an executed action (the loop's ``StateAssembler``)."""
+        """Re-assemble after an executed action (the loop's ``StateAssembler``).
 
-        return await self.assemble(state.investigation_id)
+        The retrieved knowledge attached to the run's initial state is carried
+        forward: re-assembly reflects the investigation's new persisted state,
+        while the run's retrieval context stays observable to the agent.
+        """
+
+        assembled = await self.assemble(state.investigation_id)
+        return replace(assembled, knowledge=state.knowledge)

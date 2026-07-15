@@ -109,7 +109,8 @@ class PlannerAgent:
             f"evidence_ids={[e.value for e in state.evidence_ids]}\n"
             f"finding_ids={[f.value for f in state.finding_ids]}\n"
             f"pending_tasks={[task.value for task in state.pending_tasks]}\n"
-            f"history={list(state.history)}"
+            f"history={list(state.history)}\n"
+            f"retrieved_knowledge={list(state.knowledge)}"
         )
         return LLMRequest(prompt=prompt)
 

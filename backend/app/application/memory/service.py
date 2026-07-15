@@ -23,7 +23,7 @@ from app.application.memory.errors import (
 )
 from app.application.memory.repositories import MemoryRepository
 from app.domain.enums import MemoryStatus
-from app.domain.identifiers import MemoryItemId
+from app.domain.identifiers import InvestigationId, MemoryItemId
 from app.domain.memory_item import MemoryItem
 
 logger = logging.getLogger(__name__)
@@ -105,6 +105,20 @@ class MemoryService:
         await self._require_latest(memory_id)
         versions = await self._memory.list_versions(memory_id)
         return tuple(sorted(versions, key=lambda item: item.version))
+
+    async def list_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> tuple[MemoryItem, ...]:
+        """Latest versions of the Memory Items originating from an investigation.
+
+        The investigation identifier is a structural cross-service reference
+        (database-architecture §8a) — it is not validated here, so an unknown
+        investigation yields an empty result rather than an error. Every latest
+        version is returned regardless of status; consumers decide how to treat
+        deprecated knowledge.
+        """
+
+        return await self._memory.list_for_investigation(investigation_id)
 
     async def _require_latest(self, memory_id: MemoryItemId) -> MemoryItem:
         memory_item = await self._memory.get(memory_id)

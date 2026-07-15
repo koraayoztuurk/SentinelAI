@@ -115,3 +115,24 @@ def test_reasoning_consumes_the_assembled_state() -> None:
         assert "identify lateral movement" in prompt
 
     asyncio.run(scenario())
+
+
+def test_reasoning_observes_retrieved_knowledge() -> None:
+    """Retrieved-knowledge lines attached to the state reach the provider
+    request (ES-051: planner decisions can observe retrieval)."""
+
+    async def scenario() -> None:
+        from dataclasses import replace
+
+        llm = RecordingLLM('{"action": "get_investigation"}')
+        state = replace(
+            make_state("inv-42"),
+            knowledge=("[semantic] memory:m-7 (confidence=0.87) C2 beacon",),
+        )
+        await PlannerAgent(llm).decide(state, "a-1")
+
+        prompt = llm.requests[0].prompt
+        assert "retrieved_knowledge" in prompt
+        assert "C2 beacon" in prompt
+
+    asyncio.run(scenario())

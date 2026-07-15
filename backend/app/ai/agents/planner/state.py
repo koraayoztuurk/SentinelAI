@@ -15,7 +15,13 @@ from app.domain.value_objects import Confidence
 
 @dataclass(frozen=True, slots=True)
 class InvestigationState:
-    """An already-assembled snapshot of an active investigation, for planning."""
+    """An already-assembled snapshot of an active investigation, for planning.
+
+    ``knowledge`` carries retrieved-knowledge lines produced by the Retrieval
+    Flow (ES-051) — provenance-preserving text the planner may reason over.
+    It is additive (default empty): a state assembled without retrieval is
+    unchanged.
+    """
 
     investigation_id: InvestigationId
     status: str
@@ -27,3 +33,4 @@ class InvestigationState:
     pending_tasks: tuple[TaskId, ...] = ()
     skipped_tasks: tuple[TaskId, ...] = ()
     history: tuple[str, ...] = ()
+    knowledge: tuple[str, ...] = ()

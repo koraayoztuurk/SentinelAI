@@ -21,6 +21,10 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: true,
+    // The developer's real `.env.local` must not leak into the test runtime:
+    // the dev auto-credential (ES-054) is force-empty here; tests that need
+    // it stub the variable explicitly.
+    env: { VITE_DEV_AUTH_CREDENTIAL: "" },
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

@@ -241,6 +241,23 @@ class InMemoryMemoryRepository:
             )
         )
 
+    async def list_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> tuple[MemoryItem, ...]:
+        latest = (
+            max(versions, key=lambda m: m.version)
+            for versions in self._versions.values()
+            if versions
+        )
+        matching = [
+            item
+            for item in latest
+            if item.source_investigation_id == investigation_id
+        ]
+        return tuple(
+            sorted(matching, key=lambda m: (m.created_at, m.id.value))
+        )
+
 
 # ------------------------------------------------------------ generation doubles
 

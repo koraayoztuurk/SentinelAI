@@ -133,3 +133,29 @@ def test_next_state_reassembles_the_current_snapshot() -> None:
         ]
 
     asyncio.run(scenario())
+
+
+def test_next_state_preserves_retrieved_knowledge_across_cycles() -> None:
+    async def scenario() -> None:
+        from dataclasses import replace
+
+        service = await _populated_service()
+        assembler = InvestigationStateAssembler(service)
+        first = await assembler.assemble(InvestigationId("inv-1"))
+        enriched = replace(
+            first, knowledge=("[semantic] memory:m-1 (confidence=0.90) x",)
+        )
+
+        result = ExecutionResult(
+            action_id="act-1",
+            target=None,
+            status=ExecutionStatus.COMPLETED,
+            value=ControlAction(action_id="act-1", kind=ControlKind.COMPLETE),
+        )
+        second = await assembler.next_state(enriched, result)
+
+        # The run's retrieval context stays observable to the agent (ES-051)
+        # while the rest of the state reflects the persisted reality.
+        assert second.knowledge == enriched.knowledge
+
+    asyncio.run(scenario())

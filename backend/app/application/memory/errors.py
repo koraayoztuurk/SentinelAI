@@ -35,3 +35,15 @@ class InvalidMemoryVersionError(MemoryServiceError):
     """
 
     code = "memory.invalid_version"
+
+
+class MemoryVectorStoreUnavailableError(MemoryServiceError):
+    """Raised when the derived embedding store cannot be reached (ES-051).
+
+    The operational counterpart of ``graph.store_unavailable``: the concrete
+    vector-store adapter maps driver-level connectivity failures to this stable
+    code so consumers (semantic retrieval) can contain the outage — the derived
+    representation is supportive, never authoritative (ADR-012).
+    """
+
+    code = "memory.vector_store_unavailable"

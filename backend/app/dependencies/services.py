@@ -32,10 +32,14 @@ from fastapi import FastAPI, Request
 from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.agents.memory.agent import MemoryAgent
 from app.ai.agents.planner.agent import PlannerAgent
 from app.ai.orchestration.assembler import InvestigationStateAssembler
 from app.ai.orchestration.loop import InvestigationLoop
+from app.ai.orchestration.retrieval import RetrievalFlow
 from app.ai.orchestration.runner import InvestigationRunner
+from app.ai.providers.llm import LLMProvider
+from app.ai.rag.pipeline import RagPipeline
 from app.application.authorization import (
     Authorizer,
     DenyAllAuthorizer,
@@ -45,9 +49,18 @@ from app.application.graph import GraphService
 from app.application.investigation import InvestigationService
 from app.application.memory import MemoryService
 from app.application.planner import PlannerService
-from app.config.ai import get_gemini_settings
+from app.config.ai import (
+    LLMProviderChoice,
+    get_gemini_embedding_settings,
+    get_gemini_settings,
+    get_llm_selection,
+    get_nvidia_settings,
+)
 from app.config.settings import get_settings
 from app.infrastructure.ai.gemini import GeminiLLMProvider
+from app.infrastructure.ai.gemini_embedding import GeminiEmbeddingProvider
+from app.infrastructure.ai.nvidia import NvidiaLLMProvider
+from app.infrastructure.ai.retrieval import CompositeRetriever
 from app.infrastructure.persistence.neo4j.repositories import (
     Neo4jGraphRepository,
 )
@@ -63,6 +76,9 @@ from app.infrastructure.persistence.postgres.memory.repositories import (
     PostgresMemoryRepository,
 )
 from app.infrastructure.persistence.postgres.session import session_scope
+from app.infrastructure.persistence.qdrant.memory_vector_store import (
+    QdrantMemoryVectorStore,
+)
 from app.infrastructure.persistence.registry import PersistenceRegistry
 from app.infrastructure.secrets import EnvironmentSecretProvider
 from app.presentation.api.auth import (
@@ -151,6 +167,21 @@ def _graph_service(request: Request) -> GraphService:
     return GraphService(Neo4jGraphRepository(_registry(request).neo4j_driver))
 
 
+def _llm_provider() -> LLMProvider:
+    """The configured concrete LLM adapter (``LLM_PROVIDER``, ES-054).
+
+    The port stays provider-neutral (ADR-005); the selection is
+    configuration. A missing API key for the selected provider surfaces as
+    ``SecretNotFoundError`` at composition (503 ``secret.not_found``).
+    """
+
+    if get_llm_selection().provider is LLMProviderChoice.NVIDIA:
+        return NvidiaLLMProvider(
+            get_nvidia_settings(), EnvironmentSecretProvider()
+        )
+    return GeminiLLMProvider(get_gemini_settings(), EnvironmentSecretProvider())
+
+
 def _planner_service(session: AsyncSession, request: Request) -> PlannerService:
     """The Planner Service over the live composition (loop executor, ES-044).
 
@@ -185,13 +216,19 @@ async def live_investigation_runner(
     the request's single transactional session. Identifiers/timestamps come
     from the API boundary's uuid/clock sources (the composition itself
     generates none).
+
+    Retrieval Flow (ES-051): the Memory Agent (same Gemini LLM provider) and
+    the RAG Pipeline over the concrete source-backed retriever — Gemini query
+    embedding + Qdrant semantic search, the Memory Service (structured), and
+    the Graph Service (neighbourhood). The runner executes it once per run;
+    a knowledge-layer failure is contained and the run proceeds without
+    retrieved knowledge.
     """
 
     async with _request_session(request) as session:
         investigation = _investigation_service(session)
-        agent = PlannerAgent(
-            GeminiLLMProvider(get_gemini_settings(), EnvironmentSecretProvider())
-        )
+        llm = _llm_provider()
+        agent = PlannerAgent(llm)
         assembler = InvestigationStateAssembler(investigation)
         loop = InvestigationLoop(
             agent,
@@ -202,7 +239,25 @@ async def live_investigation_runner(
             investigation,
             get_settings().run_cycle_budget,
         )
-        yield InvestigationRunner(assembler, loop)
+        retriever = CompositeRetriever(
+            GeminiEmbeddingProvider(
+                get_gemini_embedding_settings(), EnvironmentSecretProvider()
+            ),
+            QdrantMemoryVectorStore(_registry(request).qdrant_client),
+            MemoryService(PostgresMemoryRepository(session)),
+            investigation,
+            _graph_service(request),
+        )
+        retrieval = RetrievalFlow(
+            MemoryAgent(llm),
+            RagPipeline(retriever),
+            Uuid4IdGenerator(),
+            SystemClock(),
+            investigation,
+        )
+        yield InvestigationRunner(
+            assembler, loop, retrieval, Uuid4IdGenerator()
+        )
 
 
 def live_authenticator() -> Authenticator:

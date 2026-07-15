@@ -1,26 +1,94 @@
-"""Investigation run entry point (ES-044).
+"""Investigation run entry point (ES-044, retrieval-enriched by ES-051).
 
 The invocation surface ADR-010 anticipated: assemble the initial Investigation
-State, then run the Investigation Loop over it. This is the single composition
-the presentation run endpoint delegates to; it adds no behaviour of its own.
+State, optionally enrich it with retrieved knowledge through the Retrieval
+Flow, then run the Investigation Loop over it. This is the single composition
+the presentation run endpoint delegates to; it adds no reasoning of its own.
+
+Retrieval integration (ES-051, owner decision): the Retrieval Flow runs **once
+per run** before the loop — the retrieved knowledge is attached to the initial
+state and preserved across cycles by the assembler, so a bounded synchronous
+run pays one retrieval (one Memory Agent call + one query embedding), not one
+per cycle. Retrieval is supportive, never critical: a failed or insufficient
+retrieval is logged and the run proceeds without retrieved knowledge —
+mirroring the platform's failure-isolation stance (a knowledge-layer outage
+must not take the decision loop down with it).
 """
 
+import logging
+from dataclasses import replace
+
+from app.ai.agents.memory.plan import RetrievalPlanId
+from app.ai.errors import InsufficientContextError, MemoryAgentError
 from app.ai.orchestration.assembler import InvestigationStateAssembler
 from app.ai.orchestration.loop import InvestigationLoop, LoopOutcome
+from app.ai.orchestration.retrieval import RetrievalFlow
+from app.ai.orchestration.tracing import IdSource
+from app.ai.rag.retriever import RetrievedItem
 from app.domain.identifiers import InvestigationId
+
+logger = logging.getLogger(__name__)
+
+# Each knowledge line is bounded so retrieved content cannot flood the
+# planner prompt (context budget/compression remain rag §16 deferrals).
+_KNOWLEDGE_CONTENT_LIMIT = 300
+
+
+def _knowledge_line(item: RetrievedItem) -> str:
+    content = item.content.strip()
+    if len(content) > _KNOWLEDGE_CONTENT_LIMIT:
+        content = content[:_KNOWLEDGE_CONTENT_LIMIT] + "…"
+    return (
+        f"[{item.strategy.value}] {item.source}:{item.reference} "
+        f"(confidence={item.confidence.value:.2f}) {content}"
+    )
 
 
 class InvestigationRunner:
     """Assembles the initial state and runs the Investigation Loop."""
 
     def __init__(
-        self, assembler: InvestigationStateAssembler, loop: InvestigationLoop
+        self,
+        assembler: InvestigationStateAssembler,
+        loop: InvestigationLoop,
+        retrieval: RetrievalFlow | None = None,
+        ids: IdSource | None = None,
     ) -> None:
+        if retrieval is not None and ids is None:
+            raise ValueError(
+                "An IdSource is required when a Retrieval Flow is provided "
+                "(retrieval-plan identifiers are caller-supplied)."
+            )
         self._assembler = assembler
         self._loop = loop
+        self._retrieval = retrieval
+        self._ids = ids
 
     async def run(self, investigation_id: InvestigationId) -> LoopOutcome:
         """Run the loop for one investigation and return its outcome."""
 
         state = await self._assembler.assemble(investigation_id)
+        if self._retrieval is not None and self._ids is not None:
+            try:
+                result = await self._retrieval.run(
+                    state, RetrievalPlanId(self._ids.new_id())
+                )
+                state = replace(
+                    state,
+                    knowledge=tuple(
+                        _knowledge_line(item)
+                        for item in result.context.knowledge
+                    ),
+                )
+            except (MemoryAgentError, InsufficientContextError) as exc:
+                # Supportive capability: the run continues without retrieved
+                # knowledge. (An empty knowledge base fails the pipeline's
+                # validation gate by design — the normal early-investigation
+                # condition, not an operational fault.)
+                logger.info(
+                    "run proceeds without retrieved knowledge "
+                    "investigation_id=%s code=%s",
+                    investigation_id.value,
+                    getattr(exc, "code", "unknown"),
+                )
         return await self._loop.run(state)

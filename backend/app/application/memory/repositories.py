@@ -16,7 +16,7 @@ introduced with the AI/RAG specifications.
 
 from typing import Protocol
 
-from app.domain.identifiers import MemoryItemId
+from app.domain.identifiers import InvestigationId, MemoryItemId
 from app.domain.memory_item import MemoryItem
 from app.domain.repositories import Repository
 
@@ -33,3 +33,15 @@ class MemoryRepository(Repository, Protocol):
     async def list_versions(
         self, memory_id: MemoryItemId
     ) -> tuple[MemoryItem, ...]: ...
+
+    async def list_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> tuple[MemoryItem, ...]:
+        """Latest version of every Memory Item originating from the investigation.
+
+        Cross-service reference by identifier only (database-architecture §8a):
+        the investigation itself is never validated here, so an unknown
+        identifier simply yields an empty result. Deterministic
+        ``(created_at, id)`` ordering.
+        """
+        ...

@@ -17,10 +17,10 @@ writes no outbox record: the embeddable text is unchanged, so no re-embed is
 owed.
 """
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.identifiers import MemoryItemId
+from app.domain.identifiers import InvestigationId, MemoryItemId
 from app.domain.memory_item import MemoryItem
 from app.infrastructure.persistence.postgres.memory.mappers import (
     memory_item_to_domain,
@@ -71,5 +71,32 @@ class PostgresMemoryRepository:
             select(MemoryItemRow)
             .where(MemoryItemRow.id == memory_id.value)
             .order_by(MemoryItemRow.version)
+        )
+        return tuple(memory_item_to_domain(row) for row in rows)
+
+    async def list_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> tuple[MemoryItem, ...]:
+        # Latest version per Memory Item id, restricted to the investigation;
+        # deterministic (created_at, id) ordering (ES-040 list-read convention).
+        latest = (
+            select(
+                MemoryItemRow.id.label("id"),
+                func.max(MemoryItemRow.version).label("version"),
+            )
+            .where(
+                MemoryItemRow.source_investigation_id == investigation_id.value
+            )
+            .group_by(MemoryItemRow.id)
+            .subquery()
+        )
+        rows = await self._session.scalars(
+            select(MemoryItemRow)
+            .join(
+                latest,
+                (MemoryItemRow.id == latest.c.id)
+                & (MemoryItemRow.version == latest.c.version),
+            )
+            .order_by(MemoryItemRow.created_at, MemoryItemRow.id)
         )
         return tuple(memory_item_to_domain(row) for row in rows)

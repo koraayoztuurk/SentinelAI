@@ -77,9 +77,30 @@ class MemoryAgent:
 
     @staticmethod
     def _build_request(state: InvestigationState) -> LLMRequest:
-        # Prompt content is an implementation detail; kept minimal.
+        # Prompt content is an implementation detail of the documented
+        # transformation boundary (memory-architecture §17). It describes the
+        # exact JSON shape and strategy vocabulary `_to_plan` accepts so a
+        # real provider can actually play (the ES-044 planner-prompt
+        # precedent); anything else still resolves to an empty selection.
         prompt = (
-            "Select the retrieval strategies and respond as JSON.\n"
+            "You are the knowledge steward of a security investigation "
+            "platform.\n"
+            "Select which retrieval strategies should gather context for "
+            "the investigation below and respond with ONLY a JSON object "
+            "(no prose, no code fences), of exactly this shape:\n"
+            '{"strategies": ["semantic", "graph", "structured"]}\n'
+            "Available strategies:\n"
+            '- "semantic": similarity search over organizational memory '
+            "(past investigations, analyst notes)\n"
+            '- "graph": the knowledge-graph neighbourhood of the '
+            "investigation's entities\n"
+            '- "structured": the investigation\'s own recorded memory '
+            "items\n"
+            '- "external": external threat intelligence (not yet '
+            "available)\n"
+            '- "hybrid": semantic + graph + structured together\n'
+            "Select every strategy that would add investigative value.\n"
+            "Investigation state:\n"
             f"investigation_id={state.investigation_id.value}\n"
             f"status={state.status}\n"
             f"objectives={list(state.objectives)}\n"

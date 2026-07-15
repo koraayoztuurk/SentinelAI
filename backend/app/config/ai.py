@@ -1,18 +1,48 @@
 """AI provider configuration.
 
-Settings for the concrete Gemini LLM adapter (ES-043, decision K-1), loaded
-from the environment (and an optional ``.env`` file) with the ``GEMINI_``
-prefix, mirroring the per-store pattern of :mod:`app.config.database`.
+Settings for the concrete LLM/embedding adapters — Gemini (ES-043/049,
+decisions K-1/K-2) and the NVIDIA NIM adapter (ES-054) — loaded from the
+environment (and an optional ``.env`` file) with per-provider prefixes,
+mirroring the per-store pattern of :mod:`app.config.database`.
 
-The API key is deliberately **not** a settings field: it is a protected
-security asset consumed through the ``SecretProvider`` port
-(``GOOGLE_API_KEY``, Secrets Management / ES-022), never a configuration
-artifact.
+``LLM_PROVIDER`` selects the active LLM adapter (the port stays
+provider-neutral, ADR-005; the selection is configuration). API keys are
+deliberately **not** settings fields: they are protected security assets
+consumed through the ``SecretProvider`` port (``GOOGLE_API_KEY`` /
+``NVIDIA_API_KEY``, Secrets Management / ES-022), never configuration
+artifacts.
 """
 
+from enum import Enum
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class LLMProviderChoice(Enum):
+    """The configured concrete LLM adapter (closed vocabulary)."""
+
+    GEMINI = "gemini"
+    NVIDIA = "nvidia"
+
+
+class LLMSelectionSettings(BaseSettings):
+    """Selects which concrete LLM adapter the composition root builds.
+
+    ``LLM_PROVIDER=gemini|nvidia`` — an unknown value is rejected by the
+    closed enum. Embedding stays on the Gemini adapter regardless (the
+    Qdrant collection's vector dimension is bound to it, ES-050).
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="LLM_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    provider: LLMProviderChoice = LLMProviderChoice.GEMINI
 
 
 class GeminiSettings(BaseSettings):
@@ -59,6 +89,47 @@ class GeminiEmbeddingSettings(BaseSettings):
     # Fixed output dimension (requested via the API's ``outputDimensionality``)
     # so the Qdrant collection's vector size is deterministic (ES-050).
     dimensions: int = 768
+
+
+class NvidiaSettings(BaseSettings):
+    """NVIDIA NIM LLM adapter configuration (ES-054).
+
+    The NIM API is OpenAI-compatible (``/v1/chat/completions``); the concrete
+    model id is configuration (``NVIDIA_MODEL``, default MiniMax-M3 — owner
+    decision). Reasoning models answer slower than flash-class models, so the
+    default execution bound is wider; ``max_tokens`` must leave room for the
+    model's visible reasoning plus the final answer.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="NVIDIA_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    model: str = "minimaxai/minimax-m3"
+    # Bounded provider execution time (ADR-013): the value is configuration,
+    # the existence of the bound is the port contract.
+    timeout_seconds: float = 90.0
+    # Deterministic-leaning default for planning decisions.
+    temperature: float = 0.0
+    max_tokens: int = 8192
+
+
+@lru_cache
+def get_llm_selection() -> LLMSelectionSettings:
+    """Return the cached LLM provider selection."""
+
+    return LLMSelectionSettings()
+
+
+@lru_cache
+def get_nvidia_settings() -> NvidiaSettings:
+    """Return the cached NVIDIA NIM LLM settings instance."""
+
+    return NvidiaSettings()
 
 
 @lru_cache

@@ -1,9 +1,9 @@
 ---
 title: Development Roadmap
-version: 1.2.0
+version: 1.3.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-07-04
+last_updated: 2026-07-12
 ---
 
 # Development Roadmap
@@ -378,7 +378,9 @@ The roadmap carries the public summary of delivery reality, so the repository ca
 | Runtime wiring (DI): live services, Investigation Loop run surface, Trace/Outcome read API | Delivered (live slice) |
 | Dev-grade shared-token authentication + owner-scoped authorization (operation context §6b) | Delivered (live slice; production IdP deferred) |
 | Browser flow without mocks: create → evidence → run → trace visible (escalated/exhausted presented) | Delivered (live slice) |
-| Neo4j/Qdrant/Redis adapters; embedding + outbox propagation (ADR-012) | Deferred — second slice |
+| Neo4j graph store + Qdrant embedding propagation (ADR-012: outbox → projector) | Delivered (live slice; Redis deliberately unbound — ADR-011 demand-driven) |
+| Live RAG retrieval: source-backed retriever (semantic/structured/graph), run-path consumption | Delivered (live slice) |
+| Workspace Memory surface (investigation-scoped memory listing + region) | Delivered (live slice) |
 | Specialized agents, Decision Engine | Deferred |
 | Production identity provider, durable audit sink | Deferred |
 
@@ -592,3 +594,4 @@ The Development Roadmap should continue to evolve together with SentinelAI while
 | 1.0.0 | 2026-06-28 | Initial Development Roadmap specification created |
 | 1.1.0 | 2026-07-03 | Vertical Slice First made normative; Delivery Record public mirror added (row recorded retroactively — the frontmatter carried the bump) |
 | 1.2.0 | 2026-07-04 | Delivery Record updated: first vertical slice operational — PostgreSQL persistence, Gemini provider, loop run surface, Trace/Outcome API, dev-grade auth and the mock-free browser flow delivered (live slice); the Vertical Slice First gate is satisfied |
+| 1.3.0 | 2026-07-12 | Delivery Record updated: second vertical slice — Neo4j graph store, Qdrant outbox propagation (ES-048–050), live RAG retrieval consumed by the run path (ES-051) and the workspace Memory surface (ES-052) delivered (live slice) |

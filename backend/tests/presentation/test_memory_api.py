@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from fastapi.testclient import TestClient
 
 from app.application.memory import MemoryService
-from app.domain.identifiers import MemoryItemId
+from app.domain.identifiers import InvestigationId, MemoryItemId
 from app.domain.memory_item import MemoryItem
 from app.main import create_app
 from app.presentation.api.authorization import require_authorization
@@ -51,6 +51,23 @@ class _MemoryRepo:
     ) -> tuple[MemoryItem, ...]:
         return tuple(self._versions.get(memory_id.value, ()))
 
+    async def list_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> tuple[MemoryItem, ...]:
+        latest = (
+            max(versions, key=lambda item: item.version)
+            for versions in self._versions.values()
+            if versions
+        )
+        matching = [
+            item
+            for item in latest
+            if item.source_investigation_id == investigation_id
+        ]
+        return tuple(
+            sorted(matching, key=lambda item: (item.created_at, item.id.value))
+        )
+
 
 class _CountingIds:
     def __init__(self) -> None:
@@ -69,19 +86,24 @@ class _FixedClock:
 def _client() -> TestClient:
     app = create_app()
     service = MemoryService(_MemoryRepo())
+    # One shared id counter per client (captured, not rebuilt per request),
+    # so successive creates receive distinct identifiers.
+    ids = _CountingIds()
     app.dependency_overrides[get_memory_service] = lambda: service
-    app.dependency_overrides[get_id_generator] = lambda: _CountingIds()
+    app.dependency_overrides[get_id_generator] = lambda: ids
     app.dependency_overrides[get_clock] = lambda: _FixedClock()
     app.dependency_overrides[require_authorization] = lambda: None
     return TestClient(app)
 
 
 def _create_payload(
-    confidence: float = 0.5, status_value: str = "candidate"
+    confidence: float = 0.5,
+    status_value: str = "candidate",
+    investigation: str = "inv-1",
 ) -> dict[str, object]:
     return {
         "type": "attack_pattern",
-        "source_investigation_id": "inv-1",
+        "source_investigation_id": investigation,
         "confidence": confidence,
         "status": status_value,
     }
@@ -200,6 +222,39 @@ def test_history_preserves_immutable_version_one() -> None:
     assert v2["version"] == 2
     assert v2["confidence"] == 0.9
     assert v2["status"] == "verified"
+
+
+# ------------------------------------------------------- list by investigation
+
+
+def test_list_memory_returns_latest_versions_for_investigation() -> None:
+    client = _client()
+    ours = _create(client, investigation="inv-1")
+    client.put(f"/api/v1/memory/{ours}", json=_update_payload(version=2))
+    _create(client, investigation="inv-2")
+
+    response = client.get("/api/v1/memory", params={"investigation_id": "inv-1"})
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    # Only inv-1's item, at its latest version (ES-052).
+    assert [(item["id"], item["version"]) for item in data] == [(ours, 2)]
+
+
+def test_list_memory_unknown_investigation_is_empty() -> None:
+    client = _client()
+    _create(client, investigation="inv-1")
+    response = client.get(
+        "/api/v1/memory", params={"investigation_id": "inv-unknown"}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"] == []
+
+
+def test_list_memory_requires_investigation_id() -> None:
+    response = _client().get("/api/v1/memory")
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "api.validation_error"
 
 
 # ----------------------------------------------------------------- not configured

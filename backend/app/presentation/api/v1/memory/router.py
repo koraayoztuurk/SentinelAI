@@ -6,10 +6,10 @@ and wrap the result in the standard response envelope. No business logic lives h
 the version-supersede, history and deprecation semantics belong to the service.
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.application.memory import MemoryService
-from app.domain.identifiers import MemoryItemId
+from app.domain.identifiers import InvestigationId, MemoryItemId
 from app.presentation.api.context import RequestContext, get_request_context
 from app.presentation.api.generation import (
     Clock,
@@ -43,6 +43,31 @@ async def create_memory(
     item = body.to_domain(id_value=ids.new_id(), created_at=clock.now())
     created = await service.create(item)
     return build_success(MemoryItemResponse.from_domain(created), context)
+
+
+@memory_router.get(
+    "",
+    response_model=ApiResponse[list[MemoryItemResponse]],
+)
+async def list_memory(
+    investigation_id: str = Query(min_length=1),
+    service: MemoryService = Depends(get_memory_service),
+    context: RequestContext = Depends(get_request_context),
+) -> ApiResponse[list[MemoryItemResponse]]:
+    """List the latest Memory Item versions originating from an investigation.
+
+    The identifier is a structural cross-service reference
+    (database-architecture §8a): an unknown investigation yields an empty
+    list, not an error. Memory is the shared knowledge layer (§6a), so the
+    listing is open to any authenticated identity.
+    """
+
+    items = await service.list_for_investigation(
+        InvestigationId(investigation_id)
+    )
+    return build_success(
+        [MemoryItemResponse.from_domain(item) for item in items], context
+    )
 
 
 @memory_router.get(
