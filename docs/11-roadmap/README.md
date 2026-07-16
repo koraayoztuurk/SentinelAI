@@ -1,9 +1,9 @@
 ---
 title: Development Roadmap
-version: 1.3.0
+version: 1.4.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-07-12
+last_updated: 2026-07-15
 ---
 
 # Development Roadmap
@@ -381,7 +381,7 @@ The roadmap carries the public summary of delivery reality, so the repository ca
 | Neo4j graph store + Qdrant embedding propagation (ADR-012: outbox → projector) | Delivered (live slice; Redis deliberately unbound — ADR-011 demand-driven) |
 | Live RAG retrieval: source-backed retriever (semantic/structured/graph), run-path consumption | Delivered (live slice) |
 | Workspace Memory surface (investigation-scoped memory listing + region) | Delivered (live slice) |
-| Specialized agents, Decision Engine | Deferred |
+| Decision Engine (outcome synthesis on completed runs) + initial specialized agents (Validation, Graph Analysis) | Delivered (live slice; Timeline/Report agents and the planner action-catalogue dispatch deferred) |
 | Production identity provider, durable audit sink | Deferred |
 
 This table is a mirror of the maintainer's implementation record and is updated whenever a slice's state changes; detailed engineering history remains in the maintainer's tracker.
@@ -595,3 +595,4 @@ The Development Roadmap should continue to evolve together with SentinelAI while
 | 1.1.0 | 2026-07-03 | Vertical Slice First made normative; Delivery Record public mirror added (row recorded retroactively — the frontmatter carried the bump) |
 | 1.2.0 | 2026-07-04 | Delivery Record updated: first vertical slice operational — PostgreSQL persistence, Gemini provider, loop run surface, Trace/Outcome API, dev-grade auth and the mock-free browser flow delivered (live slice); the Vertical Slice First gate is satisfied |
 | 1.3.0 | 2026-07-12 | Delivery Record updated: second vertical slice — Neo4j graph store, Qdrant outbox propagation (ES-048–050), live RAG retrieval consumed by the run path (ES-051) and the workspace Memory surface (ES-052) delivered (live slice) |
+| 1.4.0 | 2026-07-15 | Delivery Record updated: Decision Engine (outcome synthesis, ES-055) and the initial specialized agents — Validation (ES-056), Graph Analysis (ES-057) — delivered (live slice); Timeline/Report agents and planner-selected agent dispatch remain deferred |

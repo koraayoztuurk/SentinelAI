@@ -29,6 +29,7 @@ from typing import Protocol
 from app.ai.agents.planner.agent import PlannerAgent, PlannerDecisionRequest
 from app.ai.agents.planner.state import InvestigationState
 from app.ai.agents.runtime import AgentRuntime
+from app.ai.agents.validation.assessment import ValidationAssessment
 from app.ai.errors import InvestigationLoopError
 from app.ai.orchestration.tracing import (
     Clock,
@@ -42,9 +43,11 @@ from app.application.planner.actions import (
     ExecutionResult,
     PlannerAction,
 )
-from app.domain.identifiers import TraceEntryId
+from app.domain.identifiers import InvestigationId, TraceEntryId
+from app.domain.investigation_outcome import InvestigationOutcome
 from app.domain.trace import TraceEntry, TraceEntryKind
 from app.domain.value_objects import ActorRef
+from app.shared.exceptions import SentinelAIError
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +57,8 @@ ActionIdSource = IdSource
 _LOOP_ACTOR = ActorRef("investigation-loop")
 _PLANNER_ACTOR = ActorRef("planner-agent")
 _EXECUTOR_ACTOR = ActorRef("planner-service")
+_DECISION_ACTOR = ActorRef("decision-engine")
+_VALIDATION_ACTOR = ActorRef("validation-agent")
 
 
 class ActionExecutor(Protocol):
@@ -77,6 +82,36 @@ class StateAssembler(Protocol):
     async def next_state(
         self, state: InvestigationState, result: ExecutionResult
     ) -> InvestigationState: ...
+
+
+class OutcomeSynthesizer(Protocol):
+    """Synthesizes the Investigation Outcome after a completed run (ES-055).
+
+    The production implementation is the Decision Engine (planner-agent §7:
+    "Investigation Complete? → Decision Engine"). ``None`` signals synthesis
+    was skipped (an outcome already exists, or nothing supports one).
+    ``assessment`` carries the Validation Agent's findings assessment when
+    validation ran (ES-056) — the documented Decision Engine input.
+    """
+
+    async def synthesize(
+        self,
+        state: InvestigationState,
+        assessment: ValidationAssessment | None = None,
+    ) -> InvestigationOutcome | None: ...
+
+
+class FindingValidator(Protocol):
+    """Assesses the investigation's findings before synthesis (ES-056).
+
+    The production implementation is the Validation Flow (Validation Agent
+    over the assembled findings/evidence). ``None`` signals there was
+    nothing to validate.
+    """
+
+    async def assess(
+        self, investigation_id: InvestigationId
+    ) -> ValidationAssessment | None: ...
 
 
 class LoopEnd(Enum):
@@ -115,6 +150,8 @@ class InvestigationLoop:
         clock: Clock,
         trace: TraceSink,
         max_cycles: int,
+        synthesizer: OutcomeSynthesizer | None = None,
+        validator: FindingValidator | None = None,
     ) -> None:
         if max_cycles < 1:
             raise InvestigationLoopError("max_cycles must be positive.")
@@ -125,6 +162,8 @@ class InvestigationLoop:
         self._clock = clock
         self._trace = trace
         self._max_cycles = max_cycles
+        self._synthesizer = synthesizer
+        self._validator = validator
         # The runtime is stateless and dependency-free; the loop owns one
         # (mirroring how the RAG pipeline owns its context-engineering parts).
         self._runtime = AgentRuntime()
@@ -188,6 +227,18 @@ class InvestigationLoop:
                     if action.kind is ControlKind.COMPLETE
                     else LoopEnd.ESCALATED
                 )
+                if end is LoopEnd.COMPLETED:
+                    # Validation before synthesis (ES-056): the Validation
+                    # Agent assesses the findings; its assessment is the
+                    # documented Decision Engine input. Both steps are
+                    # best-effort — neither a failed validation nor a failed
+                    # synthesis breaks the completed run.
+                    assessment = await self._validate_best_effort(
+                        state, action_id
+                    )
+                    await self._synthesize_best_effort(
+                        state, action_id, assessment
+                    )
                 await self._record(
                     state,
                     TraceEntryKind.LOOP_OUTCOME,
@@ -221,6 +272,95 @@ class InvestigationLoop:
             end=LoopEnd.EXHAUSTED,
             cycles=self._max_cycles,
             results=tuple(results),
+        )
+
+    async def _validate_best_effort(
+        self, state: InvestigationState, action_id: str
+    ) -> ValidationAssessment | None:
+        """Run findings validation, containing every validation failure.
+
+        A produced assessment is traced (explainability); a quiet skip
+        (nothing to validate) is log-only; a failed validation is traced
+        with its stable code and synthesis proceeds without an assessment.
+        """
+
+        if self._validator is None:
+            return None
+        try:
+            assessment = await self._validator.assess(state.investigation_id)
+        except SentinelAIError as exc:
+            logger.warning(
+                "findings validation failed investigation_id=%s code=%s",
+                state.investigation_id.value,
+                exc.code,
+            )
+            await self._record(
+                state,
+                TraceEntryKind.VALIDATION,
+                _VALIDATION_ACTOR,
+                f"findings validation failed ({exc.code})",
+                action_id,
+            )
+            return None
+        if assessment is None:
+            return None
+        await self._record(
+            state,
+            TraceEntryKind.VALIDATION,
+            _VALIDATION_ACTOR,
+            (
+                f"assessed {len(assessment.assessed_findings)} finding(s), "
+                f"{len(assessment.issues)} issue(s): {assessment.summary}"
+            ),
+            action_id,
+        )
+        return assessment
+
+    async def _synthesize_best_effort(
+        self,
+        state: InvestigationState,
+        action_id: str,
+        assessment: ValidationAssessment | None = None,
+    ) -> None:
+        """Run outcome synthesis, containing every synthesis failure.
+
+        A produced outcome is traced (explainability); a skipped synthesis
+        (outcome exists / nothing to synthesize) is log-only; a failed
+        synthesis is traced with its stable code and never interrupts the
+        completed run.
+        """
+
+        if self._synthesizer is None:
+            return
+        try:
+            outcome = await self._synthesizer.synthesize(state, assessment)
+        except SentinelAIError as exc:
+            logger.warning(
+                "outcome synthesis failed investigation_id=%s code=%s",
+                state.investigation_id.value,
+                exc.code,
+            )
+            await self._record(
+                state,
+                TraceEntryKind.OUTCOME_SYNTHESIS,
+                _DECISION_ACTOR,
+                f"outcome synthesis failed ({exc.code})",
+                action_id,
+            )
+            return
+        if outcome is None:
+            return
+        await self._record(
+            state,
+            TraceEntryKind.OUTCOME_SYNTHESIS,
+            _DECISION_ACTOR,
+            (
+                f"synthesized outcome (confidence="
+                f"{outcome.confidence.value:.2f}, "
+                f"{len(outcome.detected_conflicts)} conflict(s), "
+                f"{len(outcome.open_questions)} open question(s))"
+            ),
+            outcome.id.value,
         )
 
     async def _record(

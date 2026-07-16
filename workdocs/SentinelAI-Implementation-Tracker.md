@@ -64,6 +64,9 @@
 | ES-052 | Investigation-Scoped Memory Surface (Memory Listing API + Workspace Memory Region) | ✅ Completed |
 | ES-053 | Seed Utility & Second-Slice Demo (Milestone A closed) | ✅ Completed |
 | ES-054 | NVIDIA NIM LLM Provider (MiniMax-M3) + LLM Provider Selection + Dev Auto Sign-In | ✅ Completed |
+| ES-055 | Decision Engine: Outcome Synthesis on Completed Runs + Outcome Panel | ✅ Completed |
+| ES-056 | Validation Agent: Findings Assessment Before Synthesis | ✅ Completed |
+| ES-057 | Graph Analysis Agent: Neighbourhood Analysis Enriching the Run (Milestone B closed) | ✅ Completed |
 
 ---
 
@@ -1490,6 +1493,63 @@ to later specifications.
 - `live_ai` does not yet cover the NVIDIA adapter (its gating is `GOOGLE_API_KEY`-shaped); the
   real-provider proof is the ES-054 smoke + demo run — a provider-parameterized live lane is
   future work.
+
+---
+
+## ES-055 (Milestone B, part 1)
+
+- **The bridge slot collapsed**: the plan's "generic Agent Runtime bridge" ES was verified already
+  closed by ES-039 (typed generic `Agent[RequestT, ProductT]` + `AgentResult`, `AgentRuntime.run`
+  as the single host) — Milestone B numbering shifted rather than shipping a filler ES.
+- **The engine is not an agent** (agent-architecture §6): it does not run through the Agent
+  Runtime; its caller (the loop) contains failures instead. `TraceEntryKind.OUTCOME_SYNTHESIS`
+  added additively (kinds are stored as strings — no migration).
+- **Skips are silent, failures are traced**: skipped synthesis (outcome exists / no confirmed
+  finding) is log-only to avoid trace noise on empty investigations; a failed synthesis leaves an
+  OUTCOME_SYNTHESIS entry with the stable code.
+- **No re-synthesis path**: a completed investigation re-run keeps its first outcome (0..1);
+  outcome revision/regeneration awaits the analyst-review capability (REVIEWED/ACCEPTED statuses
+  are modelled but unwritten).
+
+---
+
+## ES-056 (Milestone B, part 2)
+
+- **Validation never mutates findings**: the agent reports issues (the documented four-way
+  vocabulary); finding status transitions stay with the analyst and the owning service (human
+  oversight). The assessment's consumption is the Decision Engine prompt — deterministic folding
+  of issues into outcome fields was deliberately avoided (synthesis owns the folding).
+- **Raise-on-malformed is a deliberate contract divergence** from the planner/memory agents: an
+  empty assessment is not a neutral fallback (it would read as a clean bill of health), so
+  transformation failures raise `ValidationAgentError` and the loop contains them — synthesis
+  proceeds without an assessment, traced.
+- **All findings are assessed** (not only confirmed ones): flagging PROPOSED findings before an
+  analyst confirms them is exactly the trust value the doc describes.
+- **Validation runs at completion only** (before synthesis): per-cycle validation would multiply
+  provider calls on a synchronous surface; revisit if the run surface goes async.
+- `TraceEntryKind.VALIDATION` added additively.
+
+---
+
+## ES-057 (Milestone B, close)
+
+- **ThreatGraph determination (ADR-014 threshold check)**: the Graph Analysis Agent consumes the
+  existing Graph Service surface only (get/neighbors/incident relationships, the retriever's
+  bounds) — no new traversal semantics, no boundary change ⇒ **below the RFC threshold**; ADR-007
+  (ThreatGraph) remains Accepted-and-deferred until attack-path infrastructure (shortest-path,
+  multi-hop analytics) is actually built (Milestone-later work, backlog).
+- **Enrichment, not planner-selected agent dispatch**: the agent runs once per run in the runner's
+  enrichment phase (like retrieval) and its observations join the planner-visible knowledge as
+  `[graph-analysis]` lines. The documented "planner selects agents" dispatch model awaits the
+  planner action-catalogue ES (deferred since ES-008) — recorded deviation, consistent with the
+  ES-051 retrieval-consumption shape.
+- **Observation provenance is snapshot-bound**: entity references outside the assembled
+  neighbourhood are discarded from an observation's provenance (the observation text survives);
+  raise-on-malformed mirrors ES-056 (an empty analysis would read as "nothing notable").
+- `TraceEntryKind.GRAPH_ANALYSIS` added additively; the flow records its own trace entry
+  (RetrievalFlow pattern) since it runs outside the loop.
+- The assembler gained an optional `graph` dependency (additive constructor default `None`;
+  graph-less compositions and every pre-existing test remain untouched).
 
 ---
 
@@ -2983,3 +3043,90 @@ Next ES
 - TD: no cross-provider fallback/retry chain (Milestone G); `live_ai` lane not yet
   provider-parameterized; the compose backend image predates ES-051+ (rebuild when the container
   flow is next needed).
+
+---
+
+## ES-055
+
+- Decision Engine delivered (Milestone B opener; planner-agent §7 "Investigation Complete? →
+  Decision Engine" realized): `app/ai/decision/engine.py` synthesizes the investigation's
+  **confirmed** (validated/accepted) findings into one `InvestigationOutcome`
+  (status `SYNTHESIZED`, 0..1) over the selected LLM provider — the ES-045 read-only outcome
+  surface gains its documented writer. Not an agent (agent-architecture §6): an Intelligence
+  Layer component; AI → Application one way (findings/outcome via the Investigation Service).
+- **Synthesis, never invention**: contributing-finding references outside the confirmed set are
+  discarded (absent selection → all confirmed findings, deterministic completion); confidence
+  clamps to [0,1]; conflict/open-question lists are string-filtered and bounded (10); a malformed
+  synthesis raises `DecisionEngineError` (`ai.decision_engine_error`) — no safe fallback
+  recommendation exists, so nothing is persisted. Skip conditions return `None` without a
+  provider call: outcome already exists (re-runs stay cheap) or no confirmed finding (an outcome
+  must stay finding-backed).
+- **Loop integration** (additive `synthesizer` port, `OutcomeSynthesizer`): on a COMPLETED
+  control action the loop synthesizes best-effort — a produced outcome is traced as the new
+  additive `TraceEntryKind.OUTCOME_SYNTHESIS` (actor `decision-engine`, reference = outcome id,
+  confidence + conflict/question counts in the summary, ordered before the terminal
+  LOOP_OUTCOME); a failed synthesis is traced with its stable code and never breaks the
+  completed run; a skipped synthesis is log-only (no trace noise on empty investigations);
+  escalated/exhausted runs never synthesize.
+- **Frontend**: AI Insights gains the synthesized-outcome panel (recommendation, confidence %,
+  conflicts, open questions — advisory presentation); `communication/outcome.ts` maps the 0..1
+  semantics (`investigation.outcome_not_found` → null, a normal state); `outcomeQuery` +
+  `invalidateOutcome` join the `state/query.ts` boundary and the post-run invalidation family.
+- **Tests**: 8 engine unit tests, 5 loop synthesis tests, 3 behavioral validation tests
+  (adversarial matrix → never a fabricated outcome; provenance; repeatability), 1 end-to-end
+  presentation test (completed run → HTTP outcome read + synthesis trace), 2 frontend panel
+  tests. Backend default **399 passed** / 22 deselected; `ruff` clean; `mypy app` strict clean
+  (161 files); frontend **69 tests** + 4-gate green. No REST contract change (openapi freshness
+  green).
+
+---
+
+## ES-056
+
+- Validation Agent delivered (Milestone B, part 2; agent-architecture §6): the typed
+  `validation-agent` assesses the investigation's findings against their supporting evidence over
+  the selected LLM provider and produces one `ValidationAssessment` — per-issue vocabulary exactly
+  the documented four distinctions (factual_inconsistency, missing_evidence,
+  conflicting_observations, unsupported_conclusion), issues bounded (10), unknown kinds ignored,
+  unknown finding references kept as observations but never attributed.
+- **Composition**: `ValidationFlow` (agent through the Agent Runtime — single execution path,
+  ADR-013) over the assembler's new `assemble_validation_context` (findings + evidence snapshots;
+  `None` = nothing to validate). The loop's COMPLETE branch runs validation **before** synthesis
+  (best-effort; traced as VALIDATION with counts + the agent's summary; a failure is traced with
+  its stable code and synthesis proceeds without the assessment). The assessment is the Decision
+  Engine's documented input — folded into the synthesis prompt.
+- **Tests**: 8 agent/flow unit tests, 3 loop integration tests (validated-then-synthesized
+  ordering, contained failure, escalated runs never validate), 4 behavioral validation tests
+  (adversarial matrix → never a clean bill; partial recognition; provenance; repeatability).
+- Verification: part of the Milestone B gate — `ruff` clean, `mypy app` strict clean, backend
+  default **424 passed** / 22 deselected.
+
+---
+
+## ES-057
+
+- Graph Analysis Agent delivered (Milestone B close; agent-architecture §6): the typed
+  `graph-analysis-agent` reasons over the finding-seeded entity neighbourhood (assembler's new
+  `assemble_graph_context`: seeds from findings' related entities, 1-hop neighbours + incident
+  relationships, dangling §8a references skipped) and produces one `GraphAnalysis` — observations
+  in the documented vocabulary (attack_path, lateral_movement, correlation, anomaly) with
+  entity provenance bound to the snapshot.
+- **Composition**: `GraphAnalysisFlow` (agent through the Agent Runtime) records its own
+  GRAPH_ANALYSIS trace entry (RetrievalFlow pattern); the runner runs it once per run after
+  retrieval and appends the observations to the planner-visible knowledge as `[graph-analysis]`
+  lines (bounded 300 chars) — contained failure, the run proceeds unenriched.
+- **Tests**: 10 agent/assembler/flow/runner tests (typed transformation + filtering, prompt
+  provenance, malformed raises, precondition, finding-seeded assembly, graph-less/seed-less
+  skips, flow tracing, runner enrichment + containment).
+- **Milestone B closed** — live demo (headless Chrome, auto sign-in, real MiniMax-M3 over the
+  seeded investigation): one completed run produced the full seven-kind trace — retrieval (15
+  items) → graph_analysis (3 entities, 3 observations) → planner_decision → action_execution →
+  validation (2 findings, 0 issues) → outcome_synthesis (confidence 0.85, 2 conflicts, 5 open
+  questions) → loop_outcome — and the workspace rendered the synthesized-outcome panel
+  (recommendation + conflicts + open questions). Notably the engine correctly classified the
+  seed's duplicate memories as redundancy rather than conflicting evidence.
+- Verification: `ruff` clean, `mypy app` strict clean (169 files), backend default **424 passed**
+  / 22 deselected (+25 across ES-056/057); frontend unchanged since the ES-055 gate (**69
+  tests**); no REST contract change (openapi freshness green). Delivery Record updated to
+  Delivered for the initial specialized-agent set; Timeline/Report agents remain deferred
+  (backlog), Threat Intelligence Agent belongs to Milestone C.

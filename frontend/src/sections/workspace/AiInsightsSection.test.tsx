@@ -5,6 +5,7 @@ import { AiInsightsSection } from "./AiInsightsSection";
 import { TestQueryProvider } from "../../test/TestQueryProvider";
 import { loadInvestigationTrace } from "../../communication/trace";
 import { runInvestigation } from "../../communication/run";
+import { loadInvestigationOutcome } from "../../communication/outcome";
 import type { TraceEntryViewModel } from "../../communication/trace";
 
 vi.mock("../../communication/trace", async (importOriginal) => {
@@ -17,9 +18,15 @@ vi.mock("../../communication/run", async (importOriginal) => {
     await importOriginal<typeof import("../../communication/run")>();
   return { ...actual, runInvestigation: vi.fn() };
 });
+vi.mock("../../communication/outcome", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../communication/outcome")>();
+  return { ...actual, loadInvestigationOutcome: vi.fn() };
+});
 
 const mockedTrace = vi.mocked(loadInvestigationTrace);
 const mockedRun = vi.mocked(runInvestigation);
+const mockedOutcome = vi.mocked(loadInvestigationOutcome);
 
 const entries: readonly TraceEntryViewModel[] = [
   {
@@ -52,6 +59,9 @@ describe("AiInsightsSection", () => {
   beforeEach(() => {
     mockedTrace.mockReset();
     mockedRun.mockReset();
+    mockedOutcome.mockReset();
+    // Default: no outcome synthesized yet (the normal 0..1 empty state).
+    mockedOutcome.mockResolvedValue(null);
   });
 
   it("shows the empty state before any AI activity", async () => {
@@ -112,5 +122,36 @@ describe("AiInsightsSection", () => {
     const badge = await screen.findByTestId("run-outcome");
     expect(badge).toHaveTextContent("escalated");
     expect(badge).toHaveTextContent("ai.llm_provider_error");
+  });
+
+  it("presents the synthesized outcome recommendation (ES-055)", async () => {
+    mockedTrace.mockResolvedValue([]);
+    mockedOutcome.mockResolvedValue({
+      id: "out-1",
+      status: "synthesized",
+      confidence: 0.82,
+      recommendation: "Contain HOST-1 and sinkhole the domain.",
+      contributingFindings: ["f-1"],
+      detectedConflicts: ["beacon interval varies"],
+      openQuestions: ["initial access vector"],
+      createdAt: "2026-07-15T10:00:00Z",
+    });
+    renderSection();
+
+    const panel = await screen.findByTestId("synthesized-outcome");
+    expect(panel).toHaveTextContent(
+      "Contain HOST-1 and sinkhole the domain.",
+    );
+    expect(panel).toHaveTextContent("confidence 82%");
+    expect(panel).toHaveTextContent("Conflicts: beacon interval varies");
+    expect(panel).toHaveTextContent("Open questions: initial access vector");
+  });
+
+  it("shows no outcome panel while none has been synthesized", async () => {
+    mockedTrace.mockResolvedValue([]);
+    renderSection();
+
+    expect(await screen.findByText(/No AI activity yet/)).toBeInTheDocument();
+    expect(screen.queryByTestId("synthesized-outcome")).toBeNull();
   });
 });

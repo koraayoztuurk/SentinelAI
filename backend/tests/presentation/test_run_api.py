@@ -13,6 +13,7 @@ import asyncio
 from fastapi.testclient import TestClient
 
 from app.ai.agents.planner.agent import PlannerAgent
+from app.ai.decision import DecisionEngine
 from app.ai.errors import LLMProviderError
 from app.ai.orchestration.assembler import InvestigationStateAssembler
 from app.ai.orchestration.loop import InvestigationLoop
@@ -20,6 +21,7 @@ from app.ai.orchestration.runner import InvestigationRunner
 from app.ai.providers.llm import LLMRequest, LLMResponse
 from app.application.investigation import InvestigationService
 from app.application.planner import PlannerService
+from app.domain.enums import FindingStatus
 from app.domain.identifiers import InvestigationId
 from app.domain.trace import TraceEntryKind
 from app.main import create_app
@@ -31,6 +33,8 @@ from app.presentation.api.v1.investigation.dependencies import (
 )
 from tests.support.builders import (
     FIXED_TIME,
+    build_evidence,
+    build_finding,
     make_graph_service,
     make_investigation_service,
     make_memory_service,
@@ -58,12 +62,27 @@ class _BrokenLLM:
 class _Stack:
     """The run composition over in-memory services with a scripted provider."""
 
-    def __init__(self, llm: _ScriptedLLM | _BrokenLLM, budget: int = 3) -> None:
+    def __init__(
+        self,
+        llm: _ScriptedLLM | _BrokenLLM,
+        budget: int = 3,
+        engine_llm: _ScriptedLLM | None = None,
+    ) -> None:
         self.investigation: InvestigationService = make_investigation_service()
         planner = PlannerService(
             self.investigation, make_graph_service(), make_memory_service()
         )
         assembler = InvestigationStateAssembler(self.investigation)
+        synthesizer = (
+            DecisionEngine(
+                engine_llm,
+                self.investigation,
+                SequentialIdGenerator("out"),
+                FixedClock(FIXED_TIME),
+            )
+            if engine_llm is not None
+            else None
+        )
         loop = InvestigationLoop(
             PlannerAgent(llm),
             planner,
@@ -72,6 +91,7 @@ class _Stack:
             FixedClock(FIXED_TIME),
             self.investigation,
             budget,
+            synthesizer,
         )
         runner = InvestigationRunner(assembler, loop)
 
@@ -141,6 +161,58 @@ def test_run_completes_and_records_the_trace() -> None:
     trace = stack.client.get(f"/api/v1/investigations/{investigation_id}/trace")
     assert trace.status_code == 200
     assert [e["kind"] for e in trace.json()["data"]] == expected_kinds
+
+
+def test_completed_run_synthesizes_the_outcome_end_to_end() -> None:
+    """ES-055: a completed run writes the Investigation Outcome, and the
+    ES-045 read surface serves it over HTTP with the synthesis in the trace."""
+
+    stack = _Stack(
+        _ScriptedLLM('{"action":"control","control":"complete"}'),
+        engine_llm=_ScriptedLLM(
+            '{"recommendation": "Contain HOST-1.", "confidence": 0.8, '
+            '"detected_conflicts": [], "open_questions": ["entry vector"]}'
+        ),
+    )
+    investigation_id = stack.create_investigation()
+    asyncio.run(
+        stack.investigation.attach_evidence(
+            build_evidence("ev-1", investigation_id)
+        )
+    )
+    asyncio.run(
+        stack.investigation.create_finding(
+            build_finding(
+                "f-1",
+                investigation_id,
+                supporting_evidence=("ev-1",),
+                status=FindingStatus.VALIDATED,
+            )
+        )
+    )
+
+    response = stack.client.post(
+        f"/api/v1/investigations/{investigation_id}/run"
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["end"] == "completed"
+
+    outcome = stack.client.get(
+        f"/api/v1/investigations/{investigation_id}/outcome"
+    )
+    assert outcome.status_code == 200
+    data = outcome.json()["data"]
+    assert data["recommendation"] == "Contain HOST-1."
+    assert data["status"] == "synthesized"
+    assert data["contributing_findings"] == ["f-1"]
+    assert data["open_questions"] == ["entry vector"]
+
+    kinds = stack.trace_kinds(investigation_id)
+    assert TraceEntryKind.OUTCOME_SYNTHESIS.value in kinds
+    # Synthesis precedes the terminal loop outcome.
+    assert kinds.index(TraceEntryKind.OUTCOME_SYNTHESIS.value) < kinds.index(
+        TraceEntryKind.LOOP_OUTCOME.value
+    )
 
 
 def test_provider_failure_degrades_to_escalated_not_http_error() -> None:

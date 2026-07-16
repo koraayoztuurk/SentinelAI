@@ -77,6 +77,43 @@ class InvestigationLoopError(AIRuntimeError):
     code = "ai.investigation_loop_error"
 
 
+class ValidationAgentError(AIRuntimeError):
+    """Raised when the Validation Agent cannot produce an assessment.
+
+    Used for precondition violations (a context without findings) and for
+    malformed assessment responses — an empty assessment is not a neutral
+    fallback (it would read as a clean bill of health), so unlike the
+    planner/memory agents there is no safe degrade product. The consuming
+    composition contains this error.
+    """
+
+    code = "ai.validation_agent_error"
+
+
+class GraphAnalysisError(AIRuntimeError):
+    """Raised when the Graph Analysis Agent cannot produce an analysis.
+
+    Used for precondition violations (a context without entities) and for
+    malformed analysis responses — an empty analysis is not a neutral
+    fallback (it would read as "nothing notable in the graph"). The
+    consuming composition contains this error.
+    """
+
+    code = "ai.graph_analysis_error"
+
+
+class DecisionEngineError(AIRuntimeError):
+    """Raised when the Decision Engine cannot synthesize an outcome.
+
+    Used for malformed synthesis responses (no safe fallback product exists —
+    an invented recommendation would be worse than none) and precondition
+    violations. The Investigation Loop contains this error: a failed synthesis
+    never breaks a completed run.
+    """
+
+    code = "ai.decision_engine_error"
+
+
 class RagError(AIRuntimeError):
     """Base class for RAG pipeline errors."""
 

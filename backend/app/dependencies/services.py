@@ -32,12 +32,17 @@ from fastapi import FastAPI, Request
 from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.agents.graph_analysis import GraphAnalysisAgent
 from app.ai.agents.memory.agent import MemoryAgent
 from app.ai.agents.planner.agent import PlannerAgent
+from app.ai.agents.validation import ValidationAgent
+from app.ai.decision import DecisionEngine
 from app.ai.orchestration.assembler import InvestigationStateAssembler
+from app.ai.orchestration.graph_analysis import GraphAnalysisFlow
 from app.ai.orchestration.loop import InvestigationLoop
 from app.ai.orchestration.retrieval import RetrievalFlow
 from app.ai.orchestration.runner import InvestigationRunner
+from app.ai.orchestration.validation import ValidationFlow
 from app.ai.providers.llm import LLMProvider
 from app.ai.rag.pipeline import RagPipeline
 from app.application.authorization import (
@@ -229,7 +234,9 @@ async def live_investigation_runner(
         investigation = _investigation_service(session)
         llm = _llm_provider()
         agent = PlannerAgent(llm)
-        assembler = InvestigationStateAssembler(investigation)
+        assembler = InvestigationStateAssembler(
+            investigation, _graph_service(request)
+        )
         loop = InvestigationLoop(
             agent,
             _planner_service(session, request),
@@ -238,6 +245,14 @@ async def live_investigation_runner(
             SystemClock(),
             investigation,
             get_settings().run_cycle_budget,
+            # Decision synthesis (ES-055): the engine shares the selected LLM
+            # and writes the outcome through the same transactional session.
+            DecisionEngine(
+                llm, investigation, Uuid4IdGenerator(), SystemClock()
+            ),
+            # Findings validation before synthesis (ES-056): the Validation
+            # Agent assesses the findings/evidence over the same provider.
+            ValidationFlow(ValidationAgent(llm), assembler),
         )
         retriever = CompositeRetriever(
             GeminiEmbeddingProvider(
@@ -256,7 +271,19 @@ async def live_investigation_runner(
             investigation,
         )
         yield InvestigationRunner(
-            assembler, loop, retrieval, Uuid4IdGenerator()
+            assembler,
+            loop,
+            retrieval,
+            Uuid4IdGenerator(),
+            # Graph analysis enrichment (ES-057): the agent's observations
+            # join the planner-visible knowledge, once per run.
+            GraphAnalysisFlow(
+                GraphAnalysisAgent(llm),
+                assembler,
+                Uuid4IdGenerator(),
+                SystemClock(),
+                investigation,
+            ),
         )
 
 

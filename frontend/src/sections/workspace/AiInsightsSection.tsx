@@ -1,15 +1,20 @@
-// AI Insights region (ES-047).
+// AI Insights region (ES-047, outcome panel ES-055).
 //
 // Replaces the "not yet available" placeholder: presents the Investigation
 // Trace — the explainability journal the Investigation Loop writes (ES-045) —
-// and hosts the "Run investigation" interaction (ES-044). A run's terminal
-// condition is presented explicitly: `completed`, `escalated` (with its
-// stable failure code — the ADR-013 degrade-to-escalation made visible to
-// the analyst) or `exhausted` (cycle budget). The region never owns data:
-// trace entries come from the server-state layer and refresh after each run.
+// hosts the "Run investigation" interaction (ES-044) and presents the
+// synthesized Investigation Outcome (the Decision Engine's recommendation,
+// confidence, conflicts and open questions — advisory only, the analyst
+// decides). A run's terminal condition is presented explicitly: `completed`,
+// `escalated` (with its stable failure code — the ADR-013
+// degrade-to-escalation made visible to the analyst) or `exhausted` (cycle
+// budget). The region never owns data: trace entries and the outcome come
+// from the server-state layer and refresh after each run.
 
+import { useInvestigationOutcome } from "../../state/useInvestigationOutcome";
 import { useInvestigationTrace } from "../../state/useInvestigationTrace";
 import { useRunInvestigation } from "../../state/useRunInvestigation";
+import type { OutcomeViewModel } from "../../communication/outcome";
 import type { RunOutcomeViewModel } from "../../communication/run";
 import { Button } from "../../ui/Button";
 import { WorkspaceRegion } from "./WorkspaceRegion";
@@ -45,9 +50,43 @@ function OutcomeBadge({ outcome }: { readonly outcome: RunOutcomeViewModel }) {
   );
 }
 
+function SynthesizedOutcomePanel({
+  outcome,
+}: {
+  readonly outcome: OutcomeViewModel;
+}) {
+  return (
+    <div
+      data-testid="synthesized-outcome"
+      className="mb-3 rounded border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-xs uppercase opacity-70">
+          Synthesized outcome
+        </span>
+        <span className="text-xs opacity-70">
+          confidence {Math.round(outcome.confidence * 100)}%
+        </span>
+      </div>
+      <p className="mt-1">{outcome.recommendation}</p>
+      {outcome.detectedConflicts.length > 0 && (
+        <p className="mt-1 text-xs text-amber-400">
+          Conflicts: {outcome.detectedConflicts.join("; ")}
+        </p>
+      )}
+      {outcome.openQuestions.length > 0 && (
+        <p className="mt-1 text-xs opacity-70">
+          Open questions: {outcome.openQuestions.join("; ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function AiInsightsSection({ investigationId }: AiInsightsSectionProps) {
   const trace = useInvestigationTrace(investigationId);
   const runState = useRunInvestigation(investigationId);
+  const synthesized = useInvestigationOutcome(investigationId);
 
   return (
     <WorkspaceRegion title="AI Insights">
@@ -61,6 +100,10 @@ export function AiInsightsSection({ investigationId }: AiInsightsSectionProps) {
         </Button>
         {runState.outcome && <OutcomeBadge outcome={runState.outcome} />}
       </div>
+
+      {synthesized.outcome && (
+        <SynthesizedOutcomePanel outcome={synthesized.outcome} />
+      )}
 
       {runState.error && (
         <p role="alert" className="mb-3 text-xs text-red-400">

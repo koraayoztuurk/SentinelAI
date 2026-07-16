@@ -26,6 +26,9 @@ class TraceEntryKind(Enum):
     PLANNER_DECISION = "planner_decision"
     ACTION_EXECUTION = "action_execution"
     RETRIEVAL = "retrieval"
+    GRAPH_ANALYSIS = "graph_analysis"
+    VALIDATION = "validation"
+    OUTCOME_SYNTHESIS = "outcome_synthesis"
     LOOP_OUTCOME = "loop_outcome"
     ANALYST_NOTE = "analyst_note"
 

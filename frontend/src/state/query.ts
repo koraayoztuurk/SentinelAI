@@ -14,6 +14,7 @@ import { loadInvestigationWorkspace } from "../communication/workspace";
 import { loadEntityNeighborhood } from "../communication/graph";
 import { loadInvestigationTrace } from "../communication/trace";
 import { loadInvestigationMemory } from "../communication/memory";
+import { loadInvestigationOutcome } from "../communication/outcome";
 
 export function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -36,6 +37,7 @@ export const queryKeys = {
     ["graph", "neighborhood", entityId] as const,
   trace: (id: string) => ["trace", id] as const,
   memory: (id: string) => ["memory", id] as const,
+  outcome: (id: string) => ["outcome", id] as const,
 };
 
 // Query option builders — the only place per-query options live. Hooks consume
@@ -66,6 +68,13 @@ export function memoryQuery(id: string) {
   return queryOptions({
     queryKey: queryKeys.memory(id),
     queryFn: ({ signal }) => loadInvestigationMemory(id, signal),
+  });
+}
+
+export function outcomeQuery(id: string) {
+  return queryOptions({
+    queryKey: queryKeys.outcome(id),
+    queryFn: ({ signal }) => loadInvestigationOutcome(id, signal),
   });
 }
 
@@ -106,6 +115,10 @@ export function invalidateMemory(client: QueryClient, id: string): Promise<void>
   return client.invalidateQueries({ queryKey: queryKeys.memory(id) });
 }
 
+export function invalidateOutcome(client: QueryClient, id: string): Promise<void> {
+  return client.invalidateQueries({ queryKey: queryKeys.outcome(id) });
+}
+
 // A run and an evidence attachment change investigation-scoped server state
 // across regions; refreshing the workspace family in one place keeps the
 // invalidation vocabulary centralized.
@@ -118,5 +131,6 @@ export function invalidateInvestigationData(
     invalidateDashboard(client, id),
     invalidateTrace(client, id),
     invalidateMemory(client, id),
+    invalidateOutcome(client, id),
   ]).then(() => undefined);
 }

@@ -18,9 +18,15 @@ must not take the decision loop down with it).
 import logging
 from dataclasses import replace
 
+from app.ai.agents.graph_analysis.analysis import GraphObservation
 from app.ai.agents.memory.plan import RetrievalPlanId
-from app.ai.errors import InsufficientContextError, MemoryAgentError
+from app.ai.errors import (
+    GraphAnalysisError,
+    InsufficientContextError,
+    MemoryAgentError,
+)
 from app.ai.orchestration.assembler import InvestigationStateAssembler
+from app.ai.orchestration.graph_analysis import GraphAnalysisFlow
 from app.ai.orchestration.loop import InvestigationLoop, LoopOutcome
 from app.ai.orchestration.retrieval import RetrievalFlow
 from app.ai.orchestration.tracing import IdSource
@@ -44,6 +50,17 @@ def _knowledge_line(item: RetrievedItem) -> str:
     )
 
 
+def _observation_line(observation: GraphObservation) -> str:
+    detail = observation.detail.strip()
+    if len(detail) > _KNOWLEDGE_CONTENT_LIMIT:
+        detail = detail[:_KNOWLEDGE_CONTENT_LIMIT] + "…"
+    entities = ",".join(e.value for e in observation.entities)
+    return (
+        f"[graph-analysis] {observation.kind.value}"
+        f"{f' (entities: {entities})' if entities else ''} {detail}"
+    )
+
+
 class InvestigationRunner:
     """Assembles the initial state and runs the Investigation Loop."""
 
@@ -53,6 +70,7 @@ class InvestigationRunner:
         loop: InvestigationLoop,
         retrieval: RetrievalFlow | None = None,
         ids: IdSource | None = None,
+        graph_analysis: GraphAnalysisFlow | None = None,
     ) -> None:
         if retrieval is not None and ids is None:
             raise ValueError(
@@ -63,6 +81,7 @@ class InvestigationRunner:
         self._loop = loop
         self._retrieval = retrieval
         self._ids = ids
+        self._graph_analysis = graph_analysis
 
     async def run(self, investigation_id: InvestigationId) -> LoopOutcome:
         """Run the loop for one investigation and return its outcome."""
@@ -90,5 +109,31 @@ class InvestigationRunner:
                     "investigation_id=%s code=%s",
                     investigation_id.value,
                     getattr(exc, "code", "unknown"),
+                )
+        if self._graph_analysis is not None:
+            # Graph analysis enrichment (ES-057): once per run, like
+            # retrieval — its observations join the planner-visible
+            # knowledge; a failed analysis is contained (supportive, never
+            # critical).
+            try:
+                analysis = await self._graph_analysis.analyze(
+                    investigation_id
+                )
+            except GraphAnalysisError as exc:
+                analysis = None
+                logger.info(
+                    "run proceeds without graph analysis "
+                    "investigation_id=%s code=%s",
+                    investigation_id.value,
+                    exc.code,
+                )
+            if analysis is not None and analysis.observations:
+                state = replace(
+                    state,
+                    knowledge=state.knowledge
+                    + tuple(
+                        _observation_line(observation)
+                        for observation in analysis.observations
+                    ),
                 )
         return await self._loop.run(state)
