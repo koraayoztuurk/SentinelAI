@@ -1,11 +1,12 @@
-"""Tests for the concrete source-backed Retriever (ES-051).
+"""Tests for the concrete source-backed Retriever (ES-051, external ES-058).
 
 The CompositeRetriever executes a Retrieval Plan against the live knowledge
 sources: semantic (query embedding + vector-store search, mapped back to the
 authoritative Memory Items), structured (Memory Service), graph (Graph
-Service neighbourhood). Deterministic fakes stand in for the embedding
-provider and the vector store; the backend services run over the shared
-in-memory doubles. Plain functions, ``asyncio.run``.
+Service neighbourhood), external (the composed ``ExternalKnowledgeProvider``
+adapters). Deterministic fakes stand in for the embedding provider, the
+vector store and the external providers; the backend services run over the
+shared in-memory doubles. Plain functions, ``asyncio.run``.
 """
 
 import asyncio
@@ -17,6 +18,11 @@ from app.ai.agents.memory.plan import (
     RetrievalStrategy,
 )
 from app.ai.agents.planner.state import InvestigationState
+from app.ai.errors import ExternalKnowledgeError
+from app.ai.providers.external import (
+    ExternalKnowledgeItem,
+    ExternalKnowledgeQuery,
+)
 from app.application.memory.errors import MemoryVectorStoreUnavailableError
 from app.application.memory.vector_store import MemoryVectorMatch
 from app.domain.enums import MemoryStatus
@@ -79,6 +85,40 @@ class UnavailableVectorStore(ScriptedVectorStore):
         raise MemoryVectorStoreUnavailableError(
             "The memory vector store is unreachable."
         )
+
+
+class ScriptedExternalProvider:
+    """External knowledge provider double returning scripted items."""
+
+    def __init__(self, items: tuple[ExternalKnowledgeItem, ...] = ()) -> None:
+        self.queries: list[str] = []
+        self._items = items
+
+    async def lookup(
+        self, query: ExternalKnowledgeQuery
+    ) -> tuple[ExternalKnowledgeItem, ...]:
+        self.queries.append(query.query)
+        return self._items
+
+
+class FailingExternalProvider:
+    """External knowledge provider double whose feed is down."""
+
+    async def lookup(
+        self, query: ExternalKnowledgeQuery
+    ) -> tuple[ExternalKnowledgeItem, ...]:
+        raise ExternalKnowledgeError("The external feed is unreachable.")
+
+
+def _external_item(
+    reference: str, source: str = "mitre-attack"
+) -> ExternalKnowledgeItem:
+    return ExternalKnowledgeItem(
+        source=source,
+        reference=reference,
+        content=f"{reference}: external context",
+        confidence=Confidence(0.6),
+    )
 
 
 def _match(memory_id: str, score: float) -> MemoryVectorMatch:
@@ -345,7 +385,7 @@ def test_hybrid_executes_the_organizational_strategies_together() -> None:
     asyncio.run(scenario())
 
 
-def test_external_strategy_contributes_nothing() -> None:
+def test_external_without_composed_providers_contributes_nothing() -> None:
     async def scenario() -> None:
         retriever = CompositeRetriever(
             FixedEmbedding(),
@@ -359,7 +399,70 @@ def test_external_strategy_contributes_nothing() -> None:
             _state(), _plan(RetrievalStrategy.EXTERNAL)
         )
 
+        # Opting external knowledge out (no composed providers) keeps the
+        # strategy a quiet no-op, never an error.
         assert knowledge.items == ()
+
+    asyncio.run(scenario())
+
+
+def test_external_executes_composed_providers_with_provenance() -> None:
+    async def scenario() -> None:
+        attack = ScriptedExternalProvider((_external_item("T1021"),))
+        nvd = ScriptedExternalProvider(
+            (_external_item("CVE-2024-0001", source="nvd"),)
+        )
+        retriever = CompositeRetriever(
+            FixedEmbedding(),
+            ScriptedVectorStore(),
+            make_memory_service(),
+            make_investigation_service(),
+            make_graph_service(),
+            external=(attack, nvd),
+        )
+
+        knowledge = await retriever.retrieve(
+            _state(), _plan(RetrievalStrategy.EXTERNAL)
+        )
+
+        # The query derives from the objectives (as semantic); every item
+        # keeps its origin so external knowledge stays distinguishable (§17).
+        assert attack.queries == ["Investigate: lateral movement"]
+        assert nvd.queries == ["Investigate: lateral movement"]
+        assert [(item.source, item.reference) for item in knowledge.items] == [
+            ("mitre-attack", "T1021"),
+            ("nvd", "CVE-2024-0001"),
+        ]
+        assert all(
+            item.strategy is RetrievalStrategy.EXTERNAL
+            for item in knowledge.items
+        )
+        assert knowledge.items[0].content == "T1021: external context"
+        assert knowledge.items[0].confidence.value == 0.6
+
+    asyncio.run(scenario())
+
+
+def test_external_provider_failure_is_contained_per_provider() -> None:
+    async def scenario() -> None:
+        retriever = CompositeRetriever(
+            FixedEmbedding(),
+            ScriptedVectorStore(),
+            make_memory_service(),
+            make_investigation_service(),
+            make_graph_service(),
+            external=(
+                FailingExternalProvider(),
+                ScriptedExternalProvider((_external_item("T1071"),)),
+            ),
+        )
+
+        knowledge = await retriever.retrieve(
+            _state(), _plan(RetrievalStrategy.EXTERNAL)
+        )
+
+        # One feed's outage never blanks the other feed's contribution.
+        assert [item.reference for item in knowledge.items] == ["T1071"]
 
     asyncio.run(scenario())
 

@@ -67,6 +67,7 @@
 | ES-055 | Decision Engine: Outcome Synthesis on Completed Runs + Outcome Panel | ✅ Completed |
 | ES-056 | Validation Agent: Findings Assessment Before Synthesis | ✅ Completed |
 | ES-057 | Graph Analysis Agent: Neighbourhood Analysis Enriching the Run (Milestone B closed) | ✅ Completed |
+| ES-058 | External Knowledge Live: ATT&CK Catalog + NVD CVE Providers + EXTERNAL Retrieval Strategy | ✅ Completed |
 
 ---
 
@@ -1550,6 +1551,32 @@ to later specifications.
   (RetrievalFlow pattern) since it runs outside the loop.
 - The assembler gained an optional `graph` dependency (additive constructor default `None`;
   graph-less compositions and every pre-existing test remain untouched).
+
+---
+
+## ES-058 (Milestone C, part 1)
+
+- **Concrete external providers are integration decisions, not architecture** (ADR-014 check):
+  the `ExternalKnowledgeProvider` port, the EXTERNAL strategy and the origin-preserving item
+  shape were all documented (ES-039 / rag §15 / memory §4); choosing the bundled ATT&CK catalog
+  and the NVD CVE API as the first adapters mirrors ES-043/054 (concrete providers need no ADR).
+- **Bundled ATT&CK catalog is curated reference data, not a feed**: a revisioned subset
+  (~21 techniques, keyword-matched) packaged with the app (hatchling wheel includes it —
+  verified) so the baseline external source is deterministic, offline and CI-able; the live
+  NVD adapter complements it. Refreshing/expanding the catalog is a data update, not code.
+- **NVD key is optional by the provider's own contract** (keyless = harder rate limit):
+  deliberate, documented deviation from the LLM adapters' mandatory-key stance — composition
+  never fails on a missing `NVD_API_KEY`; the key travels only as the `apiKey` header.
+- **Confidence semantics for external items are heuristic by design**: ATT&CK reports a bounded
+  relevance heuristic from keyword hits (0.4 + 0.1/hit, ceiling 0.9); NVD reports a fixed
+  neutral 0.5 (the API has no relevance measure). External knowledge stays indicative context,
+  never organizational fact (§17) — provenance (`source`/`reference`) preserved end to end.
+- **Per-provider containment inside the EXTERNAL strategy**: one feed's outage never blanks the
+  other (retriever logs the stable code and continues) — finer than the ES-051 per-strategy
+  containment, same stance.
+- TD: prose objectives rarely hit NVD `keywordSearch` (all-terms match) — the Threat
+  Intelligence Agent (ES-059) will issue focused queries (entity names, explicit CVE ids);
+  no retry/backoff on external calls (Milestone G family); catalog refresh cadence unowned.
 
 ---
 
@@ -3130,3 +3157,47 @@ Next ES
   tests**); no REST contract change (openapi freshness green). Delivery Record updated to
   Delivered for the initial specialized-agent set; Timeline/Report agents remain deferred
   (backlog), Threat Intelligence Agent belongs to Milestone C.
+
+
+---
+
+## ES-058
+
+- External Knowledge layer turned on (Milestone C opener; the ES-051 external deferral closed):
+  the EXTERNAL retrieval strategy now executes through the provider-neutral
+  `ExternalKnowledgeProvider` port (ES-039) against two concrete adapters — infrastructure edge
+  code implementing an AI-layer port, the ES-043/049/051 pattern:
+  - **`AttackCatalogProvider`** (`app/infrastructure/ai/attack_catalog.py`) — a bundled,
+    revisioned, curated MITRE ATT&CK technique subset (`attack_catalog.json`, ~21 techniques
+    across the kill chain), case-insensitive whole-word keyword matching, hit-count ranking,
+    result bound 5, bounded relevance confidence (0.4 + 0.1/hit, ceiling 0.9). Deterministic,
+    offline, CI-able; a broken bundled catalog surfaces eagerly at construction. Wheel packaging
+    verified (hatchling includes the JSON).
+  - **`NvdCveProvider`** (`app/infrastructure/ai/nvd.py`) — live NVD REST API 2.0 over httpx
+    (no vendor SDK; ES-054 contract pattern: `asyncio.timeout` bound, total error mapping to
+    `ExternalKnowledgeError`, bounded key-free error detail). Explicit CVE ids in the query
+    resolve via `cveId`; otherwise a 256-char-bounded `keywordSearch`. `NVD_API_KEY` optional
+    by NVD's own contract (keyless degrade, key only ever the `apiKey` header); malformed items
+    inside a valid payload are skipped, never fatal; fixed neutral confidence 0.5.
+- **Retriever integration**: `CompositeRetriever` gained an additive `external` tuple; the
+  EXTERNAL strategy queries every composed provider with the investigation objectives,
+  containing failures **per provider**; items keep their origin (`mitre-attack:T1071`,
+  `nvd:CVE-...`) so external knowledge stays distinguishable (rag §17). External items reach
+  the planner-visible knowledge lines and the RETRIEVAL trace entry through the ES-051 path
+  unchanged — no REST change (AC-15 untouched).
+- **Configuration**: `EXTERNAL_KNOWLEDGE_PROVIDERS` (closed vocabulary `attack,nvd`, default
+  both, empty opts out — unknown tokens rejected at settings load) + `NVD_TIMEOUT_SECONDS` /
+  `NVD_RESULTS_LIMIT`; composition root builds the selected adapters into the retriever;
+  `.env.example` documents all of it. Memory Agent prompt: the external strategy's
+  "(not yet available)" note lifted.
+- **Tests (+26)**: 9 ATT&CK catalog tests (bundled-catalog load + keyword semantics + ranking/
+  bounds + confidence growth + eager malformed/missing failures), 11 NVD contract tests over
+  `httpx.MockTransport` (mapping + key hygiene + keyless degrade + cveId path + query/result
+  bounds + item-skip + 403/malformed/missing-list/transport/timeout), 3 retriever external
+  tests (provenance mapping, per-provider containment, no-providers no-op), 4 settings tests
+  (dedup/order, case, empty opt-out, unknown rejection). Functional sanity: the seed demo
+  objective ("beaconing from HOST-1") retrieves T1071 Application Layer Protocol.
+- Verification: `ruff` clean; `mypy app` strict clean (171 files); backend default **450
+  passed** / 22 deselected; frontend untouched since the ES-055 gate; openapi freshness green.
+- TD: NVD keyword search rarely matches prose objectives (ES-059's focused queries are the
+  consumer); no external-call retry/backoff (Milestone G); catalog refresh cadence unowned.

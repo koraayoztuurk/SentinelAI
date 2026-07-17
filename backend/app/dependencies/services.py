@@ -43,6 +43,7 @@ from app.ai.orchestration.loop import InvestigationLoop
 from app.ai.orchestration.retrieval import RetrievalFlow
 from app.ai.orchestration.runner import InvestigationRunner
 from app.ai.orchestration.validation import ValidationFlow
+from app.ai.providers.external import ExternalKnowledgeProvider
 from app.ai.providers.llm import LLMProvider
 from app.ai.rag.pipeline import RagPipeline
 from app.application.authorization import (
@@ -55,15 +56,20 @@ from app.application.investigation import InvestigationService
 from app.application.memory import MemoryService
 from app.application.planner import PlannerService
 from app.config.ai import (
+    ExternalKnowledgeProviderChoice,
     LLMProviderChoice,
+    get_external_knowledge_settings,
     get_gemini_embedding_settings,
     get_gemini_settings,
     get_llm_selection,
+    get_nvd_settings,
     get_nvidia_settings,
 )
 from app.config.settings import get_settings
+from app.infrastructure.ai.attack_catalog import AttackCatalogProvider
 from app.infrastructure.ai.gemini import GeminiLLMProvider
 from app.infrastructure.ai.gemini_embedding import GeminiEmbeddingProvider
+from app.infrastructure.ai.nvd import NvdCveProvider
 from app.infrastructure.ai.nvidia import NvidiaLLMProvider
 from app.infrastructure.ai.retrieval import CompositeRetriever
 from app.infrastructure.persistence.neo4j.repositories import (
@@ -187,6 +193,25 @@ def _llm_provider() -> LLMProvider:
     return GeminiLLMProvider(get_gemini_settings(), EnvironmentSecretProvider())
 
 
+def _external_knowledge_providers() -> tuple[ExternalKnowledgeProvider, ...]:
+    """The configured external knowledge adapters (ES-058).
+
+    ``EXTERNAL_KNOWLEDGE_PROVIDERS`` selects from the closed vocabulary; the
+    port stays provider-neutral (ADR-005). The NVD key is optional by the
+    provider's own contract, so composition never fails on a missing key.
+    """
+
+    providers: list[ExternalKnowledgeProvider] = []
+    for choice in get_external_knowledge_settings().selection:
+        if choice is ExternalKnowledgeProviderChoice.ATTACK:
+            providers.append(AttackCatalogProvider())
+        elif choice is ExternalKnowledgeProviderChoice.NVD:
+            providers.append(
+                NvdCveProvider(get_nvd_settings(), EnvironmentSecretProvider())
+            )
+    return tuple(providers)
+
+
 def _planner_service(session: AsyncSession, request: Request) -> PlannerService:
     """The Planner Service over the live composition (loop executor, ES-044).
 
@@ -224,9 +249,10 @@ async def live_investigation_runner(
 
     Retrieval Flow (ES-051): the Memory Agent (same Gemini LLM provider) and
     the RAG Pipeline over the concrete source-backed retriever — Gemini query
-    embedding + Qdrant semantic search, the Memory Service (structured), and
-    the Graph Service (neighbourhood). The runner executes it once per run;
-    a knowledge-layer failure is contained and the run proceeds without
+    embedding + Qdrant semantic search, the Memory Service (structured), the
+    Graph Service (neighbourhood), and the configured external knowledge
+    providers (ES-058). The runner executes it once per run; a
+    knowledge-layer failure is contained and the run proceeds without
     retrieved knowledge.
     """
 
@@ -262,6 +288,10 @@ async def live_investigation_runner(
             MemoryService(PostgresMemoryRepository(session)),
             investigation,
             _graph_service(request),
+            # External knowledge (ES-058): ATT&CK catalog + NVD CVE lookups
+            # behind the provider-neutral port; failures are contained per
+            # provider inside the retriever.
+            _external_knowledge_providers(),
         )
         retrieval = RetrievalFlow(
             MemoryAgent(llm),

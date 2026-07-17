@@ -16,16 +16,22 @@ Strategy execution:
   via the Memory Service.
 - **graph** — the neighbourhood of the findings' related entities, via the
   Graph Service (entities within one hop + incident relationships).
-- **external** — deferred to the Threat Intelligence milestone: the strategy
-  contributes nothing (never an error).
+- **external** — external threat intelligence through the provider-neutral
+  ``ExternalKnowledgeProvider`` port (ES-058; rag-architecture §15 "External
+  Retrieval"): every composed provider (MITRE ATT&CK catalog, NVD CVE) is
+  queried with the investigation objectives; items keep their origin
+  (source/reference) so external knowledge stays distinguishable from
+  organizational knowledge (§17). Without composed providers the strategy
+  contributes nothing (never an error) — the pre-ES-058 behavior.
 - **hybrid** — executes semantic + graph + structured together (rag §15).
 
 Failure isolation: one source's failure (graph store unreachable, embedding
-provider outage) is contained per strategy — the remaining strategies still
-contribute, mirroring the platform's contained-failure stance. Deprecated
-Memory Items never enter the context (deprecation marks knowledge no longer
-valid). Dangling cross-store references (a finding naming an entity absent
-from the graph) are observable-and-skipped, per §8a.
+provider outage, an external feed down) is contained per strategy — and for
+external, per provider — so the remaining sources still contribute, mirroring
+the platform's contained-failure stance. Deprecated Memory Items never enter
+the context (deprecation marks knowledge no longer valid). Dangling
+cross-store references (a finding naming an entity absent from the graph) are
+observable-and-skipped, per §8a.
 """
 
 import logging
@@ -33,6 +39,10 @@ import logging
 from app.ai.agents.memory.plan import RetrievalPlan, RetrievalStrategy
 from app.ai.agents.planner.state import InvestigationState
 from app.ai.providers.embedding import EmbeddingProvider
+from app.ai.providers.external import (
+    ExternalKnowledgeProvider,
+    ExternalKnowledgeQuery,
+)
 from app.ai.rag.retriever import RetrievedItem, RetrievedKnowledge
 from app.application.graph import GraphService
 from app.application.investigation import InvestigationService
@@ -83,12 +93,14 @@ class CompositeRetriever:
         memory: MemoryService,
         investigations: InvestigationService,
         graph: GraphService,
+        external: tuple[ExternalKnowledgeProvider, ...] = (),
     ) -> None:
         self._embedding = embedding
         self._vector_store = vector_store
         self._memory = memory
         self._investigations = investigations
         self._graph = graph
+        self._external = external
 
     async def retrieve(
         self, state: InvestigationState, plan: RetrievalPlan
@@ -129,8 +141,10 @@ class CompositeRetriever:
             return await self._structured(state)
         if strategy is RetrievalStrategy.GRAPH:
             return await self._graph_neighbourhood(state)
-        # external: deferred to the Threat Intelligence milestone — the
-        # strategy contributes nothing rather than failing the plan.
+        if strategy is RetrievalStrategy.EXTERNAL:
+            return await self._external_knowledge(state)
+        # A strategy without an execution path contributes nothing rather
+        # than failing the plan.
         logger.debug(
             "retrieval strategy not yet available strategy=%s", strategy.value
         )
@@ -185,6 +199,37 @@ class CompositeRetriever:
             for item in latest
             if item.status is not MemoryStatus.DEPRECATED
         )
+
+    # -------------------------------------------------------------- external
+
+    async def _external_knowledge(
+        self, state: InvestigationState
+    ) -> tuple[RetrievedItem, ...]:
+        query = ExternalKnowledgeQuery(query="; ".join(state.objectives))
+        items: list[RetrievedItem] = []
+        for provider in self._external:
+            try:
+                results = await provider.lookup(query)
+            except SentinelAIError as exc:
+                # One external feed's outage never blanks the others.
+                logger.warning(
+                    "external knowledge provider contained failure "
+                    "investigation_id=%s code=%s",
+                    state.investigation_id.value,
+                    exc.code,
+                )
+                continue
+            items.extend(
+                RetrievedItem(
+                    strategy=RetrievalStrategy.EXTERNAL,
+                    source=result.source,
+                    reference=result.reference,
+                    content=result.content,
+                    confidence=result.confidence,
+                )
+                for result in results
+            )
+        return tuple(items)
 
     # ----------------------------------------------------------------- graph
 

@@ -96,8 +96,8 @@ class MemoryAgent:
             "investigation's entities\n"
             '- "structured": the investigation\'s own recorded memory '
             "items\n"
-            '- "external": external threat intelligence (not yet '
-            "available)\n"
+            '- "external": external threat intelligence (MITRE ATT&CK '
+            "techniques, CVE lookups)\n"
             '- "hybrid": semantic + graph + structured together\n'
             "Select every strategy that would add investigative value.\n"
             "Investigation state:\n"

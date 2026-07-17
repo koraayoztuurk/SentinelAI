@@ -1,0 +1,154 @@
+{
+  "source": "mitre-attack",
+  "url": "https://attack.mitre.org",
+  "revision": "curated-subset-2026-07",
+  "techniques": [
+    {
+      "id": "T1595",
+      "name": "Active Scanning",
+      "tactics": ["reconnaissance"],
+      "description": "The adversary probes victim infrastructure via network traffic, e.g. scanning IP blocks or ports, to gather information for targeting.",
+      "keywords": ["scanning", "port scan", "network scan", "probe", "nmap", "reconnaissance"]
+    },
+    {
+      "id": "T1190",
+      "name": "Exploit Public-Facing Application",
+      "tactics": ["initial-access"],
+      "description": "The adversary exploits a weakness in an Internet-facing application (web app, database, service) to gain initial access.",
+      "keywords": ["exploit", "vulnerability", "web application", "public-facing", "cve", "injection attack", "rce"]
+    },
+    {
+      "id": "T1566",
+      "name": "Phishing",
+      "tactics": ["initial-access"],
+      "description": "The adversary sends phishing messages (malicious attachments or links) to gain access to victim systems.",
+      "keywords": ["phishing", "spearphishing", "malicious email", "attachment", "malicious link", "credential harvesting"]
+    },
+    {
+      "id": "T1078",
+      "name": "Valid Accounts",
+      "tactics": ["initial-access", "persistence", "privilege-escalation", "defense-evasion"],
+      "description": "The adversary obtains and abuses credentials of existing accounts for access, persistence or privilege escalation.",
+      "keywords": ["valid accounts", "compromised account", "stolen credentials", "suspicious login", "account takeover", "unauthorized access"]
+    },
+    {
+      "id": "T1059",
+      "name": "Command and Scripting Interpreter",
+      "tactics": ["execution"],
+      "description": "The adversary abuses command and script interpreters (PowerShell, cmd, bash, Python) to execute commands or payloads.",
+      "keywords": ["powershell", "cmd.exe", "bash", "script execution", "command line", "interpreter", "encoded command"]
+    },
+    {
+      "id": "T1053",
+      "name": "Scheduled Task/Job",
+      "tactics": ["execution", "persistence", "privilege-escalation"],
+      "description": "The adversary abuses task scheduling functionality (scheduled tasks, cron) to execute or persist malicious code.",
+      "keywords": ["scheduled task", "cron", "schtasks", "task scheduler", "at job"]
+    },
+    {
+      "id": "T1547",
+      "name": "Boot or Logon Autostart Execution",
+      "tactics": ["persistence", "privilege-escalation"],
+      "description": "The adversary configures system settings (registry run keys, startup folder) to execute a program automatically at boot or logon.",
+      "keywords": ["run key", "registry persistence", "startup folder", "autostart", "autorun"]
+    },
+    {
+      "id": "T1098",
+      "name": "Account Manipulation",
+      "tactics": ["persistence", "privilege-escalation"],
+      "description": "The adversary manipulates accounts (adding privileges, credentials or groups) to maintain or elevate access.",
+      "keywords": ["account manipulation", "privilege change", "added to group", "new administrator", "permission change"]
+    },
+    {
+      "id": "T1055",
+      "name": "Process Injection",
+      "tactics": ["defense-evasion", "privilege-escalation"],
+      "description": "The adversary injects code into live processes to evade defenses or elevate privileges.",
+      "keywords": ["process injection", "dll injection", "code injection", "process hollowing", "injected thread"]
+    },
+    {
+      "id": "T1562",
+      "name": "Impair Defenses",
+      "tactics": ["defense-evasion"],
+      "description": "The adversary disables or tampers with security tools (antivirus, logging, firewall) to avoid detection.",
+      "keywords": ["disable antivirus", "disable defender", "tamper protection", "security tool disabled", "logging disabled", "firewall disabled"]
+    },
+    {
+      "id": "T1110",
+      "name": "Brute Force",
+      "tactics": ["credential-access"],
+      "description": "The adversary attempts to gain access by systematically guessing credentials (brute force, password spraying, credential stuffing).",
+      "keywords": ["brute force", "password spraying", "credential stuffing", "failed login", "authentication failures", "password guessing"]
+    },
+    {
+      "id": "T1003",
+      "name": "OS Credential Dumping",
+      "tactics": ["credential-access"],
+      "description": "The adversary dumps credential material from the operating system (LSASS memory, SAM, NTDS) to obtain account logins.",
+      "keywords": ["credential dumping", "lsass", "mimikatz", "sam database", "ntds", "hash extraction"]
+    },
+    {
+      "id": "T1046",
+      "name": "Network Service Discovery",
+      "tactics": ["discovery"],
+      "description": "The adversary enumerates services running on remote hosts to identify targets for lateral movement or exploitation.",
+      "keywords": ["service discovery", "port enumeration", "network enumeration", "service scan", "open ports"]
+    },
+    {
+      "id": "T1021",
+      "name": "Remote Services",
+      "tactics": ["lateral-movement"],
+      "description": "The adversary uses valid accounts over remote services (RDP, SMB, SSH, WinRM) to move laterally between systems.",
+      "keywords": ["rdp", "remote desktop", "smb", "ssh", "winrm", "lateral movement", "remote services", "remote session"]
+    },
+    {
+      "id": "T1570",
+      "name": "Lateral Tool Transfer",
+      "tactics": ["lateral-movement"],
+      "description": "The adversary transfers tools or files between systems inside a compromised environment to support lateral movement.",
+      "keywords": ["tool transfer", "file copied", "admin share", "internal transfer", "staging host"]
+    },
+    {
+      "id": "T1071",
+      "name": "Application Layer Protocol",
+      "tactics": ["command-and-control"],
+      "description": "The adversary communicates with command-and-control servers over application layer protocols (HTTP(S), DNS, mail) to blend with normal traffic.",
+      "keywords": ["beaconing", "beacon", "c2", "command and control", "callback", "dns tunneling", "http traffic", "periodic connections"]
+    },
+    {
+      "id": "T1568",
+      "name": "Dynamic Resolution",
+      "tactics": ["command-and-control"],
+      "description": "The adversary dynamically establishes command-and-control infrastructure, e.g. via domain generation algorithms or fast flux DNS.",
+      "keywords": ["dga", "domain generation", "fast flux", "dynamic dns", "algorithmically generated domain"]
+    },
+    {
+      "id": "T1105",
+      "name": "Ingress Tool Transfer",
+      "tactics": ["command-and-control"],
+      "description": "The adversary transfers tools or files from an external system into the compromised environment.",
+      "keywords": ["download", "dropper", "payload delivery", "file download", "tool download", "second stage"]
+    },
+    {
+      "id": "T1041",
+      "name": "Exfiltration Over C2 Channel",
+      "tactics": ["exfiltration"],
+      "description": "The adversary exfiltrates stolen data over the existing command-and-control channel.",
+      "keywords": ["exfiltration", "data theft", "data staged", "outbound transfer", "data leak"]
+    },
+    {
+      "id": "T1567",
+      "name": "Exfiltration Over Web Service",
+      "tactics": ["exfiltration"],
+      "description": "The adversary exfiltrates data to an external web service (cloud storage, code repositories) rather than the primary C2 channel.",
+      "keywords": ["cloud upload", "web service exfiltration", "cloud storage", "unusual upload"]
+    },
+    {
+      "id": "T1486",
+      "name": "Data Encrypted for Impact",
+      "tactics": ["impact"],
+      "description": "The adversary encrypts data on target systems to interrupt availability, typically demanding ransom for decryption.",
+      "keywords": ["ransomware", "encrypted files", "ransom note", "file encryption", "extortion"]
+    }
+  ]
+}

@@ -6,8 +6,12 @@ Each pure validation function is exercised in isolation with explicit settings
 """
 
 import pytest
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
+from app.config.ai import (
+    ExternalKnowledgeProviderChoice,
+    ExternalKnowledgeSettings,
+)
 from app.config.database import Neo4jSettings, PostgresSettings
 from app.config.environment import Environment, resolve_environment
 from app.config.errors import (
@@ -156,3 +160,30 @@ def test_validate_configuration_fails_fast_on_invalid_log_format() -> None:
             _postgres("change_me"),
             _neo4j("change_me"),
         )
+
+
+# ------------------------------------------------------- external knowledge
+
+
+def test_external_knowledge_selection_parses_dedup_in_order() -> None:
+    settings = ExternalKnowledgeSettings(providers=" nvd, attack , nvd ")
+
+    assert settings.selection == (
+        ExternalKnowledgeProviderChoice.NVD,
+        ExternalKnowledgeProviderChoice.ATTACK,
+    )
+
+
+def test_external_knowledge_selection_is_case_insensitive() -> None:
+    settings = ExternalKnowledgeSettings(providers="ATTACK")
+
+    assert settings.selection == (ExternalKnowledgeProviderChoice.ATTACK,)
+
+
+def test_external_knowledge_empty_value_opts_out() -> None:
+    assert ExternalKnowledgeSettings(providers="").selection == ()
+
+
+def test_external_knowledge_unknown_provider_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        ExternalKnowledgeSettings(providers="attack,virustotal")

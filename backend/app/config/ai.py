@@ -1,21 +1,24 @@
 """AI provider configuration.
 
 Settings for the concrete LLM/embedding adapters — Gemini (ES-043/049,
-decisions K-1/K-2) and the NVIDIA NIM adapter (ES-054) — loaded from the
-environment (and an optional ``.env`` file) with per-provider prefixes,
-mirroring the per-store pattern of :mod:`app.config.database`.
+decisions K-1/K-2), the NVIDIA NIM adapter (ES-054) — and the external
+knowledge adapters (ES-058) — loaded from the environment (and an optional
+``.env`` file) with per-provider prefixes, mirroring the per-store pattern of
+:mod:`app.config.database`.
 
-``LLM_PROVIDER`` selects the active LLM adapter (the port stays
-provider-neutral, ADR-005; the selection is configuration). API keys are
-deliberately **not** settings fields: they are protected security assets
-consumed through the ``SecretProvider`` port (``GOOGLE_API_KEY`` /
-``NVIDIA_API_KEY``, Secrets Management / ES-022), never configuration
-artifacts.
+``LLM_PROVIDER`` selects the active LLM adapter and
+``EXTERNAL_KNOWLEDGE_PROVIDERS`` the composed external knowledge adapters
+(the ports stay provider-neutral, ADR-005; the selection is configuration).
+API keys are deliberately **not** settings fields: they are protected security
+assets consumed through the ``SecretProvider`` port (``GOOGLE_API_KEY`` /
+``NVIDIA_API_KEY`` / ``NVD_API_KEY``, Secrets Management / ES-022), never
+configuration artifacts.
 """
 
 from enum import Enum
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -118,6 +121,80 @@ class NvidiaSettings(BaseSettings):
     max_tokens: int = 8192
 
 
+class ExternalKnowledgeProviderChoice(Enum):
+    """A configured concrete external knowledge adapter (closed vocabulary)."""
+
+    ATTACK = "attack"
+    NVD = "nvd"
+
+
+class ExternalKnowledgeSettings(BaseSettings):
+    """Selects which external knowledge adapters the composition root builds.
+
+    ``EXTERNAL_KNOWLEDGE_PROVIDERS=attack,nvd`` — a comma-separated closed
+    vocabulary (unknown tokens are rejected at settings load). Both adapters
+    are composed by default: an external-source failure is contained per
+    provider by the retriever, so the live NVD integration is safe to keep on.
+    An empty value opts external knowledge out entirely (the EXTERNAL
+    retrieval strategy then contributes nothing, the pre-ES-058 behavior).
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="EXTERNAL_KNOWLEDGE_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    providers: str = "attack,nvd"
+
+    @field_validator("providers")
+    @classmethod
+    def _known_providers(cls, value: str) -> str:
+        for token in value.split(","):
+            if token.strip():
+                # Unknown tokens are rejected by the closed enum.
+                ExternalKnowledgeProviderChoice(token.strip().lower())
+        return value
+
+    @property
+    def selection(self) -> tuple[ExternalKnowledgeProviderChoice, ...]:
+        """The configured adapters, deduplicated, in configured order."""
+
+        selected: list[ExternalKnowledgeProviderChoice] = []
+        for token in self.providers.split(","):
+            if not token.strip():
+                continue
+            choice = ExternalKnowledgeProviderChoice(token.strip().lower())
+            if choice not in selected:
+                selected.append(choice)
+        return tuple(selected)
+
+
+class NvdSettings(BaseSettings):
+    """NVD CVE external knowledge adapter configuration (ES-058).
+
+    The NVD REST API 2.0 is a public CVE database; ``NVD_API_KEY`` is optional
+    by NVD's own contract (keyless access is rate-limited harder) and is
+    consumed through the ``SecretProvider``, never a field here.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="NVD_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # Bounded provider execution time (ADR-013): the value is configuration,
+    # the existence of the bound is the port contract.
+    timeout_seconds: float = 15.0
+    # Resource bound on returned CVE items per lookup.
+    results_limit: int = 5
+
+
 @lru_cache
 def get_llm_selection() -> LLMSelectionSettings:
     """Return the cached LLM provider selection."""
@@ -144,3 +221,17 @@ def get_gemini_embedding_settings() -> GeminiEmbeddingSettings:
     """Return the cached Gemini embedding settings instance."""
 
     return GeminiEmbeddingSettings()
+
+
+@lru_cache
+def get_external_knowledge_settings() -> ExternalKnowledgeSettings:
+    """Return the cached external knowledge provider selection."""
+
+    return ExternalKnowledgeSettings()
+
+
+@lru_cache
+def get_nvd_settings() -> NvdSettings:
+    """Return the cached NVD external knowledge settings instance."""
+
+    return NvdSettings()
