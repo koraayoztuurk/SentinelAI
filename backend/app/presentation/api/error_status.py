@@ -17,6 +17,10 @@ from app.application.investigation.errors import (
     DuplicateInvestigationError,
     EvidenceNotFoundError,
     EvidenceOwnershipError,
+    EvidencePayloadIntegrityError,
+    EvidencePayloadMissingError,
+    EvidencePayloadNotFoundError,
+    EvidencePayloadStoreUnavailableError,
     FindingNotFoundError,
     InvalidLifecycleTransitionError,
     InvestigationNotFoundError,
@@ -38,6 +42,8 @@ from app.domain.exceptions import (
 )
 from app.presentation.api.errors import (
     AuthenticationError,
+    InvalidPayloadError,
+    PayloadTooLargeError,
     PersistenceUnavailableError,
     ServiceNotConfiguredError,
 )
@@ -56,6 +62,16 @@ _STATUS_BY_CODE: dict[str, int] = {
     InvalidLifecycleTransitionError.code: 409,
     InvestigationValidationError.code: 422,
     EvidenceOwnershipError.code: 422,
+    # Evidence payload family (ES-060, ADR-015): a missing payload is 404, a
+    # broken attach-time reference is a validation failure, a verification
+    # mismatch is a data-integrity conflict, an unreachable/unconfigured
+    # store an operational condition.
+    EvidencePayloadNotFoundError.code: 404,
+    EvidencePayloadMissingError.code: 422,
+    EvidencePayloadIntegrityError.code: 409,
+    EvidencePayloadStoreUnavailableError.code: 503,
+    PayloadTooLargeError.code: 413,
+    InvalidPayloadError.code: 422,
     EntityNotFoundError.code: 404,
     RelationshipNotFoundError.code: 404,
     MemoryNotFoundError.code: 404,

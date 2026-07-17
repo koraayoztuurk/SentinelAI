@@ -21,6 +21,26 @@
         "title": "ApiResponse[EntityResponse]",
         "type": "object"
       },
+      "ApiResponse_EvidencePayloadStoredResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EvidencePayloadStoredResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[EvidencePayloadStoredResponse]",
+        "type": "object"
+      },
       "ApiResponse_EvidenceResponse_": {
         "properties": {
           "data": {
@@ -488,6 +508,25 @@
           "content"
         ],
         "title": "EvidenceCreateRequest",
+        "type": "object"
+      },
+      "EvidencePayloadStoredResponse": {
+        "description": "Result of storing a raw evidence payload (ES-060, ADR-015).\n\n``address`` is the content address (``sha256:<hex>``) the evidence record\ncarries as its integrity value when attached.",
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "address",
+          "size_bytes"
+        ],
+        "title": "EvidencePayloadStoredResponse",
         "type": "object"
       },
       "EvidenceResponse": {
@@ -2063,6 +2102,55 @@
         ]
       }
     },
+    "/api/v1/investigations/{investigation_id}/evidence/payloads": {
+      "post": {
+        "description": "Store a raw evidence payload (ES-060, ADR-015).\n\nThe body is the raw payload bytes (api-design \u00a78: payloads travel as byte\nstreams, not JSON). Size is bounded at this boundary; the returned content\naddress is what an evidence record carries as its integrity value.",
+        "operationId": "store_evidence_payload_api_v1_investigations__investigation_id__evidence_payloads_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {}
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EvidencePayloadStoredResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Store Evidence Payload",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
     "/api/v1/investigations/{investigation_id}/evidence/{evidence_id}": {
       "get": {
         "operationId": "get_evidence_api_v1_investigations__investigation_id__evidence__evidence_id__get",
@@ -2109,6 +2197,54 @@
           }
         },
         "summary": "Get Evidence",
+        "tags": [
+          "investigation"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/evidence/{evidence_id}/payload": {
+      "get": {
+        "description": "Return an evidence item's raw payload, verified against its address.\n\nA byte-stream response (api-design \u00a78/\u00a79: the JSON envelope governs\nstructured resources). Evidence without a payload address and dangling\naddresses are 404; a verification mismatch is 409 (integrity fault).",
+        "operationId": "download_evidence_payload_api_v1_investigations__investigation_id__evidence__evidence_id__payload_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "evidence_id",
+            "required": true,
+            "schema": {
+              "title": "Evidence Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Evidence Payload",
         "tags": [
           "investigation"
         ]

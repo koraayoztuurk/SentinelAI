@@ -74,6 +74,12 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      # Evidence payload store (ES-060, ADR-015): content-addressed
+      # filesystem root on a named volume so payloads survive restarts.
+      EVIDENCE_PAYLOAD_ROOT: /data/evidence-payloads
+    volumes:
+      - evidence-payloads:/data/evidence-payloads
     healthcheck:
       test: ["CMD", "python", "-c", "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
       interval: 30s
@@ -97,3 +103,4 @@ volumes:
   neo4j-data:
   qdrant-data:
   redis-data:
+  evidence-payloads:

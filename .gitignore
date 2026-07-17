@@ -153,3 +153,10 @@ implementation/
 workdocs/*
 !workdocs/README.md
 !workdocs/SentinelAI-Implementation-Tracker.md
+
+# -----------------------
+# Evidence payload store (ES-060): dev-grade filesystem root — payloads are
+# runtime data, never repository content.
+# -----------------------
+
+backend/var/

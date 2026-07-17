@@ -80,3 +80,38 @@ class DuplicateOutcomeError(InvestigationServiceError):
     """Raised when an investigation already has an outcome (0..1 per investigation)."""
 
     code = "investigation.duplicate_outcome"
+
+
+class EvidencePayloadStoreUnavailableError(InvestigationServiceError):
+    """Raised when the evidence payload store is unreachable or not composed."""
+
+    code = "investigation.evidence_payload_store_unavailable"
+
+
+class EvidencePayloadNotFoundError(InvestigationServiceError):
+    """Raised when an evidence item's payload address does not resolve.
+
+    Covers evidence without a payload (an opaque interim integrity value) and
+    dangling content addresses — the reference stays observable, never
+    repaired silently (database-architecture §8a).
+    """
+
+    code = "investigation.evidence_payload_not_found"
+
+
+class EvidencePayloadIntegrityError(InvestigationServiceError):
+    """Raised when a retrieved payload fails verification against its address.
+
+    The content address is the verifiable integrity anchor (Domain Rule 1/9);
+    a mismatch is a data-integrity fault the analyst must see, never a value
+    to repair or return anyway.
+    """
+
+    code = "investigation.evidence_payload_integrity"
+
+
+class EvidencePayloadMissingError(InvestigationServiceError):
+    """Raised when attaching evidence whose address-shaped integrity value
+    references no stored payload (a broken payload reference at creation)."""
+
+    code = "investigation.evidence_payload_missing"

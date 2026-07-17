@@ -126,3 +126,31 @@ def get_redis_settings() -> RedisSettings:
     """Return the cached Redis settings instance."""
 
     return RedisSettings()
+
+
+class EvidencePayloadSettings(BaseSettings):
+    """Evidence payload store settings (ES-060, ADR-015 §4).
+
+    ``root`` is the content-addressed filesystem store's base directory
+    (relative paths resolve against the process working directory — the dev
+    default; deployments set an absolute path onto a mounted volume).
+    ``max_bytes`` bounds a single uploaded payload at the API boundary.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="EVIDENCE_PAYLOAD_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    root: str = "var/evidence-payloads"
+    max_bytes: int = 10 * 1024 * 1024
+
+
+@lru_cache
+def get_evidence_payload_settings() -> EvidencePayloadSettings:
+    """Return the cached evidence payload store settings instance."""
+
+    return EvidencePayloadSettings()

@@ -68,6 +68,8 @@
 | ES-056 | Validation Agent: Findings Assessment Before Synthesis | ✅ Completed |
 | ES-057 | Graph Analysis Agent: Neighbourhood Analysis Enriching the Run (Milestone B closed) | ✅ Completed |
 | ES-058 | External Knowledge Live: ATT&CK Catalog + NVD CVE Providers + EXTERNAL Retrieval Strategy | ✅ Completed |
+| ES-059 | Threat Intelligence Agent (Milestone C close) | ⏸ Reserved (C paused for D, owner decision 2026-07-17) |
+| ES-060 | Evidence Payload Store: RFC-001 + ADR-015 + Content-Addressed Port/Adapter + Payload REST | ✅ Completed |
 
 ---
 
@@ -1577,6 +1579,39 @@ to later specifications.
 - TD: prose objectives rarely hit NVD `keywordSearch` (all-terms match) — the Threat
   Intelligence Agent (ES-059) will issue focused queries (entity names, explicit CVE ids);
   no retry/backoff on external calls (Milestone G family); catalog refresh cadence unowned.
+
+---
+
+## ES-060 (Milestone D, part 1)
+
+- **First exercised RFC (ADR-014)**: the payload store extends ADR-003's ownership map (a
+  storage technology owning raw evidence payload bytes) — threshold (a), so RFC-001 precedes
+  ADR-015. Both are recorded as Accepted under the ADR-014 §3 self-review provision; the
+  owner ratifies by committing (they are ordinary working-tree files until then).
+- **Category determination**: the payload store is **primary** storage (payload bytes are not
+  reproducible from any other store), not ADR-011 supporting persistence — a "never
+  authoritative" store cannot own payloads. Exactly one artifact kind is owned; every other
+  ADR-003 assignment is untouched.
+- **The integrity value IS the content address** (§8b rule 1) — no domain change: `Evidence`
+  keeps its shape; `EvidenceIntegrity` stays an opaque value object; only values with the
+  `sha256:` prefix participate in payload semantics, so the inline-content interim (seed's
+  "verified", analyst free-text) keeps its exact prior behavior.
+- **Address scheme is application-owned** (`payload_address` = `sha256:<64 lowercase hex>`):
+  a deterministic derivation from content, not id generation — adapters never mint anything
+  (caller-supplies-identifiers discipline intact). Strict address validation in the adapter
+  doubles as the path-traversal guard (hostile addresses resolve nowhere, tested).
+- **AC-14 shape**: upload (object store write) and attach (PostgreSQL write) are separate
+  single-store operations; attach-time payload-existence validation is a read. Content
+  addressing makes upload idempotent/retry-safe; orphaned payloads accepted until
+  Milestone F (data end-of-life owns deletion/erasure).
+- **Boundary interpretation recorded in RFC-001**: payload storage *access* (bytes up/down,
+  Investigation-Service-mediated per §8b rule 3) is in scope; format parsing / log
+  normalization remain the deferred "evidence ingestion" capability (would need its own
+  decision, possibly a distinct service per ADR-004).
+- TD: filesystem adapter is single-node dev-grade (S3-compatible adapter → Milestone G);
+  upload buffers in memory under `EVIDENCE_PAYLOAD_MAX_BYTES` (streaming upload revisited
+  with the async-run RFC family); no payload deletion path (Milestone F); frontend surface
+  is ES-061.
 
 ---
 
@@ -3201,3 +3236,50 @@ Next ES
   passed** / 22 deselected; frontend untouched since the ES-055 gate; openapi freshness green.
 - TD: NVD keyword search rarely matches prose objectives (ES-059's focused queries are the
   consumer); no external-call retry/backoff (Milestone G); catalog refresh cadence unowned.
+
+
+---
+
+## ES-060
+
+- Evidence Payload Store delivered (Milestone D opener): raw evidence payloads now live in a
+  content-addressed store behind documented governance — **RFC-001** (first exercised RFC under
+  ADR-014: amending ADR-003's ownership map crosses threshold (a)) and **ADR-015** (the accepted
+  decision). Database-architecture §8b's "requires its own decision" precondition is satisfied;
+  §8b and api-design gained realization notes + version-history rows; the ADR index lists 015.
+- **Application**: `EvidencePayloadStore` port (minimal: idempotent `put`, `get` with `None` for
+  unresolvable addresses, `exists`) + application-owned addressing (`payload_address` =
+  `sha256:<64 hex>`; deterministic derivation, never id generation). Investigation Service
+  mediates every access (§8b rule 3): `store_evidence_payload` (require investigation → compute
+  address → put; object-store write only), `get_evidence_payload` (evidence-anchored fetch +
+  **hash verification on read**; opaque-integrity evidence → 404 payload_not_found; dangling
+  address → observable 404; mismatch → 409 payload_integrity), attach-time validation for
+  address-shaped (`sha256:`) integrity values only (broken reference → 422 payload_missing;
+  opaque interim values and store-less compositions keep prior behavior exactly).
+- **Infrastructure**: `FilesystemEvidencePayloadStore` (dev-grade first adapter, ADR-015 §4):
+  `<root>/sha256/<xx>/<hex>` layout, atomic temp+replace writes, idempotent puts, strict
+  address validation before any path construction (= path-traversal guard), OSError →
+  `evidence_payload_store_unavailable` 503. Config `EVIDENCE_PAYLOAD_ROOT` /
+  `EVIDENCE_PAYLOAD_MAX_BYTES`; compose gains the `evidence-payloads` volume mounted at
+  `/data/evidence-payloads`; dev root `backend/var/` gitignored; `.env.example` documents both.
+- **REST (AC-15 regenerated)**: `POST /investigations/{id}/evidence/payloads`
+  (`application/octet-stream` → 201 enveloped `{address, size_bytes}`; Content-Length precheck
+  + post-read bound → 413 `api.payload_too_large`; empty body → 422 `api.invalid_payload`) and
+  `GET /investigations/{id}/evidence/{evidenceId}/payload` (verified byte stream,
+  Content-Disposition with sanitized filename; cross-investigation access → 404). Owner scoping
+  is inherited automatically — both routes carry the `investigation_id` path param the
+  ES-046 policy keys on. The envelope stays scoped to structured JSON resources (api-design
+  1.4.0 note).
+- **Tests (+29)**: 15 service-op tests (addressing determinism/malformed matrix, store/require/
+  unavailable, verified roundtrip, inline→404, dangling→404, corrupt→409, attach validation
+  matrix incl. store-less no-op), 6 filesystem adapter tests (roundtrip, idempotence, layout,
+  unknown→None, hostile addresses never touch the filesystem, malformed put → ValueError),
+  9 presentation tests (upload→attach→download roundtrip, idempotent re-upload + size, 404
+  unknown investigation, 422 empty, 413 over bound, 422 unstored address, 404 inline download,
+  409 corrupted download, 404 cross-investigation). In-memory payload store double added to
+  `tests/support`.
+- Verification: `ruff` clean; `mypy app` strict clean (174 files); backend default **479
+  passed** / 22 deselected; `openapi.json` regenerated and freshness green; frontend untouched
+  (ES-061 owns the workspace surface).
+- Milestone C note: ES-059 (Threat Intelligence Agent) stays reserved — C paused by owner
+  decision in favor of D on 2026-07-17.

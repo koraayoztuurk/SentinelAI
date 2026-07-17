@@ -6,7 +6,9 @@ object (in ``schemas``), delegate to the Investigation Service and wrap the resu
 in the standard response envelope. No business logic lives here.
 """
 
-from fastapi import APIRouter, Depends, status
+import re
+
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.ai.orchestration.runner import InvestigationRunner
 from app.application.investigation import (
@@ -14,8 +16,13 @@ from app.application.investigation import (
     InvestigationService,
     ReportNotFoundError,
 )
+from app.config.database import get_evidence_payload_settings
 from app.domain.identifiers import EvidenceId, InvestigationId, ReportId
 from app.presentation.api.context import RequestContext, get_request_context
+from app.presentation.api.errors import (
+    InvalidPayloadError,
+    PayloadTooLargeError,
+)
 from app.presentation.api.generation import (
     Clock,
     IdGenerator,
@@ -29,6 +36,7 @@ from app.presentation.api.v1.investigation.dependencies import (
 )
 from app.presentation.api.v1.investigation.schemas import (
     EvidenceCreateRequest,
+    EvidencePayloadStoredResponse,
     EvidenceResponse,
     FindingCreateRequest,
     FindingResponse,
@@ -222,6 +230,88 @@ async def get_evidence(
     if evidence.investigation_id != InvestigationId(investigation_id):
         raise EvidenceNotFoundError(f"Evidence '{evidence_id}' not found.")
     return build_success(EvidenceResponse.from_domain(evidence), context)
+
+
+# ----------------------------------------------------------- evidence payload
+
+
+@investigation_router.post(
+    "/investigations/{investigation_id}/evidence/payloads",
+    response_model=ApiResponse[EvidencePayloadStoredResponse],
+    status_code=status.HTTP_201_CREATED,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {"application/octet-stream": {}},
+        }
+    },
+)
+async def store_evidence_payload(
+    investigation_id: str,
+    request: Request,
+    service: InvestigationService = Depends(get_investigation_service),
+    context: RequestContext = Depends(get_request_context),
+) -> ApiResponse[EvidencePayloadStoredResponse]:
+    """Store a raw evidence payload (ES-060, ADR-015).
+
+    The body is the raw payload bytes (api-design §8: payloads travel as byte
+    streams, not JSON). Size is bounded at this boundary; the returned content
+    address is what an evidence record carries as its integrity value.
+    """
+
+    limit = get_evidence_payload_settings().max_bytes
+    declared = request.headers.get("content-length")
+    if declared is not None and declared.isdigit() and int(declared) > limit:
+        raise PayloadTooLargeError(
+            f"Evidence payload exceeds the {limit}-byte bound."
+        )
+    content = await request.body()
+    if len(content) > limit:
+        raise PayloadTooLargeError(
+            f"Evidence payload exceeds the {limit}-byte bound."
+        )
+    if not content:
+        raise InvalidPayloadError("Evidence payload must not be empty.")
+    address = await service.store_evidence_payload(
+        InvestigationId(investigation_id), content
+    )
+    return build_success(
+        EvidencePayloadStoredResponse(address=address, size_bytes=len(content)),
+        context,
+    )
+
+
+@investigation_router.get(
+    "/investigations/{investigation_id}/evidence/{evidence_id}/payload",
+    response_class=Response,
+    responses={200: {"content": {"application/octet-stream": {}}}},
+)
+async def download_evidence_payload(
+    investigation_id: str,
+    evidence_id: str,
+    service: InvestigationService = Depends(get_investigation_service),
+) -> Response:
+    """Return an evidence item's raw payload, verified against its address.
+
+    A byte-stream response (api-design §8/§9: the JSON envelope governs
+    structured resources). Evidence without a payload address and dangling
+    addresses are 404; a verification mismatch is 409 (integrity fault).
+    """
+
+    evidence = await service.get_evidence(EvidenceId(evidence_id))
+    if evidence.investigation_id != InvestigationId(investigation_id):
+        raise EvidenceNotFoundError(f"Evidence '{evidence_id}' not found.")
+    content = await service.get_evidence_payload(EvidenceId(evidence_id))
+    safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", evidence_id) or "payload"
+    return Response(
+        content=content,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="evidence-{safe_name}.bin"'
+            )
+        },
+    )
 
 
 # --------------------------------------------------------------------- finding

@@ -18,12 +18,22 @@ from app.application.investigation.errors import (
     DuplicateOutcomeError,
     EvidenceNotFoundError,
     EvidenceOwnershipError,
+    EvidencePayloadIntegrityError,
+    EvidencePayloadMissingError,
+    EvidencePayloadNotFoundError,
+    EvidencePayloadStoreUnavailableError,
     FindingNotFoundError,
     InvalidLifecycleTransitionError,
     InvestigationNotFoundError,
     InvestigationValidationError,
     OutcomeNotFoundError,
     ReportNotFoundError,
+)
+from app.application.investigation.payload_store import (
+    PAYLOAD_ADDRESS_PREFIX,
+    EvidencePayloadStore,
+    is_payload_address,
+    payload_address,
 )
 from app.application.investigation.repositories import (
     EvidenceRepository,
@@ -76,6 +86,7 @@ class InvestigationService:
         reports: ReportRepository,
         outcomes: OutcomeRepository,
         trace: TraceRepository,
+        payloads: EvidencePayloadStore | None = None,
     ) -> None:
         self._investigations = investigations
         self._evidence = evidence
@@ -83,6 +94,9 @@ class InvestigationService:
         self._reports = reports
         self._outcomes = outcomes
         self._trace = trace
+        # Payload store (ES-060, ADR-015): additive optional dependency —
+        # compositions without a payload store keep every prior behavior.
+        self._payloads = payloads
 
     # ------------------------------------------------------------- investigation
 
@@ -139,6 +153,7 @@ class InvestigationService:
             raise DuplicateEvidenceError(
                 f"Evidence '{evidence.id.value}' already exists."
             )
+        await self._require_payload_reference(evidence)
         await self._evidence.add(evidence)
         logger.info(
             "evidence attached id=%s investigation=%s",
@@ -146,6 +161,28 @@ class InvestigationService:
             evidence.investigation_id.value,
         )
         return evidence
+
+    async def _require_payload_reference(self, evidence: Evidence) -> None:
+        """Validate an address-shaped integrity value against the store.
+
+        Only integrity values claiming to be content addresses (``sha256:``
+        prefix, §8b rule 1) participate; opaque interim values (the inline
+        content state) stay untouched. Without a composed payload store no
+        claim can be checked, so none is enforced.
+        """
+
+        address = evidence.integrity.value
+        if self._payloads is None or not address.startswith(
+            PAYLOAD_ADDRESS_PREFIX
+        ):
+            return
+        if not is_payload_address(address) or not await self._payloads.exists(
+            address
+        ):
+            raise EvidencePayloadMissingError(
+                f"Evidence '{evidence.id.value}' references payload "
+                f"'{address}' which is not stored."
+            )
 
     async def get_evidence(self, evidence_id: EvidenceId) -> Evidence:
         """Return an evidence item or raise if it does not exist."""
@@ -162,6 +199,67 @@ class InvestigationService:
 
         await self._require_investigation(investigation_id)
         return await self._evidence.list_for_investigation(investigation_id)
+
+    # ---------------------------------------------------------- evidence payload
+
+    async def store_evidence_payload(
+        self, investigation_id: InvestigationId, content: bytes
+    ) -> str:
+        """Store a raw payload for an investigation; return its address.
+
+        Writes the payload store only (AC-14: the evidence record referencing
+        the address is a separate single-store operation). Content addressing
+        makes the operation idempotent — re-storing existing content is a
+        no-op returning the same address (ADR-015 §5).
+        """
+
+        await self._require_investigation(investigation_id)
+        store = self._require_payload_store()
+        address = payload_address(content)
+        await store.put(address, content)
+        logger.info(
+            "evidence payload stored investigation=%s address=%s size=%s",
+            investigation_id.value,
+            address,
+            len(content),
+        )
+        return address
+
+    async def get_evidence_payload(self, evidence_id: EvidenceId) -> bytes:
+        """Return an evidence item's payload, verified against its address.
+
+        The evidence integrity value is the content address (§8b rule 1).
+        Evidence carrying an opaque interim integrity value has no payload
+        (not found); a dangling address stays observable (not found, §8a); a
+        verification mismatch is a distinct integrity fault (Domain Rule 1/9).
+        """
+
+        evidence = await self.get_evidence(evidence_id)
+        store = self._require_payload_store()
+        address = evidence.integrity.value
+        if not is_payload_address(address):
+            raise EvidencePayloadNotFoundError(
+                f"Evidence '{evidence_id.value}' carries no payload address."
+            )
+        content = await store.get(address)
+        if content is None:
+            raise EvidencePayloadNotFoundError(
+                f"Payload '{address}' of evidence '{evidence_id.value}' "
+                f"is not stored."
+            )
+        if payload_address(content) != address:
+            raise EvidencePayloadIntegrityError(
+                f"Payload '{address}' of evidence '{evidence_id.value}' "
+                f"failed integrity verification."
+            )
+        return content
+
+    def _require_payload_store(self) -> EvidencePayloadStore:
+        if self._payloads is None:
+            raise EvidencePayloadStoreUnavailableError(
+                "The evidence payload store is not configured."
+            )
+        return self._payloads
 
     # ------------------------------------------------------------------- finding
 

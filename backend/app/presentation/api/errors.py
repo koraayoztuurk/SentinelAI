@@ -39,3 +39,20 @@ class AuthenticationError(SentinelAIError):
     """
 
     code = "api.unauthenticated"
+
+
+class PayloadTooLargeError(SentinelAIError):
+    """Raised when an uploaded evidence payload exceeds the configured bound.
+
+    The bound (``EVIDENCE_PAYLOAD_MAX_BYTES``) is enforced at the API boundary
+    before the payload reaches the owning service. Translated to HTTP 413.
+    """
+
+    code = "api.payload_too_large"
+
+
+class InvalidPayloadError(SentinelAIError):
+    """Raised when an uploaded evidence payload body is structurally invalid
+    (for example, empty). Translated to HTTP 422."""
+
+    code = "api.invalid_payload"

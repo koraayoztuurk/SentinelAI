@@ -11,7 +11,10 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from app.application.graph import GraphService
-from app.application.investigation import InvestigationService
+from app.application.investigation import (
+    EvidencePayloadStore,
+    InvestigationService,
+)
 from app.application.memory import MemoryService
 from app.domain.entity import Entity
 from app.domain.enums import FindingStatus, InvestigationStatus, MemoryStatus
@@ -197,7 +200,9 @@ def build_memory_item(
     )
 
 
-def make_investigation_service() -> InvestigationService:
+def make_investigation_service(
+    payloads: EvidencePayloadStore | None = None,
+) -> InvestigationService:
     """Wire an ``InvestigationService`` over fresh in-memory doubles."""
 
     return InvestigationService(
@@ -207,6 +212,7 @@ def make_investigation_service() -> InvestigationService:
         InMemoryReportRepository(),
         InMemoryOutcomeRepository(),
         InMemoryTraceRepository(),
+        payloads=payloads,
     )
 
 

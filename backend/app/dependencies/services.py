@@ -27,6 +27,7 @@ stable code, never a leaked driver exception. Data-level database errors
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from sqlalchemy.exc import InterfaceError, OperationalError
@@ -65,6 +66,7 @@ from app.config.ai import (
     get_nvd_settings,
     get_nvidia_settings,
 )
+from app.config.database import get_evidence_payload_settings
 from app.config.settings import get_settings
 from app.infrastructure.ai.attack_catalog import AttackCatalogProvider
 from app.infrastructure.ai.gemini import GeminiLLMProvider
@@ -72,6 +74,7 @@ from app.infrastructure.ai.gemini_embedding import GeminiEmbeddingProvider
 from app.infrastructure.ai.nvd import NvdCveProvider
 from app.infrastructure.ai.nvidia import NvidiaLLMProvider
 from app.infrastructure.ai.retrieval import CompositeRetriever
+from app.infrastructure.objectstore import FilesystemEvidencePayloadStore
 from app.infrastructure.persistence.neo4j.repositories import (
     Neo4jGraphRepository,
 )
@@ -147,6 +150,11 @@ def _investigation_service(session: AsyncSession) -> InvestigationService:
         PostgresReportRepository(session),
         PostgresOutcomeRepository(session),
         PostgresTraceRepository(session),
+        # Evidence payload store (ES-060, ADR-015): the dev-grade
+        # content-addressed filesystem adapter under the configured root.
+        payloads=FilesystemEvidencePayloadStore(
+            Path(get_evidence_payload_settings().root)
+        ),
     )
 
 

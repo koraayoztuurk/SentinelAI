@@ -282,3 +282,29 @@ class FixedClock:
 
     def now(self) -> datetime:
         return self._now
+
+
+class InMemoryEvidencePayloadStore:
+    """Dict-backed content-addressed evidence payload store double (ES-060)."""
+
+    def __init__(self) -> None:
+        self._payloads: dict[str, bytes] = {}
+
+    async def put(self, address: str, content: bytes) -> None:
+        self._payloads.setdefault(address, content)
+
+    async def get(self, address: str) -> bytes | None:
+        return self._payloads.get(address)
+
+    async def exists(self, address: str) -> bool:
+        return address in self._payloads
+
+    def corrupt(self, address: str, content: bytes) -> None:
+        """Overwrite a stored payload out of band (integrity-fault tests)."""
+
+        self._payloads[address] = content
+
+    def remove(self, address: str) -> None:
+        """Drop a stored payload out of band (dangling-reference tests)."""
+
+        self._payloads.pop(address, None)

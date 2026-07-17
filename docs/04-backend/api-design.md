@@ -242,6 +242,13 @@ Represents investigation lifecycle management.
 
 Represents investigation evidence.
 
+The resource includes a **payload sub-resource** for raw evidence payloads
+(ADR-015 / Database Architecture §8b): payloads travel as raw byte streams
+(upload and verified download), not as JSON documents. The response envelope
+(§9) governs structured JSON resources; byte-stream payload responses carry
+the bytes themselves. Payload access is mediated by the Investigation Service
+and bounded by a configured maximum size.
+
 ---
 
 ## Finding Resource
@@ -595,3 +602,4 @@ However, the architectural responsibilities defined in this document should rema
 | 1.1.0 | 2026-07-03 | Planner delegation aligned with the single-action control model (ADR-010); Workflow Resource replaced by the Planner Action Resource |
 | 1.2.0 | 2026-07-03 | Contract Synchronization defined (§14a): committed OpenAPI artifact as the single contract source with freshness enforcement; consumer copies become derivation targets (audit finding E-05) |
 | 1.3.0 | 2026-07-04 | Investigation Run Resource added (investigation-level Investigation Loop surface, ADR-010/ADR-013); the transitional Planner Action Resource removed as its documented supersession (ES-044, slice decision V-2) |
+| 1.4.0 | 2026-07-17 | Evidence payload sub-resource defined (raw byte streams, size-bounded, Investigation-Service-mediated; envelope scoped to structured JSON resources) — ADR-015/RFC-001 |

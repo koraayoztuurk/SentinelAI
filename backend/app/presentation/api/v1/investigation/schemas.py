@@ -113,6 +113,17 @@ class EvidenceCreateRequest(BaseModel):
         )
 
 
+class EvidencePayloadStoredResponse(BaseModel):
+    """Result of storing a raw evidence payload (ES-060, ADR-015).
+
+    ``address`` is the content address (``sha256:<hex>``) the evidence record
+    carries as its integrity value when attached.
+    """
+
+    address: str
+    size_bytes: int
+
+
 class EvidenceResponse(BaseModel):
     """Flat projection of an evidence item."""
 

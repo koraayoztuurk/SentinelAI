@@ -288,7 +288,7 @@ The architecture fixes the following rules for such references:
 Evidence has two representations with different storage characteristics:
 
 - **Evidence record** (metadata + normalized content): owned by PostgreSQL through the Investigation Service, as defined by the ownership model above.
-- **Raw evidence payload** (uploaded files, raw log archives): large, immutable, integrity-critical binary/text content. Its designated home is a **content-addressed object store** — a future storage technology entering through the category model of ADR-011 and requiring its own decision before introduction.
+- **Raw evidence payload** (uploaded files, raw log archives): large, immutable, integrity-critical binary/text content. Its designated home is a **content-addressed object store** — a storage technology that entered through the category model of ADR-011 with its own decision: **ADR-015 / RFC-001** (application-owned `sha256:` addressing, Investigation-Service-mediated access, filesystem adapter as the dev-grade first realization; S3-compatible store deferred to production hardening).
 
 Until the object store exists, evidence content is carried inline in the Evidence record; this is an accepted interim state, not the target architecture. The rules below are fixed now so the Postgres adapter is not built against the wrong assumption:
 
@@ -753,3 +753,4 @@ However, supporting technologies should never become authoritative sources of bu
 | 1.0.0 | 2026-06-26 | Initial Database Architecture specification created |
 | 1.1.0 | 2026-07-03 | Synchronization scoped to derived representations with named service ownership (undefined "SyncService" removed; Neo4j no longer shown as a sync target); cross-store reference rules added (§8a); Redis governed by ADR-011 |
 | 1.2.0 | 2026-07-03 | Synchronization mechanism fixed as transactional outbox + idempotent projection (ADR-012, AC-14 no-dual-write); Evidence Payload Storage defined (§8b): content-addressed object store as the designated payload home, inline content as accepted interim state |
+| 1.3.0 | 2026-07-17 | Evidence payload store admitted (§8b realized): ADR-015/RFC-001 — content-addressed store as primary storage for raw payload bytes, application-owned addressing, Investigation-Service-mediated access |

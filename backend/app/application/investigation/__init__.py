@@ -11,6 +11,10 @@ from app.application.investigation.errors import (
     DuplicateOutcomeError,
     EvidenceNotFoundError,
     EvidenceOwnershipError,
+    EvidencePayloadIntegrityError,
+    EvidencePayloadMissingError,
+    EvidencePayloadNotFoundError,
+    EvidencePayloadStoreUnavailableError,
     FindingNotFoundError,
     InvalidLifecycleTransitionError,
     InvestigationNotFoundError,
@@ -18,6 +22,11 @@ from app.application.investigation.errors import (
     InvestigationValidationError,
     OutcomeNotFoundError,
     ReportNotFoundError,
+)
+from app.application.investigation.payload_store import (
+    EvidencePayloadStore,
+    is_payload_address,
+    payload_address,
 )
 from app.application.investigation.service import InvestigationService
 
@@ -31,6 +40,13 @@ __all__ = [
     "EvidenceNotFoundError",
     "DuplicateEvidenceError",
     "EvidenceOwnershipError",
+    "EvidencePayloadStore",
+    "EvidencePayloadStoreUnavailableError",
+    "EvidencePayloadNotFoundError",
+    "EvidencePayloadIntegrityError",
+    "EvidencePayloadMissingError",
+    "is_payload_address",
+    "payload_address",
     "FindingNotFoundError",
     "ReportNotFoundError",
     "OutcomeNotFoundError",
