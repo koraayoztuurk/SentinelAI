@@ -31,6 +31,10 @@ from app.ai.agents.graph_analysis.analysis import (
     RelationshipSnapshot,
 )
 from app.ai.agents.planner.state import InvestigationState
+from app.ai.agents.threat_intel.report import (
+    ThreatIntelEntity,
+    ThreatIntelSeed,
+)
 from app.ai.agents.validation.assessment import (
     EvidenceSnapshot,
     FindingSnapshot,
@@ -188,6 +192,47 @@ class InvestigationStateAssembler:
             objectives=(f"Investigate: {investigation.title}",),
             entities=tuple(entities.values()),
             relationships=tuple(relationships.values()),
+        )
+
+    async def assemble_threat_intel_seed(
+        self, investigation_id: InvestigationId
+    ) -> ThreatIntelSeed:
+        """Assemble the seed the Threat Intel Flow focuses its lookups on.
+
+        Objectives are always present (title-derived, as everywhere); the
+        entity list comes from the findings' related entities resolved
+        through the Graph Service when one is composed — dangling references
+        are observable-and-skipped (§8a). An entity-less seed is valid: the
+        objectives alone can still hit external knowledge.
+        """
+
+        investigation = await self._investigations.get(investigation_id)
+        entities: list[ThreatIntelEntity] = []
+        if self._graph is not None:
+            findings = await self._investigations.list_findings(
+                investigation_id
+            )
+            seeds: list[EntityId] = []
+            for finding in findings:
+                for entity_id in finding.related_entities:
+                    if entity_id not in seeds:
+                        seeds.append(entity_id)
+            for seed in seeds[:_GRAPH_SEED_LIMIT]:
+                try:
+                    entity = await self._graph.get_entity(seed)
+                except SentinelAIError:
+                    continue
+                entities.append(
+                    ThreatIntelEntity(
+                        id=entity.id,
+                        type=entity.type.value,
+                        display_name=entity.display_name,
+                    )
+                )
+        return ThreatIntelSeed(
+            investigation_id=investigation_id,
+            objectives=(f"Investigate: {investigation.title}",),
+            entities=tuple(entities),
         )
 
     async def next_state(

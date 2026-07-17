@@ -84,6 +84,30 @@ describe("AiInsightsSection", () => {
     expect(items[1]).toHaveTextContent("loop_outcome");
   });
 
+  it("renders a threat intelligence trace entry (ES-059)", async () => {
+    // The trace region renders every kind generically, so the additive
+    // THREAT_INTEL kind is workspace-visible without a dedicated mapping.
+    mockedTrace.mockResolvedValue([
+      {
+        id: "t-3",
+        kind: "threat_intel",
+        actor: "threat-intel-agent",
+        summary: "correlated 2 external item(s), 1 observation(s): C2 suspected",
+        reference: "inv-001",
+        createdAt: "2026-07-17T10:00:00Z",
+      },
+    ]);
+    renderSection();
+
+    expect(
+      await screen.findByText(/correlated 2 external item\(s\)/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("listitem")).toHaveTextContent("threat_intel");
+    expect(screen.getByRole("listitem")).toHaveTextContent(
+      "threat-intel-agent",
+    );
+  });
+
   it("runs the investigation and presents a completed outcome", async () => {
     mockedTrace.mockResolvedValue([]);
     mockedRun.mockResolvedValue({

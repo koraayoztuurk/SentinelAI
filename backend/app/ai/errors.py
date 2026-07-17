@@ -102,6 +102,18 @@ class GraphAnalysisError(AIRuntimeError):
     code = "ai.graph_analysis_error"
 
 
+class ThreatIntelAgentError(AIRuntimeError):
+    """Raised when the Threat Intelligence Agent cannot produce a report.
+
+    Used for precondition violations (a context without external
+    intelligence) and for malformed report responses — an empty report is
+    not a neutral fallback (it would read as "no external intelligence
+    applies"). The consuming composition contains this error.
+    """
+
+    code = "ai.threat_intel_agent_error"
+
+
 class DecisionEngineError(AIRuntimeError):
     """Raised when the Decision Engine cannot synthesize an outcome.
 

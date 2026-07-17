@@ -20,15 +20,18 @@ from dataclasses import replace
 
 from app.ai.agents.graph_analysis.analysis import GraphObservation
 from app.ai.agents.memory.plan import RetrievalPlanId
+from app.ai.agents.threat_intel.report import ThreatIntelObservation
 from app.ai.errors import (
     GraphAnalysisError,
     InsufficientContextError,
     MemoryAgentError,
+    ThreatIntelAgentError,
 )
 from app.ai.orchestration.assembler import InvestigationStateAssembler
 from app.ai.orchestration.graph_analysis import GraphAnalysisFlow
 from app.ai.orchestration.loop import InvestigationLoop, LoopOutcome
 from app.ai.orchestration.retrieval import RetrievalFlow
+from app.ai.orchestration.threat_intel import ThreatIntelFlow
 from app.ai.orchestration.tracing import IdSource
 from app.ai.rag.retriever import RetrievedItem
 from app.domain.identifiers import InvestigationId
@@ -61,6 +64,17 @@ def _observation_line(observation: GraphObservation) -> str:
     )
 
 
+def _intel_line(observation: ThreatIntelObservation) -> str:
+    detail = observation.detail.strip()
+    if len(detail) > _KNOWLEDGE_CONTENT_LIMIT:
+        detail = detail[:_KNOWLEDGE_CONTENT_LIMIT] + "…"
+    references = ",".join(observation.references)
+    return (
+        f"[threat-intel] {observation.kind.value}"
+        f"{f' (refs: {references})' if references else ''} {detail}"
+    )
+
+
 class InvestigationRunner:
     """Assembles the initial state and runs the Investigation Loop."""
 
@@ -71,6 +85,7 @@ class InvestigationRunner:
         retrieval: RetrievalFlow | None = None,
         ids: IdSource | None = None,
         graph_analysis: GraphAnalysisFlow | None = None,
+        threat_intel: ThreatIntelFlow | None = None,
     ) -> None:
         if retrieval is not None and ids is None:
             raise ValueError(
@@ -82,6 +97,7 @@ class InvestigationRunner:
         self._retrieval = retrieval
         self._ids = ids
         self._graph_analysis = graph_analysis
+        self._threat_intel = threat_intel
 
     async def run(self, investigation_id: InvestigationId) -> LoopOutcome:
         """Run the loop for one investigation and return its outcome."""
@@ -134,6 +150,30 @@ class InvestigationRunner:
                     + tuple(
                         _observation_line(observation)
                         for observation in analysis.observations
+                    ),
+                )
+        if self._threat_intel is not None:
+            # Threat intelligence enrichment (ES-059): once per run, after
+            # graph analysis — external correlations join the planner-visible
+            # knowledge; a failed correlation is contained (supportive,
+            # never critical).
+            try:
+                report = await self._threat_intel.enrich(investigation_id)
+            except ThreatIntelAgentError as exc:
+                report = None
+                logger.info(
+                    "run proceeds without threat intelligence "
+                    "investigation_id=%s code=%s",
+                    investigation_id.value,
+                    exc.code,
+                )
+            if report is not None and report.observations:
+                state = replace(
+                    state,
+                    knowledge=state.knowledge
+                    + tuple(
+                        _intel_line(observation)
+                        for observation in report.observations
                     ),
                 )
         return await self._loop.run(state)

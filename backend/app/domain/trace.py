@@ -27,6 +27,7 @@ class TraceEntryKind(Enum):
     ACTION_EXECUTION = "action_execution"
     RETRIEVAL = "retrieval"
     GRAPH_ANALYSIS = "graph_analysis"
+    THREAT_INTEL = "threat_intel"
     VALIDATION = "validation"
     OUTCOME_SYNTHESIS = "outcome_synthesis"
     LOOP_OUTCOME = "loop_outcome"

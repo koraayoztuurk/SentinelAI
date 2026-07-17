@@ -68,7 +68,7 @@
 | ES-056 | Validation Agent: Findings Assessment Before Synthesis | ✅ Completed |
 | ES-057 | Graph Analysis Agent: Neighbourhood Analysis Enriching the Run (Milestone B closed) | ✅ Completed |
 | ES-058 | External Knowledge Live: ATT&CK Catalog + NVD CVE Providers + EXTERNAL Retrieval Strategy | ✅ Completed |
-| ES-059 | Threat Intelligence Agent (Milestone C close) | ⏸ Reserved (C paused for D, owner decision 2026-07-17) |
+| ES-059 | Threat Intelligence Agent: External Correlation Enriching the Run (Milestone C closed) | ✅ Completed |
 | ES-060 | Evidence Payload Store: RFC-001 + ADR-015 + Content-Addressed Port/Adapter + Payload REST | ✅ Completed |
 
 ---
@@ -1612,6 +1612,33 @@ to later specifications.
   upload buffers in memory under `EVIDENCE_PAYLOAD_MAX_BYTES` (streaming upload revisited
   with the async-run RFC family); no payload deletion path (Milestone F); frontend surface
   is ES-061.
+
+---
+
+## ES-059 (Milestone C, close)
+
+- **The flow owns retrieval, the agent owns correlation**: agent-architecture §6 permits the
+  Threat Intelligence Agent its external sources, but the typed agent stays a pure
+  LLM transformation (ES-056/057 pattern) — the Threat Intel Flow performs the lookups
+  through the ES-058 `ExternalKnowledgeProvider` port and hands the retrieved items into the
+  context. The agent can therefore never present intelligence the platform did not retrieve
+  (references outside the snapshot are discarded from provenance, observation preserved).
+- **Focused queries close the ES-058 TD**: the flow queries with the objectives *and* each
+  finding-named entity's display name (bounded 5) — entity names are what CVE/IOC lookups
+  actually match; results dedupe by (source, reference) and cap at 10 items (prompt budget).
+- **Enrichment, not planner dispatch** (the ES-057 stance): once per run, after graph
+  analysis, before the loop; observations join the planner-visible knowledge as
+  `[threat-intel]` lines; a failed correlation is contained (run proceeds unenriched).
+- `TraceEntryKind.THREAT_INTEL` added additively; the flow records its own trace entry.
+  The workspace needs no code change for visibility — the trace region renders kinds
+  generically (pinned by a new frontend test).
+- **Observation vocabulary** = the documented responsibilities verbatim: ioc_enrichment,
+  cve_correlation, attack_mapping, threat_actor (closed enum; unknown kinds ignored).
+- TD: the run sequence now carries six sequential LLM calls — the NVIDIA 90s default bound
+  proved tight for the reasoning model (first live attempt timed out; contained exactly as
+  designed, and the demo ran with `NVIDIA_TIMEOUT_SECONDS=180`). Widening the default or a
+  compact TI prompt is a Milestone G (resilience) consideration. Per-run intel caching and
+  richer IOC extraction (beyond entity names) stay backlog.
 
 ---
 
@@ -3283,3 +3310,47 @@ Next ES
   (ES-061 owns the workspace surface).
 - Milestone C note: ES-059 (Threat Intelligence Agent) stays reserved — C paused by owner
   decision in favor of D on 2026-07-17.
+
+
+---
+
+## ES-059
+
+- Threat Intelligence Agent delivered (Milestone C close; agent-architecture §6): the typed
+  `threat-intel-agent` correlates the investigation's facts with already-retrieved external
+  intelligence over the selected LLM provider and produces one `ThreatIntelReport` —
+  observations in the documented vocabulary (ioc_enrichment, cve_correlation, attack_mapping,
+  threat_actor; closed enum, unknown kinds ignored, bounded 10) with provenance bound to the
+  assembled intelligence: references the platform never retrieved are discarded (the
+  observation survives), so external claims are always traceable to a real lookup.
+- **Composition**: `ThreatIntelFlow` (agent through the Agent Runtime, ADR-013) derives
+  **focused queries** — the objectives plus each finding-named entity's display name (the
+  assembler's new `assemble_threat_intel_seed`; entity-less seeds valid) — runs them over the
+  ES-058 providers with per-provider containment, dedupes by (source, reference) capped at 10,
+  and skips quietly (`None`, no trace noise) when nothing external applies. A produced report
+  is traced as the additive `TraceEntryKind.THREAT_INTEL` (actor `threat-intel-agent`,
+  correlated-items + observation counts + the agent's summary). The runner runs the flow once
+  per run after graph analysis; observations join the planner-visible knowledge as
+  `[threat-intel]` lines (bounded 300 chars); a failed correlation is contained.
+- **Frontend**: no code change needed — the workspace trace region renders kinds generically;
+  a new AiInsightsSection test pins the `threat_intel` entry's workspace visibility.
+- **Tests (+19)**: 14 agent/assembler/flow/runner tests (typed transformation + provenance
+  filtering, prompt derivation, malformed/summary-less raises, precondition, seed assembly
+  with/without graph, focused queries + tracing, quiet skip, per-provider containment, origin
+  dedupe, agent-failure raise, runner enrichment + containment), 4 behavioral validation tests
+  (adversarial matrix → never a silent report; fabricated references never attributed;
+  reasoning derives from context; repeatability), 1 frontend trace-visibility test.
+- **Milestone C closed — live proof** (host backend over the compose data stack, real
+  MiniMax-M3 + real Gemini embeddings + real NVD HTTP calls): the seeded investigation's run
+  produced `retrieval: 18 item(s) via ['semantic','graph','structured','external','hybrid']`
+  (ES-058 live) → `graph_analysis` → **`threat_intel: correlated 1 external item(s), 1
+  observation(s): "Beaconing from HOST-1 to 203.0.113.7 over evil-cdn.example is consistent
+  with [T1071]..."`** → `planner_decision` → `action_execution` → `validation` →
+  `loop_outcome` — the full enrichment chain user-visible in the trace. First attempt showed
+  the containment path live (provider timeout at the 90s bound → run completed unenriched);
+  the demo run used `NVIDIA_TIMEOUT_SECONDS=180` (see TD).
+- Verification: `ruff` clean; `mypy app` strict clean (178 files); backend default **497
+  passed** / 22 deselected; frontend 4-gate green (**70 tests**); no REST change (trace kind
+  travels as the existing string field — openapi freshness green). Delivery Record 1.5.0 +
+  README status rows updated; Jira SEN milestone close is the owner's step (no Atlassian
+  access from this session).

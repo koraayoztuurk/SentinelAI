@@ -36,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.agents.graph_analysis import GraphAnalysisAgent
 from app.ai.agents.memory.agent import MemoryAgent
 from app.ai.agents.planner.agent import PlannerAgent
+from app.ai.agents.threat_intel import ThreatIntelAgent
 from app.ai.agents.validation import ValidationAgent
 from app.ai.decision import DecisionEngine
 from app.ai.orchestration.assembler import InvestigationStateAssembler
@@ -43,6 +44,7 @@ from app.ai.orchestration.graph_analysis import GraphAnalysisFlow
 from app.ai.orchestration.loop import InvestigationLoop
 from app.ai.orchestration.retrieval import RetrievalFlow
 from app.ai.orchestration.runner import InvestigationRunner
+from app.ai.orchestration.threat_intel import ThreatIntelFlow
 from app.ai.orchestration.validation import ValidationFlow
 from app.ai.providers.external import ExternalKnowledgeProvider
 from app.ai.providers.llm import LLMProvider
@@ -318,6 +320,16 @@ async def live_investigation_runner(
             GraphAnalysisFlow(
                 GraphAnalysisAgent(llm),
                 assembler,
+                Uuid4IdGenerator(),
+                SystemClock(),
+                investigation,
+            ),
+            # Threat intelligence enrichment (ES-059): focused external
+            # lookups over the ES-058 providers, correlated by the agent.
+            ThreatIntelFlow(
+                ThreatIntelAgent(llm),
+                assembler,
+                _external_knowledge_providers(),
                 Uuid4IdGenerator(),
                 SystemClock(),
                 investigation,
