@@ -66,6 +66,34 @@ export function attachEvidence(
   );
 }
 
+// Evidence payload store (ES-060/061): raw bytes up (returns the content
+// address the evidence record carries as its integrity value) and verified
+// bytes down. Payloads travel as octet-streams, never JSON (api-design §8).
+export interface EvidencePayloadStoredDto {
+  readonly address: string;
+  readonly size_bytes: number;
+}
+
+export function uploadEvidencePayload(
+  investigationId: string,
+  bytes: ArrayBuffer,
+): Promise<EvidencePayloadStoredDto> {
+  return apiClient.postBinary<EvidencePayloadStoredDto>(
+    `/api/v1/investigations/${encodeURIComponent(investigationId)}/evidence/payloads`,
+    bytes,
+  );
+}
+
+export function downloadEvidencePayload(
+  investigationId: string,
+  evidenceId: string,
+): Promise<Blob> {
+  return apiClient.getBlob(
+    `/api/v1/investigations/${encodeURIComponent(investigationId)}` +
+      `/evidence/${encodeURIComponent(evidenceId)}/payload`,
+  );
+}
+
 export function getInvestigation(
   id: string,
   signal?: AbortSignal,

@@ -100,8 +100,11 @@ class NvidiaSettings(BaseSettings):
     The NIM API is OpenAI-compatible (``/v1/chat/completions``); the concrete
     model id is configuration (``NVIDIA_MODEL``, default MiniMax-M3 — owner
     decision). Reasoning models answer slower than flash-class models, so the
-    default execution bound is wider; ``max_tokens`` must leave room for the
-    model's visible reasoning plus the final answer.
+    default execution bound is wide — 180s, the ES-059 live-demo-proven value
+    (the run sequence is ~6 sequential calls; the plan's 40 rpm rate limit is
+    never approached — per-call latency is the binding constraint).
+    ``max_tokens`` must leave room for the model's visible reasoning plus the
+    final answer.
     """
 
     model_config = SettingsConfigDict(
@@ -115,7 +118,7 @@ class NvidiaSettings(BaseSettings):
     model: str = "minimaxai/minimax-m3"
     # Bounded provider execution time (ADR-013): the value is configuration,
     # the existence of the bound is the port contract.
-    timeout_seconds: float = 90.0
+    timeout_seconds: float = 180.0
     # Deterministic-leaning default for planning decisions.
     temperature: float = 0.0
     max_tokens: int = 8192

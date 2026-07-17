@@ -36,6 +36,10 @@ export interface EvidenceViewModel {
   readonly integrity: string;
   readonly timestamp: string;
   readonly content: string;
+  // True when the integrity value is a payload content address (ES-060/061):
+  // such evidence has a downloadable raw payload; interim inline evidence
+  // (opaque integrity values) does not.
+  readonly downloadable: boolean;
 }
 
 export type TimelineEventKind = "evidence" | "finding";
@@ -61,6 +65,10 @@ export interface WorkspaceViewModel extends DashboardViewModel {
   readonly seedEntities: readonly string[];
 }
 
+// A payload content address is the backend's `sha256:<hex>` integrity scheme
+// (ADR-015); any other integrity value is opaque interim inline evidence.
+const PAYLOAD_ADDRESS_PREFIX = "sha256:";
+
 function toEvidenceViewModel(evidence: EvidenceDto): EvidenceViewModel {
   return {
     id: evidence.id,
@@ -68,6 +76,7 @@ function toEvidenceViewModel(evidence: EvidenceDto): EvidenceViewModel {
     integrity: evidence.integrity,
     timestamp: evidence.timestamp,
     content: evidence.content,
+    downloadable: evidence.integrity.startsWith(PAYLOAD_ADDRESS_PREFIX),
   };
 }
 

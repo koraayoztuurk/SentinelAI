@@ -42,6 +42,34 @@ describe("toWorkspaceViewModel", () => {
     );
     expect(vm.findingEvidence["fnd-001"]).toEqual(["ev-101", "ev-102"]);
   });
+
+  it("marks evidence downloadable only for content-address integrity (ES-061)", () => {
+    const vm = toWorkspaceViewModel(
+      sampleInvestigation,
+      [
+        {
+          id: "ev-inline",
+          investigation_id: "inv-001",
+          source: "edr",
+          timestamp: "2026-06-28T09:20:00Z",
+          integrity: "verified",
+          content: "inline evidence",
+        },
+        {
+          id: "ev-payload",
+          investigation_id: "inv-001",
+          source: "upload",
+          timestamp: "2026-06-28T09:25:00Z",
+          integrity: `sha256:${"a".repeat(64)}`,
+          content: "capture.pcap",
+        },
+      ],
+      [],
+    );
+    const byId = Object.fromEntries(vm.evidence.map((e) => [e.id, e]));
+    expect(byId["ev-inline"]?.downloadable).toBe(false);
+    expect(byId["ev-payload"]?.downloadable).toBe(true);
+  });
 });
 
 describe("deriveTimelineEvents", () => {

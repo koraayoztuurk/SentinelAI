@@ -383,6 +383,7 @@ The roadmap carries the public summary of delivery reality, so the repository ca
 | Workspace Memory surface (investigation-scoped memory listing + region) | Delivered (live slice) |
 | Decision Engine (outcome synthesis on completed runs) + initial specialized agents (Validation, Graph Analysis) | Delivered (live slice; Timeline/Report agents and the planner action-catalogue dispatch deferred) |
 | Threat intelligence integration: external knowledge providers (bundled MITRE ATT&CK catalog + live NVD CVE) behind the provider-neutral port, EXTERNAL retrieval strategy, Threat Intelligence Agent enriching the run (trace-visible) | Delivered (live slice) |
+| Evidence ingestion: content-addressed payload store (ADR-015/RFC-001), Investigation-Service-mediated upload/verified download, workspace file upload/download surface | Delivered (live slice; filesystem adapter dev-grade, S3-compatible store and format parsing/normalization deferred) |
 | Production identity provider, durable audit sink | Deferred |
 
 This table is a mirror of the maintainer's implementation record and is updated whenever a slice's state changes; detailed engineering history remains in the maintainer's tracker.
@@ -598,3 +599,4 @@ The Development Roadmap should continue to evolve together with SentinelAI while
 | 1.3.0 | 2026-07-12 | Delivery Record updated: second vertical slice — Neo4j graph store, Qdrant outbox propagation (ES-048–050), live RAG retrieval consumed by the run path (ES-051) and the workspace Memory surface (ES-052) delivered (live slice) |
 | 1.4.0 | 2026-07-15 | Delivery Record updated: Decision Engine (outcome synthesis, ES-055) and the initial specialized agents — Validation (ES-056), Graph Analysis (ES-057) — delivered (live slice); Timeline/Report agents and planner-selected agent dispatch remain deferred |
 | 1.5.0 | 2026-07-17 | Delivery Record updated: Threat Intelligence integration delivered (live slice) — external knowledge providers (ATT&CK catalog + NVD CVE, ES-058) and the Threat Intelligence Agent enriching the run (ES-059); Milestone C closed |
+| 1.6.0 | 2026-07-17 | Delivery Record updated: Evidence ingestion delivered (live slice) — content-addressed evidence payload store (ADR-015/RFC-001, ES-060) and the workspace upload/verified-download surface (ES-061); Milestone D closed |

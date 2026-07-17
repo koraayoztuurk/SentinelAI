@@ -33,30 +33,27 @@ export interface RequestOptions {
   readonly timeoutMs?: number;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = "GET", body, signal, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
-
-  const headers: Record<string, string> = { Accept: "application/json" };
+function authHeader(): Record<string, string> {
   const token = getAuthToken();
-  if (token !== null) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  if (body !== undefined) {
-    headers["Content-Type"] = "application/json";
-  }
+  return token !== null ? { Authorization: `Bearer ${token}` } : {};
+}
 
+// Run a fetch under the shared timeout + cancellation discipline, mapping an
+// unreachable backend to the same stable error every caller expects.
+async function send(
+  path: string,
+  init: RequestInit,
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   if (signal) {
     signal.addEventListener("abort", () => controller.abort(), { once: true });
   }
-
-  let response: Response;
   try {
-    response = await fetch(`${getApiBaseUrl()}${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+    return await fetch(`${getApiBaseUrl()}${path}`, {
+      ...init,
       signal: controller.signal,
     });
   } catch {
@@ -68,20 +65,93 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   } finally {
     clearTimeout(timeout);
   }
+}
 
-  const payload: unknown = await response.json().catch(() => null);
+async function errorFrom(response: Response): Promise<ApiError> {
+  const payload = (await response.json().catch(() => null)) as
+    | ApiErrorResponse
+    | null;
+  return new ApiError(
+    payload?.error.code ?? "communication.error",
+    payload?.error.message ?? "The request failed.",
+    response.status,
+    payload?.meta.request_id ?? null,
+  );
+}
 
-  if (!response.ok) {
-    const error = payload as ApiErrorResponse | null;
-    throw new ApiError(
-      error?.error.code ?? "communication.error",
-      error?.error.message ?? "The request failed.",
-      response.status,
-      error?.meta.request_id ?? null,
-    );
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { method = "GET", body, signal, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    ...authHeader(),
+  };
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
   }
 
+  const response = await send(
+    path,
+    { method, headers, body: body === undefined ? undefined : JSON.stringify(body) },
+    signal,
+    timeoutMs,
+  );
+
+  if (!response.ok) {
+    throw await errorFrom(response);
+  }
+  const payload = (await response.json().catch(() => null)) as ApiSuccess<T> | null;
   return (payload as ApiSuccess<T>).data;
+}
+
+// Raw-bytes upload (evidence payloads, ES-061): sends an octet-stream body and
+// unwraps the JSON success envelope like `request`. The payload never becomes a
+// JSON document — api-design §8: payloads travel as byte streams.
+async function postBinary<T>(
+  path: string,
+  bytes: ArrayBuffer,
+  options: Omit<RequestOptions, "method" | "body"> = {},
+): Promise<T> {
+  const { signal, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+  const response = await send(
+    path,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/octet-stream",
+        ...authHeader(),
+      },
+      body: bytes,
+    },
+    signal,
+    timeoutMs,
+  );
+  if (!response.ok) {
+    throw await errorFrom(response);
+  }
+  const payload = (await response.json().catch(() => null)) as ApiSuccess<T> | null;
+  return (payload as ApiSuccess<T>).data;
+}
+
+// Raw-bytes download (verified evidence payloads, ES-061): the response is the
+// bytes themselves, not an envelope; an error response still carries the JSON
+// error envelope.
+async function getBlob(
+  path: string,
+  options: Omit<RequestOptions, "method" | "body"> = {},
+): Promise<Blob> {
+  const { signal, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+  const response = await send(
+    path,
+    { method: "GET", headers: { ...authHeader() } },
+    signal,
+    timeoutMs,
+  );
+  if (!response.ok) {
+    throw await errorFrom(response);
+  }
+  return response.blob();
 }
 
 export const apiClient = {
@@ -94,4 +164,6 @@ export const apiClient = {
     request<T>(path, { ...options, method: "PUT", body }),
   delete: <T>(path: string, options?: Omit<RequestOptions, "method" | "body">) =>
     request<T>(path, { ...options, method: "DELETE" }),
+  postBinary,
+  getBlob,
 };

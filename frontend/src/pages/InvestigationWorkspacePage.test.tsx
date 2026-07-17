@@ -45,6 +45,7 @@ const viewModel: WorkspaceViewModel = {
       integrity: "verified",
       timestamp: "2026-06-28T09:20:00Z",
       content: "Unusual SMB session opened.",
+      downloadable: false,
     },
     {
       id: "ev-110",
@@ -52,6 +53,7 @@ const viewModel: WorkspaceViewModel = {
       integrity: "verified",
       timestamp: "2026-06-28T11:25:00Z",
       content: "Unrecognized workstation login.",
+      downloadable: false,
     },
   ],
   timeline: [

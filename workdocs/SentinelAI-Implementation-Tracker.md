@@ -70,6 +70,7 @@
 | ES-058 | External Knowledge Live: ATT&CK Catalog + NVD CVE Providers + EXTERNAL Retrieval Strategy | ✅ Completed |
 | ES-059 | Threat Intelligence Agent: External Correlation Enriching the Run (Milestone C closed) | ✅ Completed |
 | ES-060 | Evidence Payload Store: RFC-001 + ADR-015 + Content-Addressed Port/Adapter + Payload REST | ✅ Completed |
+| ES-061 | Workspace Evidence Payload Upload/Download + Milestone D Close | ✅ Completed |
 
 ---
 
@@ -3354,3 +3355,45 @@ Next ES
   travels as the existing string field — openapi freshness green). Delivery Record 1.5.0 +
   README status rows updated; Jira SEN milestone close is the owner's step (no Atlassian
   access from this session).
+
+
+---
+
+## ES-061
+
+- Workspace evidence payload surface delivered (Milestone D close): the analyst uploads a raw
+  evidence file from the workspace Evidence region and downloads a stored payload back,
+  verified — the user-visible leg of ADR-015/§8b.
+- **Communication boundary**: `apiClient` gained `postBinary` (octet-stream body, JSON envelope
+  unwrapped) and `getBlob` (raw byte-stream response, JSON error envelope on failure), both
+  through the shared auth-header + timeout + unreachable-mapping discipline (extracted `send` /
+  `errorFrom` helpers so `request` stays identical). `investigations.ts` adds
+  `uploadEvidencePayload` (→ `{address, size_bytes}`) and `downloadEvidencePayload` (→ Blob).
+  Payloads never become JSON documents (api-design §8).
+- **Two-step upload = the ES-060 shape**: `useUploadEvidencePayload` uploads the file bytes then
+  attaches evidence referencing the returned content address as its integrity value, the file
+  name as the normalized content label — two separate single-store operations (AC-14). Download
+  goes through the authenticated boundary (`useDownloadEvidencePayload`: fetch Blob → object-URL
+  → anchor click; a bearer-carrying `<a href>` is impossible, and the preview tunnel strips
+  Authorization anyway). Both invalidate/read via the existing `state/query.ts` server-state.
+- **View model**: `EvidenceViewModel.downloadable` derived from the `sha256:` integrity prefix
+  (address-shaped = has a payload; opaque interim values do not). `EvidenceCard` restructured to
+  a wrapper `div` (selection button + optional sibling download button — no nested interactive
+  elements) exposing "Download payload" only on downloadable evidence.
+- **Tests (+5)**: workspace `downloadable` derivation (address vs opaque); EvidenceSection —
+  download control appears only on downloadable evidence, upload calls upload-then-attach with
+  the returned address, download routes through the authenticated boundary. Page test view
+  models carry the new field.
+- **Milestone D closed — live proof** (host backend over the compose data stack): the exact UI
+  sequence over the seeded investigation — `POST …/evidence/payloads` (raw octet-stream) → 201
+  `{address: sha256:f15c4b89…, size_bytes: 65}` → `POST …/evidence` with the address as
+  integrity → 201 (downloadable) → `GET …/evidence/{id}/payload` → 200 octet-stream,
+  Content-Disposition attachment, **bytes byte-for-byte equal to the original**. Error contract
+  live too: attach of an unstored address → 422 `evidence_payload_missing`; a 10 MiB+1 upload →
+  413 `api.payload_too_large`. (Docker Desktop had to be restarted after a host sleep/wake —
+  environment gotcha #4; the data profile recovered on relaunch.)
+- Verification: backend `ruff`/`mypy` strict (178 files)/`pytest` **497 passed** unchanged;
+  frontend 4-gate green (**74 tests**, +5); no REST contract change beyond ES-060 (openapi
+  freshness green). NVIDIA default execution bound raised 90→180s (the ES-059 demo-proven value;
+  the plan's 40 rpm limit is never approached — per-call latency is the constraint), `.env.example`
+  updated. Delivery Record 1.6.0 + README rows updated; Jira SEN Milestone D close is the owner's step.
