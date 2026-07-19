@@ -788,12 +788,8 @@
         "type": "object"
       },
       "InvestigationCreateRequest": {
-        "description": "Client-supplied fields for creating an investigation.",
+        "description": "Client-supplied fields for creating an investigation.\n\nThe ``owner`` is **not** client-supplied (ES-062, \u00a76a / ES-047 TD): the\ncreator owns what they create, so the owner is derived from the\nauthenticated subject at the boundary \u2014 a client cannot mint an\ninvestigation owned by someone else.",
         "properties": {
-          "owner": {
-            "title": "Owner",
-            "type": "string"
-          },
           "priority": {
             "title": "Priority",
             "type": "string"
@@ -805,7 +801,6 @@
         },
         "required": [
           "title",
-          "owner",
           "priority"
         ],
         "title": "InvestigationCreateRequest",

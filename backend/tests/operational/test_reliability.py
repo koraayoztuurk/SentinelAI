@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from app.presentation.api.authorization import require_authorization
+from tests.support.auth import override_identity
 
 pytestmark = pytest.mark.operational
 
@@ -54,6 +55,7 @@ def test_error_and_success_traffic_interleave_without_degradation() -> None:
 
     app = create_app()
     app.dependency_overrides[require_authorization] = lambda: None
+    override_identity(app)
 
     # The context manager runs the lifespan, so the live persistence binding
     # (ES-042) is active — but no PostgreSQL is reachable in this suite.

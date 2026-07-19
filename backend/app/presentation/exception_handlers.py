@@ -29,8 +29,16 @@ def _error_response(
     request: Request, status_code: int, code: str, message: str
 ) -> JSONResponse:
     envelope = build_error(code, message, current_context(request))
+    # A 401 must carry an authentication challenge (RFC 7235 §3.1); the
+    # production authenticator's continuity/challenge semantics surface here,
+    # at the boundary where errors become HTTP (ES-062, auth §5).
+    headers = (
+        {"WWW-Authenticate": "Bearer"} if status_code == 401 else None
+    )
     return JSONResponse(
-        status_code=status_code, content=envelope.model_dump(mode="json")
+        status_code=status_code,
+        content=envelope.model_dump(mode="json"),
+        headers=headers,
     )
 
 

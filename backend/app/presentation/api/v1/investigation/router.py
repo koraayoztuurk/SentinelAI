@@ -18,6 +18,7 @@ from app.application.investigation import (
 )
 from app.config.database import get_evidence_payload_settings
 from app.domain.identifiers import EvidenceId, InvestigationId, ReportId
+from app.presentation.api.auth import AuthenticatedIdentity, require_identity
 from app.presentation.api.context import RequestContext, get_request_context
 from app.presentation.api.errors import (
     InvalidPayloadError,
@@ -65,10 +66,16 @@ async def create_investigation(
     body: InvestigationCreateRequest,
     service: InvestigationService = Depends(get_investigation_service),
     context: RequestContext = Depends(get_request_context),
+    identity: AuthenticatedIdentity = Depends(require_identity),
     ids: IdGenerator = Depends(get_id_generator),
     clock: Clock = Depends(get_clock),
 ) -> ApiResponse[InvestigationResponse]:
-    investigation = body.to_domain(id_value=ids.new_id(), created_at=clock.now())
+    # owner==subject (ES-062): the owner is the authenticated creator, never
+    # a client-supplied value. The verified identity is already established by
+    # the router-level authorization chain and reused here (cached).
+    investigation = body.to_domain(
+        id_value=ids.new_id(), owner=identity.subject, created_at=clock.now()
+    )
     created = await service.create(investigation)
     return build_success(InvestigationResponse.from_domain(created), context)
 

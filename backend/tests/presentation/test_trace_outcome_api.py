@@ -26,6 +26,7 @@ from app.presentation.api.authorization import require_authorization
 from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_service,
 )
+from tests.support.auth import override_identity
 from tests.support.builders import (
     FIXED_TIME,
     build_investigation,
@@ -36,6 +37,7 @@ from tests.support.builders import (
 def _client(service: InvestigationService) -> TestClient:
     app = create_app()
     app.dependency_overrides[require_authorization] = lambda: None
+    override_identity(app)
     app.dependency_overrides[get_investigation_service] = lambda: service
     return TestClient(app)
 

@@ -1,9 +1,10 @@
 // Landing page (ES-047).
 //
 // Entry point of the live flow: the analyst creates an investigation here and
-// is taken to its workspace. The owner is the authenticated dev-credential
-// subject (ES-046 owner scoping: the creator investigates what they own).
-// The platform-level investigation list remains deferred (no list endpoint).
+// is taken to its workspace. The owner is derived server-side from the
+// authenticated subject (ES-062 owner==subject: the creator owns what they
+// create) — the form no longer supplies it, but a credential is still required
+// to create. The platform-level investigation list remains deferred.
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -24,7 +25,7 @@ export function HomePage() {
     if (title.trim().length === 0 || subject === null) {
       return;
     }
-    create({ title: title.trim(), owner: subject, priority });
+    create({ title: title.trim(), priority });
   };
 
   return (

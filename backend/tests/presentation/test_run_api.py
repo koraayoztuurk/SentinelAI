@@ -31,6 +31,7 @@ from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_runner,
     get_investigation_service,
 )
+from tests.support.auth import override_identity
 from tests.support.builders import (
     FIXED_TIME,
     build_evidence,
@@ -97,6 +98,7 @@ class _Stack:
 
         app = create_app()
         app.dependency_overrides[require_authorization] = lambda: None
+        override_identity(app)
         app.dependency_overrides[get_investigation_service] = (
             lambda: self.investigation
         )
@@ -286,6 +288,7 @@ def test_runner_not_bound_returns_503() -> None:
     # reports the explicit unbound contract, like every other service seam.
     app = create_app()
     app.dependency_overrides[require_authorization] = lambda: None
+    override_identity(app)
     client = TestClient(app)
 
     response = client.post("/api/v1/investigations/inv-1/run")

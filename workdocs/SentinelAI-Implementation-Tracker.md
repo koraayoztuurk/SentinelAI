@@ -71,6 +71,7 @@
 | ES-059 | Threat Intelligence Agent: External Correlation Enriching the Run (Milestone C closed) | ✅ Completed |
 | ES-060 | Evidence Payload Store: RFC-001 + ADR-015 + Content-Addressed Port/Adapter + Payload REST | ✅ Completed |
 | ES-061 | Workspace Evidence Payload Upload/Download + Milestone D Close | ✅ Completed |
+| ES-062 | Production Identity Provider: JWT Authenticator + AUTH_PROVIDER Selection + owner==subject on Create | ✅ Completed |
 
 ---
 
@@ -1640,6 +1641,54 @@ to later specifications.
   designed, and the demo ran with `NVIDIA_TIMEOUT_SECONDS=180`). Widening the default or a
   compact TI prompt is a Milestone G (resilience) consideration. Per-run intel caching and
   richer IOC extraction (beyond entity names) stay backlog.
+
+---
+
+## ES-062 (Milestone E, part 1)
+
+- **Production authenticator is a new adapter behind the existing port** (ADR-014 check —
+  **below the threshold**): the `Authenticator` port (§5, ES-019) already made identity
+  technology-neutral, so choosing JWT is an implementation selection like NVIDIA/Gemini behind
+  the LLM port — no RFC. `AUTH_PROVIDER=dev|jwt` mirrors `LLM_PROVIDER`; the JWT provider is
+  opt-in, `dev` stays the default so every existing flow/test is untouched at rest.
+- **Verifier, not issuer** (§4 External Identities): the platform verifies signed tokens; a
+  real IdP issues them. Issuance lives only in a dev utility (`scripts/mint_dev_jwt.py`) +
+  `tests/support/jwt.py` — never in `app`, so the running platform grows no issuance surface.
+  Recorded so the boundary is not eroded later.
+- **HS256-only is a security decision, not a limitation**: fixing the algorithm closes the
+  `alg:none` and RS/HS confusion downgrade attacks (a token naming any other `alg` is rejected
+  before the signature is checked). Hand-rolled over stdlib (`hmac`/`hashlib`/`base64`/`json`,
+  the no-vendor-SDK discipline); constant-time signature compare; `exp` **required** (an
+  identity must carry a validity horizon, §5 Continuity), `nbf`/`iss`/`aud` enforced when
+  present/configured; secret via SecretProvider (`AUTH_JWT_SECRET`), never logged. Asymmetric
+  (RS256/JWKS) and refresh-token rotation stay deferred (documented) — HS256 with a shared
+  verification secret is the demonstrable self-contained realization.
+- **owner==subject on create** (§6a / the ES-047 TD closed): the create endpoint derives the
+  owner from the **authenticated subject** (`Depends(require_identity)`), not the request body —
+  a client can no longer mint an investigation owned by someone else. `owner` was **removed**
+  from `InvestigationCreateRequest` (openapi regen, AC-15) and from the frontend create input
+  (the HomePage form no longer supplies it; the credential gate stays). The real-auth-chain
+  tests were already authenticating as the subject they set as owner, so they held; the
+  auth-bypassing presentation/integration tests gained a shared `override_identity` seam
+  (`tests/support/auth.py`) since the endpoint now needs a verified identity.
+- **WWW-Authenticate challenge** (the deferred §5 semantics): every 401 now carries
+  `WWW-Authenticate: Bearer`, set centrally in the exception handler where errors become HTTP
+  (RFC 7235 §3.1) — applies to both authenticators.
+- **Two release-gate items closed**: "production IdP replaces dev-grade auth" and "owner==subject
+  on create" (release checklist). Dev-grade shared token remains as the `dev` provider.
+- **Tests (+22)**: 17 JWT authenticator unit tests (valid→identity, kind mapping, expired/nbf/
+  bad-sig/alg:none/RS256/missing-sub/missing-exp/malformed/missing-secret rejections, iss/aud
+  enforcement, leeway, secret hygiene), 5 JWT e2e chain tests (no-token 401+challenge, expired
+  401+challenge, owner==subject create, foreign 403, system identity), 3 `AUTH_PROVIDER`
+  selection tests, 1 owner-from-subject presentation test. Live proof (host backend,
+  `AUTH_PROVIDER=jwt`, real stack, tokens minted via the utility): no token → 401
+  `WWW-Authenticate: Bearer`; alice creates (no body owner) → 201 owner=alice; alice reads →
+  200; bob → 403 `authorization.denied`; expired → 401 + challenge.
+- Verification: `ruff` clean; `mypy app` strict clean (180 files); backend default **519
+  passed** / 22 deselected; frontend 4-gate green (**74 tests**); `openapi.json` regenerated
+  (create request lost `owner`). TD: HS256/shared-secret (asymmetric/JWKS + refresh rotation →
+  later); the two-sessions-per-request owner-scope refactor still stands (ES-046 TD); tenant
+  scoping is ES-063.
 
 ---
 
@@ -3397,3 +3446,39 @@ Next ES
   freshness green). NVIDIA default execution bound raised 90→180s (the ES-059 demo-proven value;
   the plan's 40 rpm limit is never approached — per-call latency is the constraint), `.env.example`
   updated. Delivery Record 1.6.0 + README rows updated; Jira SEN Milestone D close is the owner's step.
+
+
+---
+
+## ES-062
+
+- Production identity provider delivered (Milestone E opener): the dev-grade shared token gains
+  a production sibling — `JwtAuthenticator` (`app/presentation/api/jwt_authenticator.py`) behind
+  the existing `Authenticator` port, selected by `AUTH_PROVIDER=dev|jwt` (default `dev`, so the
+  platform is unchanged at rest). Verifies HS256-signed bearer JWTs over the standard library
+  (no vendor SDK): fixed algorithm (rejects `alg:none`/RS confusion before signature check),
+  constant-time HMAC compare, required `exp` + optional `nbf`/`iss`/`aud`, `sub`→subject,
+  `kind`→identity kind; signing secret via SecretProvider (`AUTH_JWT_SECRET`), never logged.
+- **Verifier, not issuer**: token issuance belongs to the external IdP (§4). A dev utility
+  (`scripts/mint_dev_jwt.py`) + `tests/support/jwt.py` stand in for it; `app` grows no issuance
+  surface.
+- **owner==subject on create** (ES-047 TD closed): the create endpoint derives owner from the
+  authenticated subject (`require_identity`), not the request body; `owner` removed from
+  `InvestigationCreateRequest` and the frontend create input (HomePage form + `InvestigationCreateInput`);
+  openapi regenerated. Auth-bypassing tests gained a shared `override_identity` seam
+  (`tests/support/auth.py`).
+- **WWW-Authenticate: Bearer** now accompanies every 401 (RFC 7235), set centrally in the
+  exception handler.
+- **Config**: `app/config/auth.py` (`AuthProviderChoice`, `AuthSelectionSettings`, `JwtSettings`);
+  `.env.example` documents `AUTH_PROVIDER` and the `AUTH_JWT_*` block; DI `live_authenticator`
+  selects the adapter.
+- **Live proof** (host backend, `AUTH_PROVIDER=jwt`, compose data stack, tokens minted via the
+  utility): no token → 401 `WWW-Authenticate: Bearer`; alice POST /investigations (no body owner)
+  → 201 owner=alice; alice GET → 200; bob (foreign) → 403 `authorization.denied`; expired token →
+  401 + challenge. The full production-identity chain — authenticate → per-subject identity →
+  owner==subject → owner-scoped authorization — verified end to end.
+- Verification: `ruff` clean; `mypy app` strict clean (180 files); backend default **519 passed**
+  / 22 deselected (+22); frontend 4-gate green (**74 tests**); openapi freshness green. Two
+  release-gate items closed (production IdP, owner==subject). TD carried: HS256/shared-secret
+  (asymmetric/JWKS + refresh rotation deferred), two-sessions-per-request owner-scope refactor
+  (ES-046) still open; multi-tenancy is ES-063 (Milestone E close).

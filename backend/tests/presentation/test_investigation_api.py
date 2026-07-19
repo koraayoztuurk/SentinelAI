@@ -22,6 +22,7 @@ from app.presentation.api.generation import get_clock, get_id_generator
 from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_service,
 )
+from tests.support.auth import override_identity
 from tests.support.doubles import (
     InMemoryOutcomeRepository,
     InMemoryTraceRepository,
@@ -137,6 +138,7 @@ def _client() -> TestClient:
     app.dependency_overrides[get_id_generator] = lambda: ids
     app.dependency_overrides[get_clock] = lambda: clock
     app.dependency_overrides[require_authorization] = lambda: None
+    override_identity(app)
     return TestClient(app)
 
 
@@ -157,7 +159,7 @@ def _create_investigation(client: TestClient) -> str:
 def test_create_investigation_envelope() -> None:
     response = _client().post(
         "/api/v1/investigations",
-        json={"title": "Phish", "owner": "analyst-1", "priority": "high"},
+        json={"title": "Phish", "priority": "high"},
     )
     assert response.status_code == 201
     body = response.json()
@@ -167,6 +169,34 @@ def test_create_investigation_envelope() -> None:
     assert body["data"]["status"] == "created"
     assert body["data"]["created_at"].startswith("2026-06-30")
     assert body["meta"]["request_id"] == response.headers.get("X-Request-ID")
+
+
+def test_owner_is_derived_from_the_authenticated_subject() -> None:
+    # owner==subject (ES-062): the owner comes from the verified identity, and
+    # a client-supplied owner in the body is ignored — no one can create an
+    # investigation owned by someone else.
+    app = create_app()
+    service = InvestigationService(
+        _InvestigationRepo(),
+        _EvidenceRepo(),
+        _FindingRepo(),
+        _ReportRepo(),
+        InMemoryOutcomeRepository(),
+        InMemoryTraceRepository(),
+    )
+    app.dependency_overrides[get_investigation_service] = lambda: service
+    app.dependency_overrides[get_id_generator] = _CountingIds
+    app.dependency_overrides[get_clock] = _FixedClock
+    app.dependency_overrides[require_authorization] = lambda: None
+    override_identity(app, subject="analyst-erin")
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/investigations",
+        json={"title": "Phish", "owner": "someone-else", "priority": "high"},
+    )
+    assert response.status_code == 201
+    assert response.json()["data"]["owner"] == "analyst-erin"
 
 
 def test_get_investigation() -> None:
@@ -370,6 +400,7 @@ def test_create_list_and_get_report() -> None:
 def test_service_not_configured_returns_503() -> None:
     app = create_app()
     app.dependency_overrides[require_authorization] = lambda: None
+    override_identity(app)
     client = TestClient(app)
     response = client.post(
         "/api/v1/investigations",

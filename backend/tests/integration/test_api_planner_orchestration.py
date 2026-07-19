@@ -34,6 +34,7 @@ from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_service,
 )
 from app.presentation.api.v1.memory.dependencies import get_memory_service
+from tests.support.auth import override_identity
 from tests.support.builders import (
     FIXED_TIME,
     make_graph_service,
@@ -67,6 +68,7 @@ class _Stack:
         )
         app.dependency_overrides[get_clock] = lambda: FixedClock(FIXED_TIME)
         app.dependency_overrides[require_authorization] = lambda: None
+        override_identity(app)
         self.client = TestClient(app)
 
     def execute(self, action: PlannerAction) -> ExecutionResult:

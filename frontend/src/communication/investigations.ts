@@ -40,8 +40,9 @@ export interface EvidenceDto {
 
 export interface InvestigationCreateInput {
   readonly title: string;
-  readonly owner: string;
   readonly priority: string;
+  // `owner` is intentionally absent (ES-062): the backend derives the owner
+  // from the authenticated subject — the creator owns what they create.
 }
 
 export function createInvestigation(

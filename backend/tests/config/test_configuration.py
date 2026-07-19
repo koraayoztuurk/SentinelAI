@@ -12,6 +12,7 @@ from app.config.ai import (
     ExternalKnowledgeProviderChoice,
     ExternalKnowledgeSettings,
 )
+from app.config.auth import AuthProviderChoice, AuthSelectionSettings
 from app.config.database import Neo4jSettings, PostgresSettings
 from app.config.environment import Environment, resolve_environment
 from app.config.errors import (
@@ -187,3 +188,26 @@ def test_external_knowledge_empty_value_opts_out() -> None:
 def test_external_knowledge_unknown_provider_is_rejected() -> None:
     with pytest.raises(ValidationError):
         ExternalKnowledgeSettings(providers="attack,virustotal")
+
+
+# ------------------------------------------------------- authenticator (ES-062)
+
+
+def test_auth_provider_selection_parses_known_values() -> None:
+    assert (
+        AuthSelectionSettings(provider="jwt").provider
+        is AuthProviderChoice.JWT
+    )
+    assert (
+        AuthSelectionSettings(provider="dev").provider
+        is AuthProviderChoice.DEV
+    )
+
+
+def test_auth_provider_defaults_to_dev() -> None:
+    assert AuthSelectionSettings().provider is AuthProviderChoice.DEV
+
+
+def test_auth_provider_unknown_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        AuthSelectionSettings(provider="ldap")

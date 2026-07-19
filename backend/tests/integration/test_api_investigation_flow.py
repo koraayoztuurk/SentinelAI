@@ -15,6 +15,7 @@ from app.presentation.api.generation import get_clock, get_id_generator
 from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_service,
 )
+from tests.support.auth import override_identity
 from tests.support.builders import FIXED_TIME, make_investigation_service
 from tests.support.doubles import FixedClock, SequentialIdGenerator
 
@@ -30,6 +31,7 @@ def _client() -> TestClient:
     app.dependency_overrides[get_id_generator] = lambda: ids
     app.dependency_overrides[get_clock] = lambda: clock
     app.dependency_overrides[require_authorization] = lambda: None
+    override_identity(app)
     return TestClient(app)
 
 

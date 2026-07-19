@@ -41,19 +41,26 @@ from app.domain.value_objects import (
 
 
 class InvestigationCreateRequest(BaseModel):
-    """Client-supplied fields for creating an investigation."""
+    """Client-supplied fields for creating an investigation.
+
+    The ``owner`` is **not** client-supplied (ES-062, §6a / ES-047 TD): the
+    creator owns what they create, so the owner is derived from the
+    authenticated subject at the boundary — a client cannot mint an
+    investigation owned by someone else.
+    """
 
     title: str
-    owner: str
     priority: str
 
-    def to_domain(self, *, id_value: str, created_at: datetime) -> Investigation:
+    def to_domain(
+        self, *, id_value: str, owner: str, created_at: datetime
+    ) -> Investigation:
         return Investigation(
             id=InvestigationId(id_value),
             title=self.title,
             status=InvestigationStatus.CREATED,
             created_at=created_at,
-            owner=ActorRef(self.owner),
+            owner=ActorRef(owner),
             priority=Priority(self.priority),
         )
 

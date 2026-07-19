@@ -68,6 +68,7 @@ from app.config.ai import (
     get_nvd_settings,
     get_nvidia_settings,
 )
+from app.config.auth import AuthProviderChoice, get_auth_selection, get_jwt_settings
 from app.config.database import get_evidence_payload_settings
 from app.config.settings import get_settings
 from app.infrastructure.ai.attack_catalog import AttackCatalogProvider
@@ -108,6 +109,7 @@ from app.presentation.api.errors import (
     ServiceNotConfiguredError,
 )
 from app.presentation.api.generation import SystemClock, Uuid4IdGenerator
+from app.presentation.api.jwt_authenticator import JwtAuthenticator
 from app.presentation.api.v1.graph.dependencies import get_graph_service
 from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_runner,
@@ -338,13 +340,18 @@ async def live_investigation_runner(
 
 
 def live_authenticator() -> Authenticator:
-    """Provide the development-grade shared-token authenticator (ES-046).
+    """Provide the configured authenticator (``AUTH_PROVIDER``, ES-062).
 
-    The shared secret (``DEV_AUTH_TOKEN``) is resolved through the
-    SecretProvider at authenticate time; without it every request stays 401
-    (secure by default, identical to the unconfigured seam).
+    ``jwt`` selects the production JWT verifier (per-subject signed tokens,
+    expiry, WWW-Authenticate challenge); ``dev`` (default) keeps the
+    development-grade shared-token authenticator (ES-046). The port stays
+    technology-neutral (auth §5); the selection is configuration. Either
+    adapter resolves its secret through the SecretProvider at authenticate
+    time; without it every request stays 401 (secure by default).
     """
 
+    if get_auth_selection().provider is AuthProviderChoice.JWT:
+        return JwtAuthenticator(get_jwt_settings(), EnvironmentSecretProvider())
     return SharedTokenAuthenticator(EnvironmentSecretProvider())
 
 
