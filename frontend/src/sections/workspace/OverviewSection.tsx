@@ -23,6 +23,7 @@ export function OverviewSection({ summary }: OverviewSectionProps) {
         </SummaryItem>
         <SummaryItem label="Priority">{summary.priority}</SummaryItem>
         <SummaryItem label="Owner">{summary.owner}</SummaryItem>
+        <SummaryItem label="Tenant">{summary.tenant}</SummaryItem>
         <SummaryItem label="Identifier">
           <span className="font-mono text-xs">{summary.id}</span>
         </SummaryItem>

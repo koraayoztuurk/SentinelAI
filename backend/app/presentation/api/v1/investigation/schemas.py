@@ -24,6 +24,7 @@ from app.domain.identifiers import (
     InvestigationId,
     RelationshipId,
     ReportId,
+    TenantId,
 )
 from app.domain.investigation import Investigation
 from app.domain.investigation_outcome import InvestigationOutcome
@@ -53,7 +54,7 @@ class InvestigationCreateRequest(BaseModel):
     priority: str
 
     def to_domain(
-        self, *, id_value: str, owner: str, created_at: datetime
+        self, *, id_value: str, owner: str, tenant: str, created_at: datetime
     ) -> Investigation:
         return Investigation(
             id=InvestigationId(id_value),
@@ -62,6 +63,7 @@ class InvestigationCreateRequest(BaseModel):
             created_at=created_at,
             owner=ActorRef(owner),
             priority=Priority(self.priority),
+            tenant=TenantId(tenant),
         )
 
 
@@ -80,6 +82,7 @@ class InvestigationResponse(BaseModel):
     created_at: datetime
     owner: str
     priority: str
+    tenant: str
 
     @classmethod
     def from_domain(cls, investigation: Investigation) -> "InvestigationResponse":
@@ -90,6 +93,7 @@ class InvestigationResponse(BaseModel):
             created_at=investigation.created_at,
             owner=investigation.owner.value,
             priority=investigation.priority.value,
+            tenant=investigation.tenant.value,
         )
 
 

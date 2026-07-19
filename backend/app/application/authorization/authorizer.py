@@ -17,22 +17,30 @@ from typing import Protocol
 
 from app.application.authorization.errors import AuthorizationError
 
+# The organization scope of an identity that carries no explicit tenant
+# (ADR-016). Defined in the application layer so both the policy and the
+# presentation authenticators reference one default (dependencies point
+# inward); single-tenant deployments run entirely within it.
+DEFAULT_TENANT = "default"
+
 
 @dataclass(frozen=True, slots=True)
 class OperationContext:
     """The operation context (authentication-authorization §6b).
 
     Records on whose behalf an operation runs: the verified identity
-    (subject + kind) and the request correlation identifier. Established at
-    the API boundary, passed explicitly to the components that need it,
-    immutable for the operation's lifetime and never persisted as such —
-    persisted records copy the fields they need. Introduced with its first
-    consumer, the concrete authorization policy (ES-046).
+    (subject + kind + tenant) and the request correlation identifier.
+    Established at the API boundary, passed explicitly to the components that
+    need it, immutable for the operation's lifetime and never persisted as
+    such — persisted records copy the fields they need. Introduced with its
+    first consumer, the concrete authorization policy (ES-046); ``tenant``
+    added by ES-063 (ADR-016) as the identity's organization scope.
     """
 
     subject: str
     identity_kind: str
     correlation_id: str
+    tenant: str = DEFAULT_TENANT
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +51,8 @@ class AuthorizationRequest:
     operation context (§6b) and ``investigation_id`` names the
     investigation-scoped resource of the operation when the boundary can
     identify one (§6a) — ``None`` for non-investigation-scoped operations.
+    ES-063 adds ``tenant``: the identity's organization scope the policy
+    matches against the investigation's tenant (ADR-016).
     """
 
     subject: str
@@ -50,6 +60,7 @@ class AuthorizationRequest:
     operation: str
     correlation_id: str = ""
     investigation_id: str | None = None
+    tenant: str = DEFAULT_TENANT
 
     @classmethod
     def for_context(
@@ -67,6 +78,7 @@ class AuthorizationRequest:
             operation=operation,
             correlation_id=context.correlation_id,
             investigation_id=investigation_id,
+            tenant=context.tenant,
         )
 
 

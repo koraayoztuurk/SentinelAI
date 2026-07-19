@@ -26,42 +26,51 @@ export function EvidenceCard({
   onDownload,
   downloading = false,
 }: EvidenceCardProps) {
-  const border = selected
-    ? "border-[var(--color-accent)]"
+  const state = selected
+    ? "card-selected"
     : highlighted
-      ? "border-amber-400/70"
-      : "border-white/10";
+      ? "card-highlighted"
+      : "";
   // The selection control is a button, so the download control cannot nest
   // inside it (no nested interactive elements); they are siblings in a card.
   return (
-    <div className={`rounded-lg border ${border} bg-white/5`}>
+    <div className={`card ${state}`}>
       <button
         type="button"
         aria-pressed={selected}
         onClick={() => onSelect(evidence.id)}
-        className="w-full p-4 text-left"
+        className="w-full cursor-pointer p-4 text-left"
       >
         <div className="flex items-center justify-between gap-3">
-          <span className="font-mono text-xs opacity-70">{evidence.id}</span>
-          <span className="text-xs opacity-60">{evidence.source}</span>
+          <span
+            className="mono-label min-w-0 truncate text-faint"
+            title={evidence.id}
+          >
+            {evidence.id}
+          </span>
+          <span className="mono-label shrink-0 whitespace-nowrap rounded border border-line bg-panel-2/60 px-1.5 py-0.5 uppercase text-muted">
+            {evidence.source}
+          </span>
         </div>
         <p className="mt-2 line-clamp-2 text-sm">{evidence.content}</p>
-        <div className="mt-2 flex items-center gap-2 text-xs opacity-60">
+        <div className="mono-label mt-2 flex items-center gap-2 text-faint">
           <span className="truncate">{evidence.integrity}</span>
-          <span>·</span>
+          <span aria-hidden="true">·</span>
           <span>{evidence.timestamp}</span>
           {highlighted && (
-            <span className="ml-auto text-amber-300">supports finding</span>
+            <span className="ml-auto font-semibold text-warn">
+              supports finding
+            </span>
           )}
         </div>
       </button>
       {evidence.downloadable && onDownload && (
-        <div className="border-t border-white/10 px-4 py-2">
+        <div className="border-t border-line px-4 py-2">
           <button
             type="button"
             onClick={() => onDownload(evidence.id)}
             disabled={downloading}
-            className="text-xs text-[var(--color-accent)] disabled:opacity-40"
+            className="btn-link mono-label cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
           >
             {downloading ? "Downloading…" : "Download payload"}
           </button>

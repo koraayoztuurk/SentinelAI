@@ -9,9 +9,9 @@ export interface SummaryItemProps {
 
 export function SummaryItem({ label, children }: SummaryItemProps) {
   return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide opacity-60">{label}</dt>
-      <dd className="mt-1 text-sm">{children}</dd>
+    <div className="border-l border-line pl-3">
+      <dt className="mono-label uppercase text-faint">{label}</dt>
+      <dd className="mt-1 text-sm text-ink">{children}</dd>
     </div>
   );
 }

@@ -9,10 +9,8 @@ export interface DashboardSectionProps {
 
 export function DashboardSection({ title, children }: DashboardSectionProps) {
   return (
-    <section className="rounded-xl border border-white/10 bg-white/5 p-5">
-      <h2 className="text-sm font-semibold uppercase tracking-wide opacity-70">
-        {title}
-      </h2>
+    <section className="panel p-5">
+      <h2 className="panel-title">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -28,7 +26,7 @@ export interface PlaceholderSectionProps {
 export function PlaceholderSection({ title }: PlaceholderSectionProps) {
   return (
     <DashboardSection title={title}>
-      <p className="text-sm opacity-50">Not yet available.</p>
+      <p className="text-sm text-faint">Not yet available.</p>
     </DashboardSection>
   );
 }

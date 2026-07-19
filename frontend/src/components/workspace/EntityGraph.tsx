@@ -3,8 +3,8 @@
 // Renders the seed entity and its neighbourhood as a node-link diagram. All geometry
 // comes from the pure layout helpers (`calculateNodePositions` /
 // `calculateEdgeGeometry`) — this component only draws the result (compute→render
-// separation). Nodes are clickable to drill down; edges are directed (arrow marker)
-// and labelled with the relationship type.
+// separation). Nodes are clickable to drill down; edges are directed (arrow marker),
+// labelled with the relationship type and animated to convey direction of flow.
 
 import {
   DEFAULT_GRAPH_LAYOUT,
@@ -32,7 +32,7 @@ export function EntityGraph({
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="h-auto w-full"
+      className="fade-up h-auto w-full"
       role="img"
       aria-label="Entity neighbourhood graph"
     >
@@ -46,8 +46,12 @@ export function EntityGraph({
           markerHeight="6"
           orient="auto-start-reverse"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" className="fill-white/40" />
+          <path d="M 0 0 L 10 5 L 0 10 z" className="fill-line-strong" />
         </marker>
+        <radialGradient id="graph-node-glow">
+          <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0" />
+        </radialGradient>
       </defs>
 
       {edges.map((edge) => (
@@ -57,7 +61,7 @@ export function EntityGraph({
             y1={edge.y1}
             x2={edge.x2}
             y2={edge.y2}
-            className="stroke-white/30"
+            className="edge-flow"
             strokeWidth={1}
             markerEnd="url(#graph-arrow)"
           />
@@ -65,7 +69,7 @@ export function EntityGraph({
             x={edge.midX}
             y={edge.midY}
             textAnchor="middle"
-            className="fill-white/50 text-[9px]"
+            className="fill-faint font-mono text-[9px] uppercase"
           >
             {edge.type}
           </text>

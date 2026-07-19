@@ -36,7 +36,10 @@ export class ErrorBoundary extends Component<
   override render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div role="alert" className="p-6">
+        <div
+          role="alert"
+          className="fade-up m-6 rounded-lg border border-danger/40 bg-danger/5 p-5 text-sm"
+        >
           Something went wrong. Please reload the affected view.
         </div>
       );

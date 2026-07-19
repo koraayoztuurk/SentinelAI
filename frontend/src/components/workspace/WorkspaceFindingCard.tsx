@@ -21,24 +21,25 @@ export function WorkspaceFindingCard({
   selected,
   onSelect,
 }: WorkspaceFindingCardProps) {
-  const border = selected
-    ? "border-[var(--color-accent)]"
-    : "border-white/10";
   return (
     <button
       type="button"
       aria-pressed={selected}
       onClick={() => onSelect(finding.id)}
-      className={`w-full rounded-lg border ${border} bg-white/5 p-4 text-left`}
+      className={`card w-full cursor-pointer p-4 text-left ${
+        selected ? "card-selected" : ""
+      }`}
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-xs opacity-70">{finding.id}</span>
+        <span className="mono-label min-w-0 truncate text-faint" title={finding.id}>
+          {finding.id}
+        </span>
         <StatusBadge status={finding.status} />
       </div>
       <div className="mt-3">
         <ConfidenceIndicator value={finding.confidence} />
       </div>
-      <p className="mt-3 text-xs opacity-60">by {finding.creator}</p>
+      <p className="mono-label mt-3 text-faint">by {finding.creator}</p>
     </button>
   );
 }

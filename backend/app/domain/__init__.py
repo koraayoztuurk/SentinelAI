@@ -37,6 +37,7 @@ from app.domain.identifiers import MemoryItemId as MemoryItemId
 from app.domain.identifiers import RelationshipId as RelationshipId
 from app.domain.identifiers import ReportId as ReportId
 from app.domain.identifiers import TaskId as TaskId
+from app.domain.identifiers import TenantId as TenantId
 from app.domain.identifiers import TraceEntryId as TraceEntryId
 from app.domain.investigation import Investigation as Investigation
 from app.domain.investigation_outcome import (

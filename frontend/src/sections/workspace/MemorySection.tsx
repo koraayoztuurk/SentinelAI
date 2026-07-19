@@ -15,9 +15,9 @@ export interface MemorySectionProps {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  candidate: "border-sky-500/50 text-sky-400",
-  verified: "border-emerald-500/50 text-emerald-400",
-  deprecated: "border-white/20 opacity-60",
+  candidate: "border-info/50 text-info",
+  verified: "border-ok/50 text-ok",
+  deprecated: "border-line-strong text-faint",
 };
 
 export function MemorySection({ investigationId }: MemorySectionProps) {
@@ -26,48 +26,47 @@ export function MemorySection({ investigationId }: MemorySectionProps) {
   return (
     <WorkspaceRegion title="Memory">
       {memory.error && (
-        <p role="alert" className="text-xs text-red-400">
+        <p role="alert" className="text-xs text-danger">
           Could not load memory ({memory.error.code}).
-          <Button className="ml-2 underline" onClick={memory.retry}>
+          <Button className="btn-link ml-2 text-xs" onClick={memory.retry}>
             Retry
           </Button>
         </p>
       )}
 
       {memory.loading && (
-        <p role="status" className="text-sm opacity-50">
-          Loading memory…
-        </p>
+        <div role="status" className="grid gap-2">
+          <span className="sr-only">Loading memory…</span>
+          <div className="shimmer h-10 w-full" aria-hidden="true" />
+          <div className="shimmer h-10 w-3/4" aria-hidden="true" />
+        </div>
       )}
 
       {!memory.loading && !memory.error && memory.items.length === 0 && (
-        <p className="text-sm opacity-50">
+        <p className="text-sm text-faint">
           No memory items yet. Knowledge promoted from this investigation will
           appear here.
         </p>
       )}
 
       {memory.items.length > 0 && (
-        <ul className="grid max-h-72 gap-2 overflow-y-auto text-sm">
+        <ul className="stagger grid max-h-72 gap-2 overflow-y-auto text-sm">
           {memory.items.map((item) => (
-            <li
-              key={item.id}
-              className="rounded border border-white/10 px-3 py-2"
-            >
+            <li key={item.id} className="card px-3 py-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-xs uppercase opacity-70">
+                <span className="mono-label uppercase text-muted">
                   {item.type}
                 </span>
                 <span
-                  className={`rounded border px-2 py-0.5 text-xs ${
-                    STATUS_STYLES[item.status] ?? "border-white/20"
+                  className={`mono-label rounded-full border bg-panel-2/60 px-2 py-0.5 ${
+                    STATUS_STYLES[item.status] ?? "border-line-strong"
                   }`}
                 >
                   {item.status}
                 </span>
               </div>
               {item.content !== "" && <p className="mt-1">{item.content}</p>}
-              <p className="mt-1 text-xs opacity-50">
+              <p className="mono-label mt-1 tabular-nums text-faint">
                 v{item.version} · confidence {Math.round(item.confidence * 100)}%
               </p>
             </li>

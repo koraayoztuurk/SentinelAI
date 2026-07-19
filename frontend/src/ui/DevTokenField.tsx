@@ -26,8 +26,10 @@ export function DevTokenField() {
   };
 
   return (
-    <label className="flex items-center gap-2 text-xs opacity-80">
-      <span>
+    <label className="flex items-center gap-2 text-xs">
+      <span
+        className={`mono-label ${subject === null ? "text-faint" : "text-accent"}`}
+      >
         {subject === null ? "Dev token" : `Signed in: ${subject}`}
       </span>
       <input
@@ -35,7 +37,7 @@ export function DevTokenField() {
         value={draft}
         placeholder="subject:token"
         aria-label="Development credential"
-        className="w-40 rounded border border-white/20 bg-transparent px-2 py-1"
+        className="input mono-label w-40 px-2 py-1"
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {

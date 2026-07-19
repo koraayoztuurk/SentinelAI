@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.domain.enums import InvestigationStatus
-from app.domain.identifiers import InvestigationId
+from app.domain.identifiers import InvestigationId, TenantId
 from app.domain.value_objects import ActorRef, Priority
 
 
@@ -25,3 +25,7 @@ class Investigation:
     created_at: datetime
     owner: ActorRef
     priority: Priority
+    # Organization/team access scope (ADR-016, §6a): the isolation boundary
+    # the authorization policy evaluates, layered over owner scoping. Supplied
+    # from the authenticated identity's tenant at creation.
+    tenant: TenantId

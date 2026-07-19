@@ -27,6 +27,7 @@ const viewModel: WorkspaceViewModel = {
     status: "active",
     priority: "high",
     owner: "analyst-erin",
+    tenant: "default",
     createdAt: "2026-06-28T09:15:00Z",
   },
   findings: [

@@ -15,9 +15,16 @@ import { PlaceholderSection } from "../sections/dashboard/DashboardSection";
 
 function DashboardSkeleton() {
   return (
-    <p role="status" className="text-sm opacity-60">
-      Loading investigation…
-    </p>
+    <div role="status" className="grid gap-5">
+      <span className="sr-only">Loading investigation…</span>
+      <div className="shimmer h-40 w-full" aria-hidden="true" />
+      <div className="shimmer h-56 w-full" aria-hidden="true" />
+      <div className="grid gap-5 md:grid-cols-3" aria-hidden="true">
+        <div className="shimmer h-28" />
+        <div className="shimmer h-28" />
+        <div className="shimmer h-28" />
+      </div>
+    </div>
   );
 }
 
@@ -27,36 +34,41 @@ export function InvestigationDashboardPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <header className="mb-6 flex items-center justify-between">
+      <header className="fade-up mb-6 flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Investigation Dashboard</h1>
+          <p className="mono-label uppercase text-faint">console / summary</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight">
+            Investigation Dashboard
+          </h1>
           <Link
             to={`/investigations/${id}/workspace`}
-            className="text-xs opacity-60 hover:opacity-100"
+            className="btn-link mono-label mt-1 inline-block"
           >
             Open workspace →
           </Link>
         </div>
-        <span className="font-mono text-xs opacity-60">{id}</span>
+        <span className="mono-label rounded-md border border-line bg-panel-2/60 px-2.5 py-1 text-muted">
+          {id}
+        </span>
       </header>
 
       {loading && <DashboardSkeleton />}
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-500/40 p-5">
+        <div
+          role="alert"
+          className="fade-up rounded-lg border border-danger/40 bg-danger/5 p-5"
+        >
           <p className="text-sm">Could not load the investigation ({error.code}).</p>
-          <p className="mt-1 text-xs opacity-60">{error.message}</p>
-          <Button
-            className="mt-3 rounded border border-white/20 px-3 py-1 text-sm"
-            onClick={retry}
-          >
+          <p className="mt-1 text-xs text-muted">{error.message}</p>
+          <Button className="btn btn-ghost mt-3" onClick={retry}>
             Retry
           </Button>
         </div>
       )}
 
       {viewModel && (
-        <div className="grid gap-5">
+        <div className="stagger grid gap-5">
           <InvestigationSummarySection summary={viewModel.summary} />
           <FindingsSection findings={viewModel.findings} />
           <div className="grid gap-5 md:grid-cols-3">

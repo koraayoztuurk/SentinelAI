@@ -22,6 +22,7 @@ from typing import Protocol
 
 from fastapi import Depends, Request
 
+from app.application.authorization import DEFAULT_TENANT
 from app.application.secrets import (
     SecretName,
     SecretNotFoundError,
@@ -48,15 +49,20 @@ class AuthenticatedIdentity:
     """A verified identity associated with a request.
 
     ``subject`` is the unique, traceable identifier of the actor; ``kind``
-    distinguishes human, system and external identities.
+    distinguishes human, system and external identities; ``tenant`` is the
+    identity's organization scope (ADR-016), defaulting to the single default
+    tenant when the credential carries none.
     """
 
     subject: str
     kind: IdentityKind
+    tenant: str = DEFAULT_TENANT
 
     def __post_init__(self) -> None:
         if not self.subject.strip():
             raise AuthenticationError("Authenticated identity must have a subject.")
+        if not self.tenant.strip():
+            raise AuthenticationError("Authenticated identity must have a tenant.")
 
 
 class Authenticator(Protocol):

@@ -72,6 +72,7 @@
 | ES-060 | Evidence Payload Store: RFC-001 + ADR-015 + Content-Addressed Port/Adapter + Payload REST | ✅ Completed |
 | ES-061 | Workspace Evidence Payload Upload/Download + Milestone D Close | ✅ Completed |
 | ES-062 | Production Identity Provider: JWT Authenticator + AUTH_PROVIDER Selection + owner==subject on Create | ✅ Completed |
+| ES-063 | Multi-Tenancy: RFC-002 + ADR-016 + Investigation Tenant Scope + Tenant-Aware Authorizer (Milestone E closed) | ✅ Completed |
 
 ---
 
@@ -1689,6 +1690,52 @@ to later specifications.
   (create request lost `owner`). TD: HS256/shared-secret (asymmetric/JWKS + refresh rotation →
   later); the two-sessions-per-request owner-scope refactor still stands (ES-046 TD); tenant
   scoping is ES-063.
+
+---
+
+## ES-063 (Milestone E, close)
+
+- **Second exercised RFC (ADR-014 threshold c)**: adding a tenant scope changes domain-model
+  ownership/scoping semantics, so RFC-002 precedes ADR-016 (like RFC-001/ADR-015 for the payload
+  store). Both Accepted under the ADR-014 §3 self-review; §6a gained a realization note; the ADR
+  index lists 016. ADR-016 amends ADR-003 (the Investigation gains a scope attribute) with
+  ADR-003's text preserved (the ADR-011/015 precedent).
+- **Tenant is an added conjunct, never a relaxation**: the policy permits an investigation-scoped
+  op only when `identity.tenant == investigation.tenant` **and** the owner rule holds. This
+  strengthens isolation (cross-tenant → 403 before the owner check) without broadening any
+  existing access — the existing owner-only tests still pass unchanged (all at the default tenant).
+- **§6a "a scope expressed as an attribute of the investigation, evaluated by the policy"**
+  realized literally: `Investigation.tenant: TenantId` (a typed scope key, caller-supplied from
+  the identity — not generated, not inferred from data). No new propagation path: the tenant
+  rides the existing operation-context mechanism (§6b) — identity → `OperationContext` →
+  `AuthorizationRequest` → policy, all additive (defaults to `DEFAULT_TENANT`).
+- **Single default tenant keeps everything backward-compatible**: `DEFAULT_TENANT = "default"`
+  lives in the application authorization layer (both the policy and the presentation
+  authenticators reference it, dependencies inward). The dev authenticator and claim-less JWTs
+  use it; the JWT `tenant` claim overrides it. The migration (0004) adds the column NOT NULL
+  `server_default='default'`, backfilling existing rows — so the seed and all prior data stay
+  reachable by the default-tenant dev identity.
+- **Tenant + owner both derived from the identity on create** (extends ES-062): a client can
+  neither own nor place an investigation in a foreign tenant. `InvestigationResponse` exposes
+  `tenant` (read-only); the create request does not take it (openapi regen).
+- **Scope boundary recorded (RFC-002)**: the shared knowledge layers (Memory, Graph) stay open
+  to authenticated identities — a **per-tenant** organizational-knowledge model (promotion/
+  retrieval scoped to one org) is a documented follow-up, not decided here. Tenant lifecycle /
+  membership / moving investigations between tenants are out (the tenant is an opaque IdP-owned
+  scope label, not a managed entity).
+- **Tests (+6)**: 3 policy tests (foreign-tenant denied even for the owner, matching tenant+owner
+  permitted, `for_context` carries tenant), 1 JWT tenant-claim test + 1 default-tenant test, 1
+  e2e cross-tenant isolation test (alice@acme creates → alice@other 403 → alice@acme 200); the
+  frontend surfaces tenant in the workspace/dashboard summary (view-model + display + tests).
+  Migration 0004 applied live (0003→0004); the seed backfilled to `default`.
+- **Milestone E closed — live proof** (host backend, `AUTH_PROVIDER=jwt`, real stack): alice@acme
+  POST → 201 owner=alice tenant=acme; alice@acme GET → 200; **alice@other (same subject, foreign
+  tenant) → 403 `authorization.denied`**; the migration-backfilled seed → 200 for koray@default.
+  The two release-gate identity items (ES-062) plus tenant isolation complete the milestone.
+- Verification: `ruff` clean; `mypy app` strict clean (180 files); backend default **525 passed**
+  / 22 deselected (+6); frontend 4-gate green (**74 tests**); `openapi.json` regenerated (create
+  response gains `tenant`). TD: shared-knowledge per-tenant model, Tenant entity/membership,
+  asymmetric JWT + refresh rotation, two-sessions-per-request refactor — all deferred/documented.
 
 ---
 
@@ -3482,3 +3529,75 @@ Next ES
   release-gate items closed (production IdP, owner==subject). TD carried: HS256/shared-secret
   (asymmetric/JWKS + refresh rotation deferred), two-sessions-per-request owner-scope refactor
   (ES-046) still open; multi-tenancy is ES-063 (Milestone E close).
+
+
+---
+
+## ES-063
+
+- Multi-tenancy delivered (Milestone E close): investigations are isolated by tenant, not only
+  by owner. Governance first — **RFC-002** (second exercised RFC; changes domain ownership/scoping
+  → ADR-014 threshold c) + **ADR-016** (amends ADR-003 with an Investigation scope attribute);
+  §6a realization note + ADR index updated.
+- **Domain**: `Investigation.tenant: TenantId` (new typed scope key in `app/domain/identifiers.py`,
+  exported via `app/domain/__init__.py`), caller-supplied from the authenticated identity.
+- **Identity → policy flow** (all additive, defaults to `DEFAULT_TENANT="default"` defined in the
+  application authorization layer): `AuthenticatedIdentity.tenant` (JWT `tenant` claim or default;
+  dev authenticator → default) → `OperationContext.tenant` → `AuthorizationRequest.tenant` →
+  `OwnerScopedAuthorizer` requires `identity.tenant == investigation.tenant` **and** the owner
+  rule (tenant isolation is an added conjunct — cross-tenant → 403 before the owner check).
+- **Create derives tenant + owner from the identity** (extends ES-062 owner==subject); a client
+  cannot place an investigation in a foreign tenant. `InvestigationResponse` exposes `tenant`;
+  create request does not take it (openapi regen).
+- **Persistence**: `investigation.tenant` column (ORM + mapper); Alembic **0004** adds it NOT NULL
+  `server_default='default'`, backfilling existing rows (the seed stays default-tenant reachable).
+  Migration applied live (0003→0004).
+- **Frontend**: `InvestigationDto`/summary view model carry `tenant`; workspace Overview +
+  dashboard Summary show a Tenant field.
+- **Scope boundary (RFC-002)**: shared knowledge layers (Memory/Graph) stay open — a per-tenant
+  organizational-knowledge model and a managed Tenant entity/membership are documented follow-ups,
+  not decided here.
+- **Tests (+6 backend)**: foreign-tenant-denied-even-for-owner, matching tenant+owner permitted,
+  `for_context` tenant, JWT tenant-claim + default, e2e cross-tenant isolation; frontend tenant
+  assertions in the dashboard/summary tests.
+- **Live proof** (host backend, `AUTH_PROVIDER=jwt`, compose data stack): alice@acme POST → 201
+  owner=alice tenant=acme; alice@acme GET → 200; **alice@other (same subject, foreign tenant) →
+  403 `authorization.denied`**; migration-backfilled seed → 200 for koray@default. Milestone E
+  closed — production identity (ES-062) + tenant isolation (ES-063) complete.
+- Verification: `ruff` clean; `mypy app` strict clean (180 files); backend default **525 passed**
+  / 22 deselected; frontend 4-gate green (**74 tests**); openapi freshness green. Jira SEN
+  Milestone E close is the owner's step.
+
+## UI-R1 (ad-hoc, 2026-07-19): SOC-console frontend redesign
+
+- **Scope**: full visual redesign of the frontend (user request; no ES). No behavior, routing,
+  state, or API change — presentation layer only. All visible text, roles, aria attributes and
+  test ids preserved; the 74-test frontend suite is unchanged except one accessible-name fix
+  (`aria-label="SentinelAI"` on the split-styled Home h1).
+- **Design system** (`src/index.css`, Tailwind 4 `@theme`): "SOC console" theme — dark default
+  (near-black navy canvas, teal `--color-accent`, violet `--color-ai` for AI surfaces, semantic
+  ok/warn/danger/info), full light-theme variable override via existing `data-theme` switch
+  (ES-027 session state untouched). Typography: Space Grotesk Variable (UI) + JetBrains Mono
+  Variable (data/micro-labels), self-hosted via `@fontsource-variable` (2 new deps, bundled by
+  Vite — no runtime font CDN).
+- **Component classes**: `.panel` (corner-bracket framing, hover glow), `.panel-title`, `.card`
+  (+selected/highlighted), `.btn`/`.btn-primary` (hover light sweep)/`.btn-ghost`/`.btn-link`,
+  `.input`, `.file-input`, `.status-dot` (sonar pulse), `.meter` (animated confidence fill +
+  sheen), `.shimmer` skeletons, `.stagger`/`.fade-up` entrances, `.edge-flow` (animated directed
+  graph edges), `.ambient` (fixed blueprint grid + drifting glows), frosted `.app-header` with
+  radar-sweep underline. `prefers-reduced-motion` disables all animation.
+- **Surfaces restyled**: MainLayout (sticky glass header, brand mark, status footer), Home hero,
+  dashboard + workspace pages (breadcrumb headers, id chips, shimmer skeletons, danger-toned
+  error panels), all region shells, finding/evidence cards, timeline (vertical rail + kind dots),
+  entity chips, SVG graph (flowing edges, breathing focus halo), AI Insights (violet accent),
+  Memory, StatusBadge (status→tone map incl. created/active/validated/escalated…, pulse dot).
+  Fixed pre-existing overflow: long mono ids now truncate (title attr keeps full value);
+  timeline timestamps no longer wrap.
+- **Verification**: frontend 4-gate green (lint, typecheck strict, 74/74 tests, build). Live
+  visual proof over seeded stack (compose data + host uvicorn + Vite): headless-Chrome captures
+  of Home/Dashboard/Workspace in dark **and** light themes — live findings/evidence/timeline/
+  memory all rendered. Gotcha for future verification: `--virtual-time-budget` screenshots
+  freeze `.stagger` entrance animations at opacity 0 for late-mounting query data (false
+  "empty region"); use real-time CDP capture (`Page.navigate` explicitly — headless `/json/new
+  ?url=` opens about:blank) — the in-pane preview screenshot also times out on infinite
+  animations.

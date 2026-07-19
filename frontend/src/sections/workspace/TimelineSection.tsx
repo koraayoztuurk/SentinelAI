@@ -21,9 +21,9 @@ export function TimelineSection({ timeline }: TimelineSectionProps) {
   return (
     <WorkspaceRegion title="Timeline">
       {timeline.length === 0 ? (
-        <p className="text-sm opacity-50">No investigation activity yet.</p>
+        <p className="text-sm text-faint">No investigation activity yet.</p>
       ) : (
-        <ol className="flex flex-col gap-1">
+        <ol className="stagger flex flex-col gap-1">
           {timeline.map((event) => (
             <TimelineEntry
               key={event.id}

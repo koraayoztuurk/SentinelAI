@@ -46,8 +46,10 @@ def _stack() -> TestClient:
     return TestClient(app)
 
 
-def _bearer(subject: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {mint_jwt(_SECRET, subject)}"}
+def _bearer(subject: str, tenant: str | None = None) -> dict[str, str]:
+    claims = {"tenant": tenant} if tenant is not None else None
+    token = mint_jwt(_SECRET, subject, extra_claims=claims)
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_no_token_is_401_with_challenge() -> None:
@@ -95,6 +97,39 @@ def test_owner_flow_and_foreign_subject_denied() -> None:
     )
     assert foreign.status_code == 403
     assert foreign.json()["error"]["code"] == "authorization.denied"
+
+
+def test_cross_tenant_access_is_denied() -> None:
+    # Tenant isolation (ES-063, ADR-016): alice@acme creates an investigation
+    # placed in tenant "acme"; alice@other — same subject, different tenant —
+    # cannot reach it. Owner match alone is not enough.
+    client = _stack()
+
+    created = client.post(
+        "/api/v1/investigations",
+        json={"title": "Tenant-scoped", "priority": "high"},
+        headers=_bearer("alice", tenant="acme"),
+    )
+    assert created.status_code == 201
+    assert created.json()["data"]["tenant"] == "acme"
+    investigation_id = created.json()["data"]["id"]
+
+    # Same subject, foreign tenant → denied.
+    foreign_tenant = client.get(
+        f"/api/v1/investigations/{investigation_id}",
+        headers=_bearer("alice", tenant="other"),
+    )
+    assert foreign_tenant.status_code == 403
+    assert foreign_tenant.json()["error"]["code"] == "authorization.denied"
+
+    # Same subject, same tenant → permitted.
+    assert (
+        client.get(
+            f"/api/v1/investigations/{investigation_id}",
+            headers=_bearer("alice", tenant="acme"),
+        ).status_code
+        == 200
+    )
 
 
 def test_system_identity_token_authenticates() -> None:

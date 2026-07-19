@@ -57,6 +57,7 @@ from app.domain.identifiers import (
     InvestigationId,
     MemoryItemId,
     RelationshipId,
+    TenantId,
 )
 from app.domain.investigation import Investigation
 from app.domain.memory_item import MemoryItem
@@ -201,6 +202,9 @@ async def _seed(registry: PersistenceRegistry) -> InvestigationId:
                 created_at=now,
                 owner=ActorRef("koray"),
                 priority=Priority("high"),
+                # Default tenant (ADR-016): matches the dev/claim-less identity
+                # tenant, so the dev flow (koray@default) accesses the seed.
+                tenant=TenantId("default"),
             )
         )
         await investigations.attach_evidence(

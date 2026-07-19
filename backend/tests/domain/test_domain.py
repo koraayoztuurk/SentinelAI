@@ -40,6 +40,7 @@ from app.domain import (
     Task,
     TaskId,
     TaskStatus,
+    TenantId,
 )
 from app.domain.exceptions import (
     BlankValueError,
@@ -139,6 +140,7 @@ def test_all_entities_construct_with_valid_inputs() -> None:
         created_at=_NOW,
         owner=ActorRef("analyst-1"),
         priority=Priority("high"),
+        tenant=TenantId("default"),
     )
     entity = Entity(
         id=EntityId("ent-1"),

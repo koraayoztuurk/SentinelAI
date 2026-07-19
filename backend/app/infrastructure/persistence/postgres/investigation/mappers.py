@@ -22,6 +22,7 @@ from app.domain.identifiers import (
     InvestigationOutcomeId,
     RelationshipId,
     ReportId,
+    TenantId,
     TraceEntryId,
 )
 from app.domain.investigation import Investigation
@@ -52,6 +53,7 @@ def investigation_to_row(investigation: Investigation) -> InvestigationRow:
         id=investigation.id.value,
         title=investigation.title,
         status=investigation.status.value,
+        tenant=investigation.tenant.value,
         created_at=investigation.created_at,
         owner=investigation.owner.value,
         priority=investigation.priority.value,
@@ -66,6 +68,7 @@ def investigation_to_domain(row: InvestigationRow) -> Investigation:
         created_at=row.created_at,
         owner=ActorRef(row.owner),
         priority=Priority(row.priority),
+        tenant=TenantId(row.tenant),
     )
 
 

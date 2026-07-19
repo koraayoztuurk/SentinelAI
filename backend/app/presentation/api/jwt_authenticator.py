@@ -34,6 +34,7 @@ from datetime import UTC, datetime
 
 from fastapi import Request
 
+from app.application.authorization import DEFAULT_TENANT
 from app.application.secrets import (
     SecretName,
     SecretNotFoundError,
@@ -193,5 +194,20 @@ class JwtAuthenticator:
             kind = IdentityKind(kind_token)
         except ValueError as exc:
             raise AuthenticationError("Token has an unknown identity kind.") from exc
-        logger.info("jwt verified subject=%s kind=%s", subject.strip(), kind.value)
-        return AuthenticatedIdentity(subject=subject.strip(), kind=kind)
+        # The tenant claim carries the organization scope (ADR-016); a
+        # claim-less token runs within the single default tenant.
+        tenant_claim = claims.get("tenant")
+        tenant = (
+            tenant_claim.strip()
+            if isinstance(tenant_claim, str) and tenant_claim.strip()
+            else DEFAULT_TENANT
+        )
+        logger.info(
+            "jwt verified subject=%s kind=%s tenant=%s",
+            subject.strip(),
+            kind.value,
+            tenant,
+        )
+        return AuthenticatedIdentity(
+            subject=subject.strip(), kind=kind, tenant=tenant
+        )

@@ -11,6 +11,7 @@ describe("toDashboardViewModel", () => {
       status: "active",
       priority: "high",
       owner: "analyst-erin",
+      tenant: "default",
       createdAt: sampleInvestigation.created_at,
     });
   });

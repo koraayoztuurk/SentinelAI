@@ -384,7 +384,8 @@ The roadmap carries the public summary of delivery reality, so the repository ca
 | Decision Engine (outcome synthesis on completed runs) + initial specialized agents (Validation, Graph Analysis) | Delivered (live slice; Timeline/Report agents and the planner action-catalogue dispatch deferred) |
 | Threat intelligence integration: external knowledge providers (bundled MITRE ATT&CK catalog + live NVD CVE) behind the provider-neutral port, EXTERNAL retrieval strategy, Threat Intelligence Agent enriching the run (trace-visible) | Delivered (live slice) |
 | Evidence ingestion: content-addressed payload store (ADR-015/RFC-001), Investigation-Service-mediated upload/verified download, workspace file upload/download surface | Delivered (live slice; filesystem adapter dev-grade, S3-compatible store and format parsing/normalization deferred) |
-| Production identity provider, durable audit sink | Deferred |
+| Multi-tenancy & production identity: JWT authenticator (ES-062, owner==subject, WWW-Authenticate) + tenant scope (ADR-016/RFC-002, tenant-isolated authorization) | Delivered (live slice; HS256/shared-secret — asymmetric JWKS, refresh rotation, per-tenant shared knowledge and a managed Tenant entity deferred) |
+| Durable audit sink | Deferred |
 
 This table is a mirror of the maintainer's implementation record and is updated whenever a slice's state changes; detailed engineering history remains in the maintainer's tracker.
 
@@ -600,3 +601,4 @@ The Development Roadmap should continue to evolve together with SentinelAI while
 | 1.4.0 | 2026-07-15 | Delivery Record updated: Decision Engine (outcome synthesis, ES-055) and the initial specialized agents — Validation (ES-056), Graph Analysis (ES-057) — delivered (live slice); Timeline/Report agents and planner-selected agent dispatch remain deferred |
 | 1.5.0 | 2026-07-17 | Delivery Record updated: Threat Intelligence integration delivered (live slice) — external knowledge providers (ATT&CK catalog + NVD CVE, ES-058) and the Threat Intelligence Agent enriching the run (ES-059); Milestone C closed |
 | 1.6.0 | 2026-07-17 | Delivery Record updated: Evidence ingestion delivered (live slice) — content-addressed evidence payload store (ADR-015/RFC-001, ES-060) and the workspace upload/verified-download surface (ES-061); Milestone D closed |
+| 1.7.0 | 2026-07-17 | Delivery Record updated: Multi-tenancy & production identity delivered (live slice) — JWT authenticator + owner==subject (ES-062) and investigation tenant scoping (ADR-016/RFC-002, ES-063); Milestone E closed. Production IdP and owner==subject release-gate items met |

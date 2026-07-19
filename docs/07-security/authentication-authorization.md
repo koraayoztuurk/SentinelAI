@@ -344,6 +344,7 @@ The threat model names cross-investigation information leakage as a threat and i
 
 - Every Investigation carries an **owner** (the domain's `ActorRef`); ownership is the initial access-scoping key.
 - The model is extensible to team and organization scopes: a scope is always expressed as an attribute of the investigation, evaluated by the authorization policy — never inferred from data content.
+- **Realized (ADR-016 / RFC-002)**: the organization scope is the Investigation's `tenant` attribute (a `TenantId`, caller-supplied from the authenticated identity). The policy permits an investigation-scoped operation only when the identity's tenant matches the investigation's tenant (cross-tenant → denied) **and** the owner rule holds — tenant isolation is an added conjunct over owner scoping, never a relaxation.
 
 ## Access Rules
 

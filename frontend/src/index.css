@@ -1,24 +1,557 @@
 @import "tailwindcss";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/jetbrains-mono";
 
-/* Design tokens. The foundation defines a minimal palette; the design system is
-   expanded by the dashboard and workspace specifications (ES-024+). The default is
-   the dark theme; the Session State theme preference (ES-027) applies a `data-theme`
-   attribute on <html> to switch palettes. */
+/* ---------------------------------------------------------------------------
+   SentinelAI design system — "SOC console" theme.
+
+   Dark is the default palette; the Session State theme preference (ES-027)
+   applies `data-theme` on <html> to switch. Every themable value is a CSS
+   variable, so the light override swaps variables only — utilities and
+   component classes never hardcode a palette.
+--------------------------------------------------------------------------- */
+
+@theme {
+  --font-sans: "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "Cascadia Code",
+    "Segoe UI Mono", monospace;
+
+  /* Surfaces */
+  --color-canvas: #05070e;
+  --color-panel: #0b101e;
+  --color-panel-2: #101728;
+  --color-raise: #17203a;
+
+  /* Content */
+  --color-ink: #dce4f5;
+  --color-muted: #8b96ad;
+  --color-faint: #5c6780;
+
+  /* Structure */
+  --color-line: #232e47;
+  --color-line-strong: #35425f;
+
+  /* Signals */
+  --color-accent: #35e0c2;
+  --color-ai: #a48fff;
+  --color-ok: #3ddc97;
+  --color-warn: #ffb454;
+  --color-danger: #ff5c6c;
+  --color-info: #58b6ff;
+}
+
 :root {
-  --color-surface: #0b1020;
-  --color-on-surface: #e6e9f2;
-  --color-accent: #4f7cff;
+  /* Ambient layers (grid + glow) tune per theme. */
+  --grid-line: rgb(148 163 184 / 0.045);
+  --glow-a: rgb(53 224 194 / 0.07);
+  --glow-b: rgb(164 143 255 / 0.055);
+  --panel-sheen: rgb(255 255 255 / 0.02);
+
+  /* Legacy aliases (pre-redesign components referenced these). */
+  --color-surface: var(--color-canvas);
+  --color-on-surface: var(--color-ink);
 }
 
 :root[data-theme="light"] {
-  --color-surface: #f5f7fb;
-  --color-on-surface: #0b1020;
-  --color-accent: #3457d5;
+  --color-canvas: #eef1f7;
+  --color-panel: #f9fafd;
+  --color-panel-2: #ffffff;
+  --color-raise: #e6ebf5;
+
+  --color-ink: #16203a;
+  --color-muted: #5a677f;
+  --color-faint: #8792a8;
+
+  --color-line: #d5dcea;
+  --color-line-strong: #b9c3d8;
+
+  --color-accent: #0d9d85;
+  --color-ai: #6d55d8;
+  --color-ok: #14915f;
+  --color-warn: #b26a00;
+  --color-danger: #d23c50;
+  --color-info: #1671c9;
+
+  --grid-line: rgb(30 41 59 / 0.05);
+  --glow-a: rgb(13 157 133 / 0.08);
+  --glow-b: rgb(109 85 216 / 0.06);
+  --panel-sheen: rgb(255 255 255 / 0.55);
 }
+
+/* ------------------------------------------------------------------ base -- */
 
 body {
   margin: 0;
-  background-color: var(--color-surface);
-  color: var(--color-on-surface);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-accent) 30%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-accent) 70%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ------------------------------------------------------------- keyframes -- */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheen {
+  from {
+    transform: translateX(-150%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(350%) skewX(-18deg);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--pulse, var(--color-accent)) 45%, transparent);
+  }
+  75% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+@keyframes glow-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes scan {
+  from {
+    background-position: -40vw 0;
+  }
+  to {
+    background-position: 140vw 0;
+  }
+}
+
+/* ------------------------------------------------------------ components -- */
+
+@layer components {
+  /* Ambient background: a faint blueprint grid + two drifting glows.
+     Mounted once by MainLayout; fixed so content scrolls over it. */
+  .ambient {
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    pointer-events: none;
+    background-image:
+      radial-gradient(42rem 28rem at 12% -6%, var(--glow-a), transparent 70%),
+      radial-gradient(38rem 26rem at 88% 4%, var(--glow-b), transparent 70%),
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:
+      100% 100%,
+      100% 100%,
+      44px 44px,
+      44px 44px;
+    mask-image: linear-gradient(to bottom, black 0%, black 62%, transparent 100%);
+  }
+
+  /* Frosted app header. */
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    border-bottom: 1px solid var(--color-line);
+    background: color-mix(in oklab, var(--color-canvas) 78%, transparent);
+    backdrop-filter: blur(14px);
+  }
+  .app-header::after {
+    /* A slow "radar sweep" light along the header's bottom edge. */
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in oklab, var(--color-accent) 80%, transparent) 50%,
+        transparent
+      )
+      no-repeat;
+    background-size: 40vw 1px;
+    animation: scan 7s linear infinite;
+  }
+
+  /* Titled surface used by every dashboard/workspace region. Corner brackets
+     are painted as 8 background strokes (2 per corner). */
+  .panel {
+    position: relative;
+    border: 1px solid var(--color-line);
+    border-radius: 10px;
+    background:
+      linear-gradient(160deg, var(--panel-sheen), transparent 38%),
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--color-panel-2) 80%, var(--color-panel)),
+        var(--color-panel)
+      );
+    transition:
+      border-color 200ms ease,
+      box-shadow 200ms ease,
+      transform 200ms ease;
+  }
+  .panel:hover {
+    border-color: var(--color-line-strong);
+    box-shadow: 0 12px 40px -18px rgb(0 0 0 / 0.55);
+  }
+  .panel::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    border-radius: inherit;
+    --ck: color-mix(in oklab, var(--color-accent) 65%, transparent);
+    background-image:
+      linear-gradient(var(--ck), var(--ck)), linear-gradient(var(--ck), var(--ck)),
+      linear-gradient(var(--ck), var(--ck)), linear-gradient(var(--ck), var(--ck)),
+      linear-gradient(var(--ck), var(--ck)), linear-gradient(var(--ck), var(--ck)),
+      linear-gradient(var(--ck), var(--ck)), linear-gradient(var(--ck), var(--ck));
+    background-repeat: no-repeat;
+    background-size:
+      14px 1px, 1px 14px,
+      14px 1px, 1px 14px,
+      14px 1px, 1px 14px,
+      14px 1px, 1px 14px;
+    background-position:
+      top left, top left,
+      top right, top right,
+      bottom left, bottom left,
+      bottom right, bottom right;
+    opacity: 0.5;
+    transition: opacity 200ms ease;
+  }
+  .panel:hover::before {
+    opacity: 1;
+  }
+
+  /* Region/section heading: mono micro-label with an accent tick. */
+  .panel-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .panel-title::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: var(--color-accent);
+    box-shadow: 0 0 10px color-mix(in oklab, var(--color-accent) 80%, transparent);
+  }
+
+  /* Inner card (findings, evidence, trace entries…). */
+  .card {
+    position: relative;
+    border: 1px solid var(--color-line);
+    border-radius: 8px;
+    background: color-mix(in oklab, var(--color-panel-2) 72%, transparent);
+    transition:
+      border-color 180ms ease,
+      background-color 180ms ease,
+      transform 180ms ease,
+      box-shadow 180ms ease;
+  }
+  .card:hover {
+    border-color: var(--color-line-strong);
+    transform: translateY(-1px);
+  }
+  .card-selected {
+    border-color: color-mix(in oklab, var(--color-accent) 75%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-accent) 45%, transparent),
+      0 8px 24px -12px color-mix(in oklab, var(--color-accent) 35%, transparent);
+  }
+  .card-highlighted {
+    border-color: color-mix(in oklab, var(--color-warn) 70%, transparent);
+  }
+
+  /* Buttons. */
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.5rem 0.875rem;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease,
+      color 160ms ease,
+      box-shadow 160ms ease,
+      transform 160ms ease;
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: var(--color-accent);
+    color: color-mix(in oklab, var(--color-canvas) 88%, black);
+    overflow: hidden;
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 0 24px -6px color-mix(in oklab, var(--color-accent) 80%, transparent);
+  }
+  .btn-primary::after {
+    /* light sweep on hover */
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40%;
+    transform: translateX(-150%) skewX(-18deg);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+  }
+  .btn-primary:hover:not(:disabled)::after {
+    animation: sheen 700ms ease;
+  }
+
+  .btn-ghost {
+    border-color: var(--color-line-strong);
+    background: transparent;
+    color: var(--color-ink);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--color-accent) 60%, var(--color-line-strong));
+    color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 8%, transparent);
+  }
+
+  .btn-link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 500;
+  }
+  .btn-link:hover:not(:disabled) {
+    text-shadow: 0 0 12px color-mix(in oklab, var(--color-accent) 60%, transparent);
+  }
+
+  /* Inputs. */
+  .input {
+    border: 1px solid var(--color-line-strong);
+    border-radius: 6px;
+    background: color-mix(in oklab, var(--color-panel-2) 60%, transparent);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    padding: 0.5rem 0.75rem;
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      background-color 160ms ease;
+  }
+  .input::placeholder {
+    color: var(--color-faint);
+  }
+  .input:focus {
+    outline: none;
+    border-color: color-mix(in oklab, var(--color-accent) 70%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 18%, transparent);
+  }
+  select.input option {
+    background: var(--color-panel);
+    color: var(--color-ink);
+  }
+
+  /* Native file input, dressed like a ghost button. */
+  .file-input::file-selector-button {
+    margin-right: 0.75rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.375rem 0.625rem;
+    cursor: pointer;
+    transition:
+      border-color 160ms ease,
+      color 160ms ease,
+      background-color 160ms ease;
+  }
+  .file-input::file-selector-button:hover {
+    border-color: color-mix(in oklab, var(--color-accent) 60%, var(--color-line-strong));
+    color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 8%, transparent);
+  }
+
+  /* Status dot with a sonar pulse; tint via `--pulse`. */
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    background: var(--pulse, var(--color-accent));
+    animation: pulse-ring 2.2s ease-out infinite;
+  }
+
+  /* Mono micro-label (ids, kinds, actors). */
+  .mono-label {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* Skeleton shimmer bars. */
+  .shimmer {
+    border-radius: 6px;
+    background: linear-gradient(
+      100deg,
+      var(--color-panel-2) 40%,
+      var(--color-raise) 50%,
+      var(--color-panel-2) 60%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  /* Entrance animation; `.stagger > *` cascades children. */
+  .fade-up {
+    animation: fade-up 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .stagger > * {
+    animation: fade-up 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 40ms; }
+  .stagger > *:nth-child(2) { animation-delay: 100ms; }
+  .stagger > *:nth-child(3) { animation-delay: 160ms; }
+  .stagger > *:nth-child(4) { animation-delay: 220ms; }
+  .stagger > *:nth-child(5) { animation-delay: 280ms; }
+  .stagger > *:nth-child(6) { animation-delay: 340ms; }
+  .stagger > *:nth-child(7) { animation-delay: 400ms; }
+  .stagger > *:nth-child(8) { animation-delay: 460ms; }
+
+  /* Confidence bar: animated fill + travelling sheen. */
+  .meter {
+    position: relative;
+    height: 6px;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--color-line) 70%, transparent);
+    overflow: hidden;
+  }
+  .meter-fill {
+    position: relative;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--color-accent) 70%, var(--color-info)),
+      var(--color-accent)
+    );
+    transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
+    overflow: hidden;
+  }
+  .meter-fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 36%;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.5), transparent);
+    animation: sheen 2.4s ease-in-out infinite;
+  }
+
+  /* Animated, directed graph edges. */
+  .edge-flow {
+    stroke: var(--color-line-strong);
+    stroke-dasharray: 6 10;
+    animation: dash-flow 1.4s linear infinite;
+  }
+
+  .glow-breathe {
+    animation: glow-breathe 2.6s ease-in-out infinite;
+  }
+}
+
+/* -------------------------------------------------------- reduced motion -- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

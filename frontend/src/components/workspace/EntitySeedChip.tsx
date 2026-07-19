@@ -16,15 +16,16 @@ export function EntitySeedChip({
   active,
   onSelect,
 }: EntitySeedChipProps) {
-  const border = active
-    ? "border-[var(--color-accent)]"
-    : "border-white/20";
   return (
     <button
       type="button"
       aria-pressed={active}
       onClick={() => onSelect(entityId)}
-      className={`rounded-full border ${border} bg-white/5 px-3 py-1 font-mono text-xs`}
+      className={`mono-label cursor-pointer rounded-full border px-3 py-1 transition-all duration-200 ${
+        active
+          ? "border-accent/70 bg-accent/10 text-accent shadow-[0_0_16px_-6px_var(--color-accent)]"
+          : "border-line-strong bg-panel-2/60 text-muted hover:border-accent/40 hover:text-ink"
+      }`}
     >
       {entityId}
     </button>

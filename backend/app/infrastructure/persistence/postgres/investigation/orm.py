@@ -31,6 +31,11 @@ class InvestigationRow(Base):
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False)
+    # Organization access scope (ADR-016); server default backfills pre-tenant
+    # rows to the default tenant (migration 0004).
+    tenant: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default="default"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

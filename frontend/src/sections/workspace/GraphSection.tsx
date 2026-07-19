@@ -28,7 +28,7 @@ export function GraphSection({ seedEntities }: GraphSectionProps) {
   if (seedEntities.length === 0) {
     return (
       <WorkspaceRegion title="Graph">
-        <p className="text-sm opacity-50">No entities to explore yet.</p>
+        <p className="text-sm text-faint">No entities to explore yet.</p>
       </WorkspaceRegion>
     );
   }
@@ -50,25 +50,26 @@ export function GraphSection({ seedEntities }: GraphSectionProps) {
 
       <div className="mt-4">
         {state.selectedEntityId === null && (
-          <p className="text-sm opacity-50">
+          <p className="text-sm text-faint">
             Select an entity to explore its neighbourhood.
           </p>
         )}
 
         {loading && (
-          <p role="status" className="text-sm opacity-60">
-            Loading graph…
-          </p>
+          <div role="status" className="grid gap-2">
+            <span className="sr-only">Loading graph…</span>
+            <div className="shimmer h-40 w-full" aria-hidden="true" />
+          </div>
         )}
 
         {error && (
-          <div role="alert" className="rounded-lg border border-red-500/40 p-4">
+          <div
+            role="alert"
+            className="fade-up rounded-lg border border-danger/40 bg-danger/5 p-4"
+          >
             <p className="text-sm">Could not load the graph ({error.code}).</p>
-            <p className="mt-1 text-xs opacity-60">{error.message}</p>
-            <Button
-              className="mt-3 rounded border border-white/20 px-3 py-1 text-sm"
-              onClick={retry}
-            >
+            <p className="mt-1 text-xs text-muted">{error.message}</p>
+            <Button className="btn btn-ghost mt-3" onClick={retry}>
               Retry
             </Button>
           </div>

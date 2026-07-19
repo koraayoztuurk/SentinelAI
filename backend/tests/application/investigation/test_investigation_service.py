@@ -36,6 +36,7 @@ from app.domain.identifiers import (
     InvestigationId,
     InvestigationOutcomeId,
     ReportId,
+    TenantId,
     TraceEntryId,
 )
 from app.domain.investigation import Investigation
@@ -186,6 +187,7 @@ def _investigation(
         created_at=_NOW,
         owner=ActorRef("analyst-1"),
         priority=Priority("high"),
+        tenant=TenantId("default"),
     )
 
 
@@ -256,6 +258,7 @@ def test_create_rejects_blank_title() -> None:
             created_at=_NOW,
             owner=ActorRef("analyst-1"),
             priority=Priority("high"),
+            tenant=TenantId("default"),
         )
         with pytest.raises(InvestigationValidationError):
             await service.create(investigation)

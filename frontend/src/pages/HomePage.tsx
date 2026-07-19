@@ -29,16 +29,28 @@ export function HomePage() {
   };
 
   return (
-    <section className="mx-auto max-w-xl">
-      <h1 className="text-xl font-semibold">SentinelAI</h1>
-      <p className="mt-2 text-sm opacity-80">
-        AI-assisted cybersecurity investigations.
+    <section className="stagger mx-auto max-w-xl pt-10 sm:pt-16">
+      <p className="mono-label uppercase text-accent">
+        // AI-assisted cyber investigations
+      </p>
+      <h1
+        aria-label="SentinelAI"
+        className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl"
+      >
+        Sentinel
+        <span className="text-accent drop-shadow-[0_0_18px_var(--color-accent)]">
+          AI
+        </span>
+      </h1>
+      <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
+        Open an investigation, attach evidence, and let the agent runtime
+        correlate, reason and explain — every step lands in the trace.
       </p>
 
-      <div className="mt-6 grid gap-3 rounded-lg border border-white/10 p-5">
-        <h2 className="text-sm font-semibold">New investigation</h2>
+      <div className="panel mt-8 grid gap-3 p-5">
+        <h2 className="panel-title">New investigation</h2>
         {subject === null && (
-          <p className="text-xs opacity-60">
+          <p className="mono-label text-warn">
             Enter your development credential (top right) to start an
             investigation.
           </p>
@@ -47,7 +59,7 @@ export function HomePage() {
           aria-label="Investigation title"
           placeholder="What are you investigating?"
           value={title}
-          className="rounded border border-white/20 bg-transparent px-3 py-2 text-sm"
+          className="input"
           onChange={(event) => setTitle(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -59,7 +71,7 @@ export function HomePage() {
           <select
             aria-label="Priority"
             value={priority}
-            className="rounded border border-white/20 bg-transparent px-2 py-2 text-sm"
+            className="input py-2"
             onChange={(event) => setPriority(event.target.value)}
           >
             <option value="high">high</option>
@@ -67,7 +79,7 @@ export function HomePage() {
             <option value="low">low</option>
           </select>
           <Button
-            className="rounded border border-white/20 px-4 py-2 text-sm disabled:opacity-40"
+            className="btn btn-primary"
             onClick={submit}
             disabled={creating || subject === null}
           >
@@ -75,7 +87,7 @@ export function HomePage() {
           </Button>
         </div>
         {error && (
-          <p role="alert" className="text-xs text-red-400">
+          <p role="alert" className="text-xs text-danger">
             Could not create the investigation ({error.code}): {error.message}
           </p>
         )}

@@ -30,6 +30,23 @@ class InvestigationId:
 
 
 @dataclass(frozen=True, slots=True)
+class TenantId:
+    """An organization/team scope key (ADR-016, authentication-authorization §6a).
+
+    The tenant is the Investigation's organization-scope attribute. It is an
+    opaque, caller-supplied scope label (from the authenticated identity), not
+    a generated identifier and not a managed entity — its lifecycle belongs to
+    the identity provider.
+    """
+
+    value: str
+
+    def __post_init__(self) -> None:
+        if not self.value.strip():
+            raise BlankValueError("TenantId must not be blank.")
+
+
+@dataclass(frozen=True, slots=True)
 class EvidenceId:
     """Unique identifier of an Evidence item."""
 

@@ -830,6 +830,10 @@
             "title": "Status",
             "type": "string"
           },
+          "tenant": {
+            "title": "Tenant",
+            "type": "string"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -841,7 +845,8 @@
           "status",
           "created_at",
           "owner",
-          "priority"
+          "priority",
+          "tenant"
         ],
         "title": "InvestigationResponse",
         "type": "object"

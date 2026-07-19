@@ -19,6 +19,7 @@ export interface InvestigationSummaryViewModel {
   readonly status: string;
   readonly priority: string;
   readonly owner: string;
+  readonly tenant: string;
   readonly createdAt: string;
 }
 
@@ -56,6 +57,7 @@ export function toDashboardViewModel(
       status: investigation.status,
       priority: investigation.priority,
       owner: investigation.owner,
+      tenant: investigation.tenant,
       createdAt: investigation.created_at,
     },
     findings: findings

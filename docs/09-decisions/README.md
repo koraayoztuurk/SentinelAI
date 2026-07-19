@@ -202,6 +202,7 @@ RFCs should never replace ADRs, and ADRs should never replace the RFC Process.
 | ADR-013 | AI Provider Resilience and the Single Agent Execution Path |
 | ADR-014 | Lightweight Architectural Proposal Process |
 | ADR-015 | Evidence Payload Store |
+| ADR-016 | Investigation Tenant Scope |
 
 ---
 

@@ -28,6 +28,7 @@ def _request(
     operation: str,
     *,
     subject: str = "alice",
+    tenant: str = "default",
     investigation_id: str | None = None,
 ) -> AuthorizationRequest:
     return AuthorizationRequest(
@@ -36,12 +37,19 @@ def _request(
         operation=operation,
         correlation_id="corr-1",
         investigation_id=investigation_id,
+        tenant=tenant,
     )
 
 
-def _authorizer_with_investigation() -> OwnerScopedAuthorizer:
+def _authorizer_with_investigation(
+    *, owner: str = "alice", tenant: str = "default"
+) -> OwnerScopedAuthorizer:
     service = make_investigation_service()
-    asyncio.run(service.create(build_investigation("inv-1", owner="alice")))
+    asyncio.run(
+        service.create(
+            build_investigation("inv-1", owner=owner, tenant=tenant)
+        )
+    )
     return OwnerScopedAuthorizer(service)
 
 
@@ -71,6 +79,38 @@ def test_foreign_subject_is_denied_with_stable_code() -> None:
             )
         )
     assert excinfo.value.code == "authorization.denied"
+
+
+def test_foreign_tenant_is_denied_even_for_the_owner() -> None:
+    # Tenant isolation (ADR-016): the owner in another tenant cannot reach the
+    # investigation — cross-tenant access is denied before the owner rule.
+    authorizer = _authorizer_with_investigation(owner="alice", tenant="acme")
+    with pytest.raises(AuthorizationError) as excinfo:
+        asyncio.run(
+            authorizer.authorize(
+                _request(
+                    "GET /api/v1/investigations/inv-1",
+                    subject="alice",
+                    tenant="default",
+                    investigation_id="inv-1",
+                )
+            )
+        )
+    assert excinfo.value.code == "authorization.denied"
+
+
+def test_matching_tenant_and_owner_is_permitted() -> None:
+    authorizer = _authorizer_with_investigation(owner="alice", tenant="acme")
+    asyncio.run(
+        authorizer.authorize(
+            _request(
+                "GET /api/v1/investigations/inv-1",
+                subject="alice",
+                tenant="acme",
+                investigation_id="inv-1",
+            )
+        )
+    )
 
 
 def test_unknown_investigation_defers_to_the_owning_service() -> None:
@@ -115,3 +155,17 @@ def test_for_context_carries_the_operation_context() -> None:
     assert request.identity_kind == "human"
     assert request.correlation_id == "corr-1"
     assert request.investigation_id == "inv-1"
+    assert request.tenant == "default"
+
+
+def test_for_context_carries_the_tenant_scope() -> None:
+    context = OperationContext(
+        subject="alice",
+        identity_kind="human",
+        correlation_id="corr-1",
+        tenant="acme",
+    )
+    request = AuthorizationRequest.for_context(
+        context, operation="GET /api/v1/investigations/inv-1"
+    )
+    assert request.tenant == "acme"

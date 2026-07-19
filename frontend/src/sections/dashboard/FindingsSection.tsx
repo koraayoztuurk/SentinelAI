@@ -15,9 +15,9 @@ export function FindingsSection({ findings }: FindingsSectionProps) {
   return (
     <DashboardSection title="Findings">
       {findings.length === 0 ? (
-        <p className="text-sm opacity-50">No confirmed findings yet.</p>
+        <p className="text-sm text-faint">No confirmed findings yet.</p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="stagger grid gap-3 sm:grid-cols-2">
           {findings.map((finding) => (
             <FindingCard key={finding.id} finding={finding} />
           ))}

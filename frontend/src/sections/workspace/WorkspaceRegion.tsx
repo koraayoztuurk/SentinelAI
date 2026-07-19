@@ -12,10 +12,8 @@ export interface WorkspaceRegionProps {
 
 export function WorkspaceRegion({ title, children }: WorkspaceRegionProps) {
   return (
-    <section className="rounded-xl border border-white/10 bg-white/5 p-5">
-      <h2 className="text-sm font-semibold uppercase tracking-wide opacity-70">
-        {title}
-      </h2>
+    <section className="panel p-5">
+      <h2 className="panel-title">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -31,7 +29,7 @@ export interface PlaceholderRegionProps {
 export function PlaceholderRegion({ title, note }: PlaceholderRegionProps) {
   return (
     <WorkspaceRegion title={title}>
-      <p className="text-sm opacity-50">{note ?? "Not yet available."}</p>
+      <p className="text-sm text-faint">{note ?? "Not yet available."}</p>
     </WorkspaceRegion>
   );
 }

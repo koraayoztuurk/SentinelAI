@@ -13,15 +13,17 @@ export interface FindingCardProps {
 
 export function FindingCard({ finding }: FindingCardProps) {
   return (
-    <article className="rounded-lg border border-white/10 bg-white/5 p-4">
+    <article className="card p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-xs opacity-70">{finding.id}</span>
+        <span className="mono-label min-w-0 truncate text-faint" title={finding.id}>
+          {finding.id}
+        </span>
         <StatusBadge status={finding.status} />
       </div>
       <div className="mt-3">
         <ConfidenceIndicator value={finding.confidence} />
       </div>
-      <p className="mt-3 text-xs opacity-60">by {finding.creator}</p>
+      <p className="mono-label mt-3 text-faint">by {finding.creator}</p>
     </article>
   );
 }

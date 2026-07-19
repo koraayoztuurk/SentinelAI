@@ -20,6 +20,7 @@ export const sampleInvestigation: InvestigationDto = {
   created_at: "2026-06-28T09:15:00Z",
   owner: "analyst-erin",
   priority: "high",
+  tenant: "default",
 };
 
 export const sampleEvidence: readonly EvidenceDto[] = [

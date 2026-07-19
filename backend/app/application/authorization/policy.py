@@ -11,8 +11,11 @@ promotion, not retrieval).
 
 Decision rules over the boundary-supplied ``AuthorizationRequest``:
 
-- an operation naming an ``investigation_id`` is permitted only for the
-  investigation's owner; a foreign subject is denied (403);
+- an operation naming an ``investigation_id`` is permitted only when the
+  identity's tenant matches the investigation's tenant (cross-tenant → 403,
+  ADR-016) **and** the identity is the investigation's owner (foreign owner →
+  403); tenant isolation is an added conjunct over owner scoping, never a
+  relaxation;
 - an operation on an investigation that does not exist is permitted — the
   owning service reports the documented 404 (existence handling stays with
   the resource owner);
@@ -22,8 +25,8 @@ Decision rules over the boundary-supplied ``AuthorizationRequest``:
 - anything else is denied (least privilege: a future surface stays closed
   until this policy learns it).
 
-The policy consults the Investigation Service interface for ownership —
-never another service's persistence contracts (AC-07).
+The policy consults the Investigation Service interface for the investigation's
+scope — never another service's persistence contracts (AC-07).
 """
 
 from app.application.authorization.authorizer import AuthorizationRequest
@@ -47,7 +50,7 @@ class OwnerScopedAuthorizer:
     async def authorize(self, request: AuthorizationRequest) -> None:
         if request.investigation_id is not None:
             await self._authorize_investigation_scoped(
-                request.investigation_id, request.subject
+                request.investigation_id, request.subject, request.tenant
             )
             return
 
@@ -59,7 +62,7 @@ class OwnerScopedAuthorizer:
         raise AuthorizationError("Operation not permitted.")
 
     async def _authorize_investigation_scoped(
-        self, investigation_id: str, subject: str
+        self, investigation_id: str, subject: str, tenant: str
     ) -> None:
         try:
             investigation = await self._investigations.get(
@@ -68,6 +71,10 @@ class OwnerScopedAuthorizer:
         except InvestigationNotFoundError:
             # Existence handling belongs to the owning service (404 there).
             return
+        # Tenant isolation first (ADR-016): another organization's
+        # investigation is invisible regardless of owner. Then the owner rule.
+        if investigation.tenant.value != tenant:
+            raise AuthorizationError("Investigation access denied.")
         if investigation.owner.value != subject:
             raise AuthorizationError("Investigation access denied.")
 

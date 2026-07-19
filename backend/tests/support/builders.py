@@ -28,6 +28,7 @@ from app.domain.identifiers import (
     MemoryItemId,
     RelationshipId,
     ReportId,
+    TenantId,
 )
 from app.domain.investigation import Investigation
 from app.domain.memory_item import MemoryItem
@@ -64,6 +65,7 @@ def build_investigation(
     title: str = "Test investigation",
     owner: str = "analyst-1",
     priority: str = "high",
+    tenant: str = "default",
     created_at: datetime = FIXED_TIME,
 ) -> Investigation:
     return Investigation(
@@ -73,6 +75,7 @@ def build_investigation(
         created_at=created_at,
         owner=ActorRef(owner),
         priority=Priority(priority),
+        tenant=TenantId(tenant),
     )
 
 

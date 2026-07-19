@@ -70,11 +70,16 @@ async def create_investigation(
     ids: IdGenerator = Depends(get_id_generator),
     clock: Clock = Depends(get_clock),
 ) -> ApiResponse[InvestigationResponse]:
-    # owner==subject (ES-062): the owner is the authenticated creator, never
-    # a client-supplied value. The verified identity is already established by
-    # the router-level authorization chain and reused here (cached).
+    # owner==subject (ES-062) and tenant from the identity's scope (ES-063,
+    # ADR-016): both are derived from the authenticated creator, never
+    # client-supplied — a client can neither own nor place an investigation
+    # in a foreign tenant. The verified identity is established by the
+    # router-level authorization chain and reused here (cached).
     investigation = body.to_domain(
-        id_value=ids.new_id(), owner=identity.subject, created_at=clock.now()
+        id_value=ids.new_id(),
+        owner=identity.subject,
+        tenant=identity.tenant,
+        created_at=clock.now(),
     )
     created = await service.create(investigation)
     return build_success(InvestigationResponse.from_domain(created), context)

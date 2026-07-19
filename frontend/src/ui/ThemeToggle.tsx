@@ -10,7 +10,7 @@ export function ThemeToggle() {
   const { theme, toggleTheme } = useSession();
   return (
     <Button
-      className="rounded border border-white/20 px-2.5 py-1 text-xs"
+      className="btn btn-ghost mono-label px-2.5 py-1.5"
       onClick={toggleTheme}
     >
       Theme: {theme}

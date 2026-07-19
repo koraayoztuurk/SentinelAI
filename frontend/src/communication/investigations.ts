@@ -15,6 +15,8 @@ export interface InvestigationDto {
   readonly created_at: string;
   readonly owner: string;
   readonly priority: string;
+  // Organization access scope (ES-063, ADR-016) — server-derived.
+  readonly tenant: string;
 }
 
 export interface FindingDto {

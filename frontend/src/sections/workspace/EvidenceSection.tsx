@@ -53,24 +53,24 @@ function AttachEvidenceForm({
   };
 
   return (
-    <div className="mt-4 grid gap-2 border-t border-white/10 pt-3">
+    <div className="mt-4 grid gap-2 border-t border-line pt-3">
       <div className="flex gap-2">
         <input
           aria-label="Evidence source"
           placeholder="Source (e.g. edr)"
           value={source}
-          className="w-32 rounded border border-white/20 bg-transparent px-2 py-1 text-sm"
+          className="input w-32 px-2 py-1"
           onChange={(event) => setSource(event.target.value)}
         />
         <input
           aria-label="Evidence content"
           placeholder="What was observed?"
           value={content}
-          className="flex-1 rounded border border-white/20 bg-transparent px-2 py-1 text-sm"
+          className="input flex-1 px-2 py-1"
           onChange={(event) => setContent(event.target.value)}
         />
         <Button
-          className="rounded border border-white/20 px-3 py-1 text-sm disabled:opacity-40"
+          className="btn btn-primary"
           onClick={submit}
           disabled={attaching}
         >
@@ -78,7 +78,7 @@ function AttachEvidenceForm({
         </Button>
       </div>
       {error && (
-        <p role="alert" className="text-xs text-red-400">
+        <p role="alert" className="text-xs text-danger">
           Could not attach evidence ({error.code}).
         </p>
       )}
@@ -109,8 +109,8 @@ function UploadEvidenceForm({
   };
 
   return (
-    <div className="mt-3 grid gap-2 border-t border-white/10 pt-3">
-      <p className="text-xs opacity-60">
+    <div className="mt-3 grid gap-2 border-t border-line pt-3">
+      <p className="text-xs text-muted">
         Upload a raw evidence file (stored content-addressed, referenced by hash).
       </p>
       <div className="flex flex-wrap items-center gap-2">
@@ -118,18 +118,18 @@ function UploadEvidenceForm({
           aria-label="Payload evidence source"
           placeholder="Source (e.g. upload)"
           value={source}
-          className="w-32 rounded border border-white/20 bg-transparent px-2 py-1 text-sm"
+          className="input w-32 px-2 py-1"
           onChange={(event) => setSource(event.target.value)}
         />
         <input
           ref={inputRef}
           type="file"
           aria-label="Evidence payload file"
-          className="flex-1 text-xs"
+          className="file-input mono-label flex-1 text-muted"
           onChange={(event) => setFile(event.target.files?.[0] ?? null)}
         />
         <Button
-          className="rounded border border-white/20 px-3 py-1 text-sm disabled:opacity-40"
+          className="btn btn-ghost"
           onClick={submit}
           disabled={uploading || file === null}
         >
@@ -137,7 +137,7 @@ function UploadEvidenceForm({
         </Button>
       </div>
       {error && (
-        <p role="alert" className="text-xs text-red-400">
+        <p role="alert" className="text-xs text-danger">
           Could not upload payload ({error.code}).
         </p>
       )}
@@ -162,9 +162,9 @@ export function EvidenceSection({
   return (
     <WorkspaceRegion title="Evidence">
       {evidence.length === 0 ? (
-        <p className="text-sm opacity-50">No evidence collected yet.</p>
+        <p className="text-sm text-faint">No evidence collected yet.</p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="stagger grid gap-3 sm:grid-cols-2">
           {evidence.map((item) => (
             <EvidenceCard
               key={item.id}
@@ -181,7 +181,7 @@ export function EvidenceSection({
         </div>
       )}
       {downloadError && (
-        <p role="alert" className="mt-2 text-xs text-red-400">
+        <p role="alert" className="mt-2 text-xs text-danger">
           Could not download payload ({downloadError.code}).
         </p>
       )}

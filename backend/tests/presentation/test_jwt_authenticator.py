@@ -87,6 +87,16 @@ def test_absent_kind_defaults_to_human() -> None:
         _authenticate(_authenticator(), token)
 
 
+def test_tenant_claim_becomes_the_identity_tenant() -> None:
+    token = mint_jwt(_SECRET, "analyst-1", extra_claims={"tenant": "acme"})
+    assert _authenticate(_authenticator(), token).tenant == "acme"
+
+
+def test_absent_tenant_claim_defaults_to_the_default_tenant() -> None:
+    token = mint_jwt(_SECRET, "analyst-1")
+    assert _authenticate(_authenticator(), token).tenant == "default"
+
+
 # --------------------------------------------------------------- rejections
 
 
