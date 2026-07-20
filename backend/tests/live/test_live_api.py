@@ -53,6 +53,11 @@ from app.infrastructure.persistence.postgres.memory.repositories import (
 )
 from app.infrastructure.persistence.postgres.session import session_scope
 from app.main import create_app
+from app.presentation.api.auth import (
+    AuthenticatedIdentity,
+    IdentityKind,
+    require_identity,
+)
 from app.presentation.api.authorization import require_authorization
 from tests.live.support import ensure_schema, live_engine, truncate_tables
 
@@ -80,9 +85,16 @@ async def _reset_database() -> None:
 
 def _client() -> TestClient:
     app = create_app()
-    # Authorization stays default-deny elsewhere; tests bypass the gate the
-    # same way the ES-015+ presentation tests do.
+    # Authentication/authorization stay default-deny elsewhere; this suite
+    # bypasses both gates the same way the ES-015+ presentation tests do, to
+    # exercise the investigation/memory/planner slice without a real bearer
+    # credential. create_investigation resolves require_identity directly
+    # (ES-062, owner==subject), not only through require_authorization, so
+    # both dependencies need overriding.
     app.dependency_overrides[require_authorization] = lambda: None
+    app.dependency_overrides[require_identity] = lambda: AuthenticatedIdentity(
+        subject="analyst-1", kind=IdentityKind.HUMAN
+    )
     return TestClient(app)
 
 
