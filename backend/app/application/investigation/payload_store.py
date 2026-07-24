@@ -47,3 +47,15 @@ class EvidencePayloadStore(Protocol):
     async def get(self, address: str) -> bytes | None: ...
 
     async def exists(self, address: str) -> bool: ...
+
+    async def erase(self, address: str) -> None:
+        """Render the payload at this address unrecoverable (ADR-017 §6).
+
+        The end-of-life operation (data-lifecycle.md §4). Idempotent: erasing an
+        address that resolves to nothing — already erased, never stored, or
+        malformed — is a no-op, so the erasure projection is safely retriable.
+        The strategy is the adapter's choice: physical deletion for the dev-grade
+        filesystem store, crypto-shredding for the immutable production object
+        store (Milestone G).
+        """
+        ...

@@ -104,3 +104,26 @@ class FilesystemEvidencePayloadStore:
 
         path = self._path_of(address)
         return path is not None and path.is_file()
+
+    async def erase(self, address: str) -> None:
+        """Physically delete the payload (ADR-017 §6, dev-grade strategy).
+
+        Physical deletion is practical on a mutable single-node filesystem, so
+        it is this adapter's erasure strategy; crypto-shredding is the
+        designated strategy for the immutable production object store
+        (Milestone G). Idempotent: an unresolvable or already-erased address is
+        a no-op, so the erasure projection is safely retriable.
+        """
+
+        path = self._path_of(address)
+        if path is None:
+            return
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            return
+        except OSError as exc:
+            raise EvidencePayloadStoreUnavailableError(
+                f"The payload store cannot erase ({type(exc).__name__})."
+            ) from exc
+        logger.info("payload erased address=%s", address)

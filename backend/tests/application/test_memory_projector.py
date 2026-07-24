@@ -14,6 +14,8 @@ from app.application.memory.projector import (
     MemoryEmbeddingProjector,
     embedding_text,
 )
+from app.domain.enums import MemoryStatus
+from app.domain.erasure import REDACTED
 from app.domain.identifiers import MemoryItemId
 from app.domain.memory_item import MemoryItem
 from tests.support.builders import build_memory_item
@@ -58,6 +60,7 @@ class _FakeEmbedder:
 class _FakeVectorStore:
     def __init__(self) -> None:
         self.points: dict[str, tuple[float, ...]] = {}
+        self.deleted: list[str] = []
 
     async def ensure_collection(self, dimensions: int) -> None:
         pass
@@ -67,6 +70,11 @@ class _FakeVectorStore:
     ) -> None:
         # Keyed by memory_id → re-upsert replaces the single point (idempotent).
         self.points[memory_id] = vector
+
+    async def delete(self, memory_id: str) -> None:
+        # Idempotent, like the real adapter: deleting an absent point is a no-op.
+        self.deleted.append(memory_id)
+        self.points.pop(memory_id, None)
 
 
 def _projector(
@@ -99,6 +107,50 @@ def test_project_pending_embeds_upserts_and_marks_processed() -> None:
     assert store.points["m1"] == (0.1, 0.2, 0.3)
     assert outbox.processed == [1]
     assert outbox.failed == []
+
+
+def test_erased_memory_item_deletes_its_point_instead_of_embedding() -> None:
+    # ES-065 / ADR-017 §5: derived data is erased with its source through the
+    # same propagation that created it. The projector re-reads the item, sees
+    # the terminal ERASED status and deletes the point — no embedding call.
+    erased = build_memory_item(
+        "m1", content=REDACTED, status=MemoryStatus.ERASED
+    )
+    outbox = _FakeOutbox([OutboxRecord(seq=3, memory_id="m1", memory_version=2)])
+    embedder = _FakeEmbedder()
+    store = _FakeVectorStore()
+    store.points["m1"] = (0.5, 0.5, 0.5)
+    projector = _projector(outbox, _FakeMemory({"m1": erased}), embedder, store)
+
+    count = asyncio.run(projector.project_pending())
+
+    assert count == 1
+    assert store.deleted == ["m1"]
+    assert "m1" not in store.points
+    # The redacted text is never sent to the embedding provider.
+    assert embedder.calls == []
+    assert outbox.processed == [3]
+    assert outbox.failed == []
+
+
+def test_erasure_projection_is_idempotent() -> None:
+    erased = build_memory_item(
+        "m1", content=REDACTED, status=MemoryStatus.ERASED
+    )
+    store = _FakeVectorStore()
+    for seq in (4, 5):
+        outbox = _FakeOutbox(
+            [OutboxRecord(seq=seq, memory_id="m1", memory_version=2)]
+        )
+        projector = _projector(
+            outbox, _FakeMemory({"m1": erased}), _FakeEmbedder(), store
+        )
+        assert asyncio.run(projector.project_pending()) == 1
+        assert outbox.processed == [seq]
+
+    # Re-running settles the same way; the point stays gone.
+    assert store.deleted == ["m1", "m1"]
+    assert store.points == {}
 
 
 def test_embedding_failure_is_isolated_record_marked_failed() -> None:

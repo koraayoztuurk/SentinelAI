@@ -7,9 +7,18 @@ test can construct and wire them directly. This is common validation
 infrastructure, not owned by a single domain.
 """
 
+from dataclasses import replace
 from datetime import datetime
 
+from app.application.investigation.payload_store import PAYLOAD_ADDRESS_PREFIX
 from app.domain.entity import Entity
+from app.domain.erasure import (
+    REDACTED,
+    tombstone_evidence,
+    tombstone_memory_item,
+    tombstone_outcome,
+    tombstone_trace_entry,
+)
 from app.domain.evidence import Evidence
 from app.domain.finding import Finding
 from app.domain.identifiers import (
@@ -27,6 +36,7 @@ from app.domain.memory_item import MemoryItem
 from app.domain.relationship import Relationship
 from app.domain.report import Report
 from app.domain.trace import TraceEntry
+from app.domain.value_objects import EvidenceIntegrity
 
 # ------------------------------------------------------------- repository doubles
 
@@ -52,6 +62,8 @@ class InMemoryEvidenceRepository:
 
     def __init__(self) -> None:
         self._items: dict[str, Evidence] = {}
+        # Stands in for the erased-investigation join the SQL adapter performs.
+        self.erased_investigations: set[str] = set()
 
     async def add(self, evidence: Evidence) -> None:
         self._items[evidence.id.value] = evidence
@@ -67,6 +79,35 @@ class InMemoryEvidenceRepository:
             for e in self._items.values()
             if e.investigation_id == investigation_id
         )
+
+    async def erase_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> None:
+        self.erased_investigations.add(investigation_id.value)
+        for key, evidence in self._items.items():
+            if evidence.investigation_id == investigation_id:
+                self._items[key] = tombstone_evidence(evidence)
+
+    async def list_pending_payload_erasures(
+        self, limit: int
+    ) -> tuple[Evidence, ...]:
+        # Stands in for the SQL adapter's join on erased investigations: the
+        # erasure cascade records which investigations are tombstoned.
+        pending = [
+            evidence
+            for evidence in self._items.values()
+            if evidence.investigation_id.value in self.erased_investigations
+            and evidence.integrity.value.startswith(PAYLOAD_ADDRESS_PREFIX)
+        ]
+        pending.sort(key=lambda evidence: evidence.id.value)
+        return tuple(pending[:limit])
+
+    async def mark_payload_erased(self, evidence_id: EvidenceId) -> None:
+        existing = self._items.get(evidence_id.value)
+        if existing is not None:
+            self._items[evidence_id.value] = replace(
+                existing, integrity=EvidenceIntegrity(REDACTED)
+            )
 
 
 class InMemoryFindingRepository:
@@ -130,6 +171,13 @@ class InMemoryOutcomeRepository:
     ) -> InvestigationOutcome | None:
         return self._items.get(investigation_id.value)
 
+    async def erase_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> None:
+        existing = self._items.get(investigation_id.value)
+        if existing is not None:
+            self._items[investigation_id.value] = tombstone_outcome(existing)
+
 
 class InMemoryTraceRepository:
     """List-backed, append-only Investigation Trace repository double."""
@@ -146,6 +194,16 @@ class InMemoryTraceRepository:
         return tuple(
             e for e in self._entries if e.investigation_id == investigation_id
         )
+
+    async def erase_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> None:
+        self._entries = [
+            tombstone_trace_entry(entry)
+            if entry.investigation_id == investigation_id
+            else entry
+            for entry in self._entries
+        ]
 
 
 class InMemoryGraphRepository:
@@ -167,6 +225,10 @@ class InMemoryGraphRepository:
         return self._entities.get(entity_id.value)
 
     async def update_entity(self, entity: Entity) -> None:
+        self._entities[entity.id.value] = entity
+
+    async def erase_entity(self, entity: Entity) -> None:
+        # The node keeps its identifier; only the tombstone is persisted.
         self._entities[entity.id.value] = entity
 
     async def add_relationship(self, relationship: Relationship) -> None:
@@ -241,6 +303,17 @@ class InMemoryMemoryRepository:
             )
         )
 
+    async def erase(self, memory_id: MemoryItemId) -> None:
+        # Every version's knowledge text is redacted (ES-065); the real adapter
+        # also enqueues the embedding-erasure outbox intent in the same
+        # transaction, which the projector drains.
+        versions = self._versions.get(memory_id.value)
+        if not versions:
+            return
+        self._versions[memory_id.value] = [
+            tombstone_memory_item(version) for version in versions
+        ]
+
     async def list_for_investigation(
         self, investigation_id: InvestigationId
     ) -> tuple[MemoryItem, ...]:
@@ -298,6 +371,10 @@ class InMemoryEvidencePayloadStore:
 
     async def exists(self, address: str) -> bool:
         return address in self._payloads
+
+    async def erase(self, address: str) -> None:
+        # Idempotent, like the real adapters: an absent address is a no-op.
+        self._payloads.pop(address, None)
 
     def corrupt(self, address: str, content: bytes) -> None:
         """Overwrite a stored payload out of band (integrity-fault tests)."""

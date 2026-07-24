@@ -63,6 +63,30 @@ class QdrantMemoryVectorStore:
             ],
         )
 
+    async def delete(self, memory_id: str) -> None:
+        """Delete the Memory Item's single point (ES-065, erasure projection).
+
+        Idempotent: the point id is the same deterministic UUID5 ``upsert``
+        uses, and deleting an absent point — or an absent collection — is a
+        no-op. Store unavailability maps to the stable
+        ``memory.vector_store_unavailable`` contract like the read path, so the
+        projector can leave the record pending instead of losing the intent.
+        """
+
+        try:
+            if not await self._client.collection_exists(COLLECTION_NAME):
+                return
+            await self._client.delete(
+                collection_name=COLLECTION_NAME,
+                points_selector=models.PointIdsList(
+                    points=[_point_id(memory_id)]
+                ),
+            )
+        except (ApiException, httpx.HTTPError, OSError) as exc:
+            raise MemoryVectorStoreUnavailableError(
+                "The memory vector store is unreachable."
+            ) from exc
+
     async def search(
         self, vector: tuple[float, ...], limit: int
     ) -> tuple[MemoryVectorMatch, ...]:

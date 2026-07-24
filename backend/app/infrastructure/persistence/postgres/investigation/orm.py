@@ -41,6 +41,11 @@ class InvestigationRow(Base):
     )
     owner: Mapped[str] = mapped_column(Text, nullable=False)
     priority: Mapped[str] = mapped_column(Text, nullable=False)
+    # End-of-life timestamp (ADR-017, migration 0005): NULL for a live
+    # investigation, set when the row is tombstoned (status 'erased').
+    erased_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class EvidenceRow(Base):

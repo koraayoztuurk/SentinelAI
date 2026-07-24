@@ -5,6 +5,9 @@ in :mod:`app.application.investigation.repositories` and are imported directly b
 the infrastructure adapters that implement them.
 """
 
+from app.application.investigation.erasure_projector import (
+    EvidencePayloadErasureProjector,
+)
 from app.application.investigation.errors import (
     DuplicateEvidenceError,
     DuplicateInvestigationError,
@@ -17,6 +20,7 @@ from app.application.investigation.errors import (
     EvidencePayloadStoreUnavailableError,
     FindingNotFoundError,
     InvalidLifecycleTransitionError,
+    InvestigationErasedError,
     InvestigationNotFoundError,
     InvestigationServiceError,
     InvestigationValidationError,
@@ -32,10 +36,12 @@ from app.application.investigation.service import InvestigationService
 
 __all__ = [
     "InvestigationService",
+    "EvidencePayloadErasureProjector",
     "InvestigationServiceError",
     "InvestigationNotFoundError",
     "DuplicateInvestigationError",
     "InvalidLifecycleTransitionError",
+    "InvestigationErasedError",
     "InvestigationValidationError",
     "EvidenceNotFoundError",
     "DuplicateEvidenceError",

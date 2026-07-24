@@ -236,6 +236,17 @@ Resources should remain stable regardless of backend implementation.
 
 Represents investigation lifecycle management.
 
+**Erasure** (data-lifecycle.md, ADR-017): `DELETE /api/v1/investigations/{id}`
+erases an investigation and cascades to its investigation-scoped objects
+(evidence, findings, report, outcome, trace). Erasure **tombstones** rather than
+hard-deletes: the resource stays addressable and a subsequent read resolves to
+an explicit erased state (status `erased`, personal content redacted,
+`erased_at` present) — never a 404-as-if-never-existed (database-architecture
+§8a). The operation is owner+tenant scoped like every investigation-scoped
+surface (§6a, the `investigation_id` path param routes through the policy) and
+is idempotent (re-erasing returns the same tombstone). Physical erasure of the
+referenced payload bytes propagates through the ADR-012 outbox as a projection.
+
 ---
 
 ## Evidence Resource
@@ -603,3 +614,4 @@ However, the architectural responsibilities defined in this document should rema
 | 1.2.0 | 2026-07-03 | Contract Synchronization defined (§14a): committed OpenAPI artifact as the single contract source with freshness enforcement; consumer copies become derivation targets (audit finding E-05) |
 | 1.3.0 | 2026-07-04 | Investigation Run Resource added (investigation-level Investigation Loop surface, ADR-010/ADR-013); the transitional Planner Action Resource removed as its documented supersession (ES-044, slice decision V-2) |
 | 1.4.0 | 2026-07-17 | Evidence payload sub-resource defined (raw byte streams, size-bounded, Investigation-Service-mediated; envelope scoped to structured JSON resources) — ADR-015/RFC-001 |
+| 1.5.0 | 2026-07-23 | Investigation erasure surface defined (`DELETE /api/v1/investigations/{id}`): tombstoning cascade, explicit erased-state reads (§8a), owner+tenant scoped, idempotent — data-lifecycle.md/ADR-017 (RFC-003) |

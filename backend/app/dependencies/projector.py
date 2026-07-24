@@ -16,13 +16,22 @@ projector directly).
 
 import asyncio
 import logging
+from pathlib import Path
 
+from app.application.investigation import EvidencePayloadErasureProjector
 from app.application.memory.projector import MemoryEmbeddingProjector
 from app.application.secrets import SecretNotFoundError
 from app.config.ai import get_gemini_embedding_settings
+from app.config.database import get_evidence_payload_settings
 from app.config.settings import Settings
 from app.infrastructure.ai.gemini_embedding import GeminiEmbeddingProvider
 from app.infrastructure.ai.memory_embedding import EmbeddingMemoryAdapter
+from app.infrastructure.objectstore.filesystem import (
+    FilesystemEvidencePayloadStore,
+)
+from app.infrastructure.persistence.postgres.investigation.repositories import (
+    PostgresEvidenceRepository,
+)
 from app.infrastructure.persistence.postgres.memory.outbox_repository import (
     PostgresOutboxRepository,
 )
@@ -47,6 +56,43 @@ def start_outbox_projector(
     if not settings.outbox_projector_enabled:
         return None
     return asyncio.create_task(_run(registry, settings))
+
+
+def start_erasure_projector(
+    registry: PersistenceRegistry, settings: Settings
+) -> asyncio.Task[None] | None:
+    """Start the payload erasure projector task, or ``None`` when disabled.
+
+    Separate from the embedding projector on purpose: erasure must proceed even
+    when no embedding provider key is configured (that loop exits early), and it
+    touches the object store rather than the vector store.
+    """
+
+    if not settings.outbox_projector_enabled:
+        return None
+    return asyncio.create_task(_run_erasure(registry, settings))
+
+
+async def _run_erasure(
+    registry: PersistenceRegistry, settings: Settings
+) -> None:
+    payloads = FilesystemEvidencePayloadStore(
+        Path(get_evidence_payload_settings().root)
+    )
+    while True:
+        try:
+            async with session_scope(registry.session_factory) as session:
+                projector = EvidencePayloadErasureProjector(
+                    PostgresEvidenceRepository(session), payloads
+                )
+                await projector.project_pending()
+        except Exception as exc:  # noqa: BLE001 - best-effort background loop
+            # Pending erasures keep their address and are retried next cycle;
+            # CancelledError is a BaseException, so shutdown is not swallowed.
+            logger.warning(
+                "erasure projector cycle failed: %s", type(exc).__name__
+            )
+        await asyncio.sleep(settings.outbox_poll_interval_seconds)
 
 
 async def _run(registry: PersistenceRegistry, settings: Settings) -> None:

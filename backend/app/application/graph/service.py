@@ -18,6 +18,7 @@ from app.application.graph.errors import (
 )
 from app.application.graph.repositories import GraphRepository
 from app.domain.entity import Entity
+from app.domain.erasure import tombstone_entity
 from app.domain.identifiers import EntityId, RelationshipId
 from app.domain.relationship import Relationship
 from app.domain.value_objects import Confidence
@@ -73,6 +74,32 @@ class GraphService:
         await self._graph.update_entity(entity)
         logger.info("entity attributes updated id=%s", entity.id.value)
         return entity
+
+    async def erase_entity(self, entity_id: EntityId) -> Entity:
+        """Erase a person-linked entity: redact its identifying data (ADR-017).
+
+        The right-to-be-forgotten path for graph knowledge (data-lifecycle.md
+        §2) — **not** cascaded by investigation erasure, since the Knowledge
+        Graph is a shared knowledge layer (§6a) and entities are
+        investigation-independent (Domain Rule 8).
+
+        *Which* entities are person-linked is deliberately **not inferred from
+        data content**: the caller names the entity by identifier, mirroring the
+        scoping rule that a policy attribute is never derived from data
+        (authentication-authorization §6a). Mapping obligations to concrete data
+        is a deployment/compliance concern (data-lifecycle.md §6).
+
+        The node keeps its identifier so incident relationships still resolve to
+        an explicit erased node (§8a); relationships carry only structural
+        references and need no redaction. Idempotent: re-erasing yields the same
+        tombstone.
+        """
+
+        entity = await self._require_entity(entity_id)
+        tombstone = tombstone_entity(entity)
+        await self._graph.erase_entity(tombstone)
+        logger.info("entity erased id=%s", entity_id.value)
+        return tombstone
 
     # -------------------------------------------------------------- relationship
 

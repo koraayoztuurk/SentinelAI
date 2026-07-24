@@ -21,6 +21,7 @@ export const sampleInvestigation: InvestigationDto = {
   owner: "analyst-erin",
   priority: "high",
   tenant: "default",
+  erased_at: null,
 };
 
 export const sampleEvidence: readonly EvidenceDto[] = [

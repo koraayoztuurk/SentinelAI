@@ -114,6 +114,32 @@ async def change_investigation_status(
     return build_success(InvestigationResponse.from_domain(investigation), context)
 
 
+@investigation_router.delete(
+    "/investigations/{investigation_id}",
+    response_model=ApiResponse[InvestigationResponse],
+)
+async def erase_investigation(
+    investigation_id: str,
+    service: InvestigationService = Depends(get_investigation_service),
+    context: RequestContext = Depends(get_request_context),
+    clock: Clock = Depends(get_clock),
+) -> ApiResponse[InvestigationResponse]:
+    """Erase an investigation and its investigation-scoped objects (ADR-017).
+
+    Tombstones the investigation (status ``erased``, personal content redacted,
+    ``erased_at`` stamped) and cascades to its evidence, outcome and trace;
+    findings/reports remain as structural reference tombstones. Owner+tenant
+    scoped like every investigation-scoped surface (the ``investigation_id`` path
+    param routes through the §6a policy). Idempotent: re-erasing returns the
+    same tombstone. Physical erasure of referenced payload bytes is ES-065.
+    """
+
+    investigation = await service.erase(
+        InvestigationId(investigation_id), clock.now()
+    )
+    return build_success(InvestigationResponse.from_domain(investigation), context)
+
+
 # ------------------------------------------------------------------------- run
 
 

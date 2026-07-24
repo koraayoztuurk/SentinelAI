@@ -12,6 +12,14 @@ database constraint violations surface inside the owning operation.
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.investigation.payload_store import PAYLOAD_ADDRESS_PREFIX
+from app.domain.enums import InvestigationStatus
+from app.domain.erasure import (
+    REDACTED,
+    tombstone_evidence,
+    tombstone_outcome,
+    tombstone_trace_entry,
+)
 from app.domain.evidence import Evidence
 from app.domain.finding import Finding
 from app.domain.identifiers import EvidenceId, FindingId, InvestigationId, ReportId
@@ -87,6 +95,51 @@ class PostgresEvidenceRepository:
             .order_by(EvidenceRow.timestamp, EvidenceRow.id)
         )
         return tuple(evidence_to_domain(row) for row in rows)
+
+    async def erase_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> None:
+        rows = (
+            await self._session.scalars(
+                select(EvidenceRow).where(
+                    EvidenceRow.investigation_id == investigation_id.value
+                )
+            )
+        ).all()
+        for row in rows:
+            tombstoned = tombstone_evidence(evidence_to_domain(row))
+            row.content = tombstoned.content
+            row.source = tombstoned.source.value
+        await self._session.flush()
+
+    async def list_pending_payload_erasures(
+        self, limit: int
+    ) -> tuple[Evidence, ...]:
+        # Evidence of erased investigations still carrying a payload address.
+        # Both tables belong to the Investigation Service's own schema, so this
+        # join stays inside one ownership boundary (§8a governs cross-*store*
+        # references, not a service's own tables).
+        rows = await self._session.scalars(
+            select(EvidenceRow)
+            .join(
+                InvestigationRow,
+                InvestigationRow.id == EvidenceRow.investigation_id,
+            )
+            .where(
+                InvestigationRow.status == InvestigationStatus.ERASED.value,
+                EvidenceRow.integrity.startswith(PAYLOAD_ADDRESS_PREFIX),
+            )
+            .order_by(EvidenceRow.id)
+            .limit(limit)
+        )
+        return tuple(evidence_to_domain(row) for row in rows)
+
+    async def mark_payload_erased(self, evidence_id: EvidenceId) -> None:
+        row = await self._session.get(EvidenceRow, evidence_id.value)
+        if row is None:
+            return
+        row.integrity = REDACTED
+        await self._session.flush()
 
 
 class PostgresFindingRepository:
@@ -170,6 +223,25 @@ class PostgresOutcomeRepository:
         ).one_or_none()
         return None if row is None else outcome_to_domain(row)
 
+    async def erase_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> None:
+        row = (
+            await self._session.scalars(
+                select(InvestigationOutcomeRow).where(
+                    InvestigationOutcomeRow.investigation_id
+                    == investigation_id.value
+                )
+            )
+        ).one_or_none()
+        if row is None:
+            return
+        tombstoned = tombstone_outcome(outcome_to_domain(row))
+        row.recommendation = tombstoned.recommendation
+        row.detected_conflicts = list(tombstoned.detected_conflicts)
+        row.open_questions = list(tombstoned.open_questions)
+        await self._session.flush()
+
 
 class PostgresTraceRepository:
     """``TraceRepository`` adapter over the append-only ``trace_entry`` table.
@@ -195,3 +267,17 @@ class PostgresTraceRepository:
             .order_by(TraceEntryRow.seq)
         )
         return tuple(trace_entry_to_domain(row) for row in rows)
+
+    async def erase_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> None:
+        rows = (
+            await self._session.scalars(
+                select(TraceEntryRow).where(
+                    TraceEntryRow.investigation_id == investigation_id.value
+                )
+            )
+        ).all()
+        for row in rows:
+            row.summary = tombstone_trace_entry(trace_entry_to_domain(row)).summary
+        await self._session.flush()

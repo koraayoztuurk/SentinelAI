@@ -11,6 +11,7 @@ events; it is explicitly not an audit mechanism.
 """
 
 import logging
+from datetime import datetime
 
 from app.application.investigation.errors import (
     DuplicateEvidenceError,
@@ -24,6 +25,7 @@ from app.application.investigation.errors import (
     EvidencePayloadStoreUnavailableError,
     FindingNotFoundError,
     InvalidLifecycleTransitionError,
+    InvestigationErasedError,
     InvestigationNotFoundError,
     InvestigationValidationError,
     OutcomeNotFoundError,
@@ -44,6 +46,9 @@ from app.application.investigation.repositories import (
     TraceRepository,
 )
 from app.domain.enums import InvestigationStatus
+from app.domain.erasure import (
+    tombstone_investigation,
+)
 from app.domain.evidence import Evidence
 from app.domain.finding import Finding
 from app.domain.identifiers import EvidenceId, FindingId, InvestigationId, ReportId
@@ -129,7 +134,9 @@ class InvestigationService:
         Only the status field is modified; no other investigation state changes.
         """
 
-        investigation = await self._require_investigation(investigation_id)
+        investigation = await self._require_writable_investigation(
+            investigation_id
+        )
         self._validate_transition(investigation.status, new_status)
 
         previous_status = investigation.status
@@ -143,12 +150,46 @@ class InvestigationService:
         )
         return investigation
 
+    async def erase(
+        self, investigation_id: InvestigationId, erased_at: datetime
+    ) -> Investigation:
+        """Erase an investigation and its investigation-scoped objects (ADR-017).
+
+        Tombstones the investigation (status ``ERASED``, personal content
+        redacted, ``erased_at`` stamped) and cascades to its PostgreSQL-owned
+        scoped objects — evidence, outcome and trace carry personal free-text and
+        are redacted; findings and reports hold only structural references and
+        metadata (no personal free-text), so they are left as reference
+        tombstones under the erased investigation. Every write targets the one
+        PostgreSQL store, so the cascade is a single local transaction (AC-14);
+        physical erasure of secondary-store bytes (payloads, embeddings)
+        propagates through the outbox as a projection (ES-065).
+
+        Idempotent: re-erasing an already-erased investigation is a no-op that
+        returns the existing tombstone. ``erased_at`` is caller-supplied (the
+        caller-supplies-timestamps discipline).
+        """
+
+        investigation = await self._require_investigation(investigation_id)
+        if investigation.status is InvestigationStatus.ERASED:
+            return investigation
+
+        await self._evidence.erase_for_investigation(investigation_id)
+        await self._outcomes.erase_for_investigation(investigation_id)
+        await self._trace.erase_for_investigation(investigation_id)
+        tombstone = tombstone_investigation(investigation, erased_at)
+        await self._investigations.update(tombstone)
+        logger.info(
+            "investigation erased id=%s", investigation_id.value
+        )
+        return tombstone
+
     # ------------------------------------------------------------------ evidence
 
     async def attach_evidence(self, evidence: Evidence) -> Evidence:
         """Attach an evidence item to its investigation after validation."""
 
-        await self._require_investigation(evidence.investigation_id)
+        await self._require_writable_investigation(evidence.investigation_id)
         if await self._evidence.get(evidence.id) is not None:
             raise DuplicateEvidenceError(
                 f"Evidence '{evidence.id.value}' already exists."
@@ -213,7 +254,7 @@ class InvestigationService:
         no-op returning the same address (ADR-015 §5).
         """
 
-        await self._require_investigation(investigation_id)
+        await self._require_writable_investigation(investigation_id)
         store = self._require_payload_store()
         address = payload_address(content)
         await store.put(address, content)
@@ -235,6 +276,17 @@ class InvestigationService:
         """
 
         evidence = await self.get_evidence(evidence_id)
+        investigation = await self._require_investigation(
+            evidence.investigation_id
+        )
+        if investigation.status is InvestigationStatus.ERASED:
+            # The record is tombstoned; the raw bytes are pending physical
+            # erasure (ES-065). Payload access resolves to "erased" (§8a),
+            # never returning the personal payload of an erased investigation.
+            raise EvidencePayloadNotFoundError(
+                f"Evidence '{evidence_id.value}' belongs to an erased "
+                f"investigation; its payload is not available."
+            )
         store = self._require_payload_store()
         address = evidence.integrity.value
         if not is_payload_address(address):
@@ -266,7 +318,7 @@ class InvestigationService:
     async def create_finding(self, finding: Finding) -> Finding:
         """Validate and persist a finding for its investigation."""
 
-        await self._require_investigation(finding.investigation_id)
+        await self._require_writable_investigation(finding.investigation_id)
         await self._validate_evidence_references(
             finding.investigation_id, finding.supporting_evidence
         )
@@ -281,6 +333,7 @@ class InvestigationService:
     async def update_finding(self, finding: Finding) -> Finding:
         """Validate and persist changes to an existing finding."""
 
+        await self._require_writable_investigation(finding.investigation_id)
         if await self._findings.get(finding.id) is None:
             raise FindingNotFoundError(f"Finding '{finding.id.value}' not found.")
         await self._validate_evidence_references(
@@ -307,7 +360,7 @@ class InvestigationService:
     async def create_report(self, report: Report) -> Report:
         """Validate and persist a report for its investigation."""
 
-        await self._require_investigation(report.investigation_id)
+        await self._require_writable_investigation(report.investigation_id)
         await self._reports.add(report)
         logger.info(
             "report created id=%s investigation=%s",
@@ -342,7 +395,7 @@ class InvestigationService:
         An investigation has at most one outcome (domain-model §16, 0..1).
         """
 
-        await self._require_investigation(outcome.investigation_id)
+        await self._require_writable_investigation(outcome.investigation_id)
         existing = await self._outcomes.get_for_investigation(
             outcome.investigation_id
         )
@@ -383,7 +436,7 @@ class InvestigationService:
         The trace is append-only; entries are never updated or removed.
         """
 
-        await self._require_investigation(entry.investigation_id)
+        await self._require_writable_investigation(entry.investigation_id)
         if not entry.summary.strip():
             raise InvestigationValidationError(
                 "Trace entry summary must not be blank."
@@ -414,6 +467,24 @@ class InvestigationService:
         if investigation is None:
             raise InvestigationNotFoundError(
                 f"Investigation '{investigation_id.value}' not found."
+            )
+        return investigation
+
+    async def _require_writable_investigation(
+        self, investigation_id: InvestigationId
+    ) -> Investigation:
+        """Require an investigation that still accepts business writes.
+
+        An erased investigation is terminal (ADR-017): every mutating operation
+        rejects it, so reads keep resolving to the tombstone while no new state
+        can be attached to it.
+        """
+
+        investigation = await self._require_investigation(investigation_id)
+        if investigation.status is InvestigationStatus.ERASED:
+            raise InvestigationErasedError(
+                f"Investigation '{investigation_id.value}' is erased and "
+                f"accepts no further changes."
             )
         return investigation
 

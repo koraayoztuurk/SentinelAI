@@ -42,3 +42,12 @@ class GraphRepository(Repository, Protocol):
     async def neighbors(
         self, entity_id: EntityId, depth: int, max_nodes: int
     ) -> tuple[Entity, ...]: ...
+
+    async def erase_entity(self, entity: Entity) -> None:
+        """Persist an entity tombstone (ES-065, ADR-017 §4).
+
+        The end-of-life write for person-linked graph data: the node keeps its
+        stable identifier so incident relationships still resolve to an explicit
+        erased node (§8a), while its identifying payload is redacted.
+        """
+        ...

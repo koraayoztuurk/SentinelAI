@@ -61,3 +61,14 @@ class MemoryVectorStore(Protocol):
         projected yet), never an error.
         """
         ...
+
+    async def delete(self, memory_id: str) -> None:
+        """Delete a Memory Item's embedding point (ES-065, ADR-017 §5/§6).
+
+        Derived data is erased with its source (data-lifecycle.md §3): when a
+        Memory Item is erased, the projector deletes its point through this
+        seam. Keyed by ``memory_id`` like ``upsert``, and idempotent — deleting
+        an absent point (or an absent collection) is a no-op, so the erasure
+        projection is safely retriable.
+        """
+        ...

@@ -30,6 +30,39 @@ def test_put_get_roundtrip() -> None:
         asyncio.run(scenario(Path(directory)))
 
 
+def test_erase_deletes_the_payload_and_is_idempotent() -> None:
+    # ES-065 / ADR-017 §6: physical deletion is this dev-grade adapter's
+    # erasure strategy; erasing twice (or an unstored address) is a no-op, so
+    # the erasure projection is safely retriable.
+    async def scenario(root: Path) -> None:
+        store = FilesystemEvidencePayloadStore(root)
+        address = payload_address(_CONTENT)
+        await store.put(address, _CONTENT)
+
+        await store.erase(address)
+
+        assert await store.get(address) is None
+        assert not await store.exists(address)
+        # Retried erasure of an already-erased payload stays a no-op.
+        await store.erase(address)
+
+    with tempfile.TemporaryDirectory() as directory:
+        asyncio.run(scenario(Path(directory)))
+
+
+def test_erase_ignores_unresolvable_addresses() -> None:
+    # A malformed address resolves nowhere and never touches the filesystem
+    # (the address validation doubles as the path-traversal guard).
+    async def scenario(root: Path) -> None:
+        store = FilesystemEvidencePayloadStore(root)
+        await store.erase("sha256:not-a-digest")
+        await store.erase("../../etc/passwd")
+        await store.erase(payload_address(b"never stored"))
+
+    with tempfile.TemporaryDirectory() as directory:
+        asyncio.run(scenario(Path(directory)))
+
+
 def test_put_is_idempotent() -> None:
     async def scenario(root: Path) -> None:
         store = FilesystemEvidencePayloadStore(root)

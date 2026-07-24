@@ -82,6 +82,25 @@ class Neo4jGraphRepository:
 
         await self._write(_work)
 
+    async def erase_entity(self, entity: Entity) -> None:
+        """Overwrite the node with its tombstone properties (ES-065).
+
+        The node is not deleted: its identifier survives so relationships
+        referencing it still resolve to an explicit erased node (§8a). Same
+        write shape as ``update_entity``; the caller supplies the tombstone.
+        """
+
+        properties = entity_to_properties(entity)
+
+        async def _work(tx: AsyncManagedTransaction) -> None:
+            await tx.run(
+                "MATCH (e:Entity {id: $id}) SET e = $properties",
+                id=entity.id.value,
+                properties=properties,
+            )
+
+        await self._write(_work)
+
     # -------------------------------------------------------------- relationship
 
     async def add_relationship(self, relationship: Relationship) -> None:

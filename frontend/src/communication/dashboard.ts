@@ -21,6 +21,11 @@ export interface InvestigationSummaryViewModel {
   readonly owner: string;
   readonly tenant: string;
   readonly createdAt: string;
+  // End-of-life (ES-066, ADR-017): `erased` is a tombstone, `erasedAt` its
+  // erasure time (null while live). Derived from the server-authoritative
+  // status so the workspace renders the erased state explicitly (§8a).
+  readonly erased: boolean;
+  readonly erasedAt: string | null;
 }
 
 export interface ConfirmedFindingViewModel {
@@ -59,6 +64,8 @@ export function toDashboardViewModel(
       owner: investigation.owner,
       tenant: investigation.tenant,
       createdAt: investigation.created_at,
+      erased: investigation.status === "erased",
+      erasedAt: investigation.erased_at,
     },
     findings: findings
       .filter((finding) => isConfirmedFinding(finding.status))

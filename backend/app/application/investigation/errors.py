@@ -34,6 +34,18 @@ class InvalidLifecycleTransitionError(InvestigationServiceError):
     code = "investigation.invalid_transition"
 
 
+class InvestigationErasedError(InvestigationServiceError):
+    """Raised when a business write targets an erased (tombstoned) investigation.
+
+    ``ERASED`` is terminal (data-lifecycle.md, ADR-017): an erased investigation
+    accepts no further evidence, findings, reports, outcome, trace, status
+    change or run — only idempotent re-erasure and reads (which resolve to the
+    tombstone) remain.
+    """
+
+    code = "investigation.erased"
+
+
 class InvestigationValidationError(InvestigationServiceError):
     """Raised when an investigation fails required-field or state validation."""
 

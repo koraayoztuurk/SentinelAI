@@ -73,6 +73,9 @@
 | ES-061 | Workspace Evidence Payload Upload/Download + Milestone D Close | ✅ Completed |
 | ES-062 | Production Identity Provider: JWT Authenticator + AUTH_PROVIDER Selection + owner==subject on Create | ✅ Completed |
 | ES-063 | Multi-Tenancy: RFC-002 + ADR-016 + Investigation Tenant Scope + Tenant-Aware Authorizer (Milestone E closed) | ✅ Completed |
+| ES-064 | Data end-of-life: RFC-003 + ADR-017 + Investigation-family tombstoning (PostgreSQL erasure cascade + DELETE surface) — Milestone F opener | ✅ Completed |
+| ES-065 | Secondary-store erasure propagation: payload byte erasure projection + embedding point deletion + person-linked Memory/Graph erasure | ✅ Completed |
+| ES-066 | Workspace erasure surface + tombstone rendering + data-lifecycle note (Milestone F closed) | ✅ Completed |
 
 ---
 
@@ -3601,3 +3604,190 @@ Next ES
   "empty region"); use real-time CDP capture (`Page.navigate` explicitly — headless `/json/new
   ?url=` opens about:blank) — the in-pane preview screenshot also times out on infinite
   animations.
+
+## ES-064 (Milestone F, part 1)
+
+- **Milestone F (data end-of-life) opened**; ES-064 is the backend anchor: an investigation and
+  its investigation-scoped objects can be **erased**. Governance first — **RFC-003** (ADR-014
+  thresholds a **and** c: amends ADR-003's ownership model and changes domain-model lifecycle
+  semantics) + **ADR-017** (the accepted decision). `data-lifecycle.md` Draft→**Accepted** (v1.1.0);
+  realization notes in database-architecture §8a/§8b (v1.4.0), domain-model §15, api-design
+  §Investigation Resource (v1.5.0); ADR index lists 017. ADR-017 **amends ADR-003** (ownership gains
+  an end-of-life dimension) and **extends** ADR-012 (erasure as an outbox projection) and ADR-015
+  (payload store gains an erase op) — neither superseded.
+- **Scope split refined during planning** (recorded in IMPLEMENTATION-PLAN §5 Milestone F): ES-064 is
+  a **single-store PostgreSQL tombstone cascade** (AC-14 clean — one operation writes one store, one
+  transaction); **physical secondary-store erasure** (evidence payload bytes, embeddings) plus
+  person-linked Memory/Graph erasure move to **ES-065** as one outbox-erasure-projection mechanism
+  (data-lifecycle §3 "derived data erased with its source"). Avoids a synchronous multi-store write
+  in the erase op.
+- **Domain**: `InvestigationStatus.ERASED` — a **terminal** state orthogonal to the business
+  lifecycle (erasable from any state; no business write/transition follows). `Investigation.erased_at:
+  datetime | None` (non-personal correlation structure). New pure module `app/domain/erasure.py`:
+  `tombstone_investigation` (title→marker, status ERASED, erased_at; **owner/tenant/created_at
+  survive** so post-erase authorization still resolves), `tombstone_evidence` (content + source
+  redacted; **integrity content-address retained** so ES-065 can shred the bytes), `tombstone_outcome`
+  (recommendation redacted, conflicts/questions cleared), `tombstone_trace_entry` (summary redacted).
+  Findings/Reports carry only structural references/metadata (no personal free-text), so they are not
+  redacted — the personal data they'd expose lives in the evidence they reference, which is redacted.
+- **Service**: `erase(investigation_id, erased_at)` — idempotent (re-erase returns the existing
+  tombstone, erased_at does not move), caller-supplied `erased_at` (caller-supplies-timestamps).
+  Cascade over the shared request session (one PG transaction): `evidence/outcome/trace
+  .erase_for_investigation` + `investigations.update(tombstone)`. New `_require_writable_investigation`
+  rejects every business mutation on an erased investigation (attach/finding/report/outcome/trace/
+  status) with **`InvestigationErasedError`** (`investigation.erased` → **409**). `get_evidence_payload`
+  now returns "not available" for an erased investigation (the raw bytes stay inaccessible even before
+  ES-065's physical shred — no owner-visible leak).
+- **Repository ports**: `erase_for_investigation(investigation_id)` added to Evidence/Outcome/Trace
+  ports (a specific named operation, not generic CRUD). The append-only **TraceRepository** gains this
+  as its **sole, documented end-of-life exception** (domain-model line 633, ADR-017 §4) — business
+  writes stay append-only. PG adapters load rows and apply the domain tombstone functions in place
+  (redaction policy stays domain-owned, DRY); in-memory doubles mirror them.
+- **REST**: `DELETE /api/v1/investigations/{investigation_id}` → the tombstoned `InvestigationResponse`
+  (+ `erased_at`). **No authorization policy change** — the `investigation_id` path param already routes
+  through the §6a owner+tenant policy (ES-062/063), so erase is owner+tenant scoped automatically and
+  the retained owner/tenant keeps the tombstone scoped. `openapi.json` regenerated (AC-15).
+- **Persistence**: migration **0005** adds `investigation.erased_at` (nullable TIMESTAMPTZ; no default,
+  no backfill — every existing row is live). Terminal `ERASED` needs **no** type migration (lifecycle
+  states are stored as plain Text — no DB enum).
+- **Audit (§5)**: erasure rides the existing operation-audit boundary (the DELETE is an
+  `OPERATION_PERFORMED` audit event like any operation — who/when/operation); asserted by a test. A
+  dedicated erasure-category audit action stays with the richer-audit-vocabulary work (ES-021 TD /
+  Milestone H).
+- **Tests (+13 backend)**: service (7) — tombstone fields + owner/tenant/created_at preserved; cascade
+  redaction of evidence/outcome/trace with integrity retained; idempotent re-erase; unknown → 404;
+  reads resolve to the tombstone (never disappear); every business write rejected; payload access
+  blocked after erasure. API (6) — tombstone envelope, idempotent DELETE, foreign subject 403, GET
+  after erase → 200 tombstone (not 404), business write after erase → 409, erasure audited.
+- **Live proof** (host Postgres, `pytest -m live`): the PG investigation suite **6 passed** — migration
+  0005 applies from an empty database (deterministic upgrade-head), and a full family (investigation +
+  evidence + finding + outcome + trace) is tombstoned in **one transaction** and round-trips through a
+  fresh session as tombstones (personal content redacted, content-address + owner/tenant/timestamps
+  preserved), with a post-erase write rejected and an idempotent re-erase.
+- **Verification**: `ruff` clean; `mypy app` strict clean (**181 files**); backend default **538 passed**
+  / 23 deselected (+13 vs ES-063's 525); `openapi.json` regenerated (DELETE surface + `erased_at`).
+  Frontend untouched — the user-visible erasure surface is **ES-066**.
+- **TD / deferred (all documented)**: physical payload/embedding erasure + Memory/Graph person-linked
+  erasure → **ES-065**; automated retention sweep → **Milestone G**; backup/restore-erasure interaction
+  → decided with a backup architecture (data-lifecycle §6); dedicated erasure audit action → ES-021 /
+  Milestone H; dev filesystem content-address dedup vs physical delete → resolved by the production
+  crypto-shred adapter (per-unit keys, Milestone G). Commits are the owner's step.
+
+## ES-065 (Milestone F, part 2)
+
+- **Completes the erasure loop ES-064 opened**: the physical erasure of secondary-store data plus
+  the person-linked (right-to-be-forgotten) paths for the two shared knowledge layers. **No
+  migration and no new table** — memory/investigation lifecycle states are plain Text columns, and
+  the erasure intents ride structures that already exist.
+- **Two intent shapes, one model** (ADR-017 §5 refined to match the realization): the erasure intent
+  is always recorded in the **same local transaction as the tombstone**, and an async, idempotent,
+  retriable projector performs the physical erasure — never a synchronous second-store write
+  (AC-14). For **embeddings** the intent is the existing ADR-012 `memory_outbox` record; for
+  **payload bytes** the **tombstone itself is the intent** (an evidence tombstone of an erased
+  investigation still carrying its content address names bytes that may still exist), so no separate
+  outbox table was introduced. The ES-064 decision to *retain* the content address on the evidence
+  tombstone is exactly what makes this work.
+- **Payload byte erasure**: `EvidencePayloadStore` gains `erase(address)` (idempotent by contract);
+  the dev filesystem adapter erases by **physical deletion** (ADR-017 §6 adapter choice —
+  crypto-shredding stays the designated production-object-store strategy, Milestone G); malformed
+  addresses resolve nowhere, so the path-traversal guard also covers erasure. New application-layer
+  `EvidencePayloadErasureProjector` + two evidence repository ops
+  (`list_pending_payload_erasures`, `mark_payload_erased`). **Convergence**: completing an erasure
+  redacts the address, so the item stops being pending and the record no longer references erased
+  bytes (§8a). A store outage leaves the address in place — still pending, retried next cycle.
+- **Embedding erasure closes the ES-050 TD** ("no Qdrant point deletion when a Memory Item is
+  deleted"): `MemoryVectorStore` gains `delete(memory_id)` (same deterministic UUID5 point id as
+  `upsert`, idempotent, absent collection = no-op, store outage → the stable
+  `memory.vector_store_unavailable` contract). The **existing** projector branches on the item's
+  status: an `ERASED` item has its point **deleted instead of embedded**, so the redacted text is
+  never sent to the provider — one mechanism for both production and end-of-life.
+- **Memory Service erasure** (`MemoryStatus.ERASED`, terminal): redacts the knowledge text of
+  **every version** (each version row holds the personal text) and enqueues the embedding-erasure
+  intent in the same transaction. Explicitly distinct from `deprecate` (relevance, not existence —
+  data-lifecycle §3), idempotent, and **not** cascaded by investigation erasure (Memory is a §6a
+  shared knowledge layer).
+- **Graph Service entity erasure**: redacts the person-linked payload (`display_name`, `aliases`,
+  `attributes`) while the node keeps its identifier, so incident relationships still resolve to an
+  explicit erased node (§8a); relationships carry only structural references and need no redaction.
+  **Open design point resolved honestly**: person-linkage is **never inferred from data content** —
+  the caller names the entity by identifier, mirroring §6a's "a scope is never inferred from data";
+  mapping obligations to concrete data is a deployment/compliance concern (data-lifecycle §6). No
+  PII classifier was invented.
+- **Deliberately not built (recorded, not forgotten)**: **REST surfaces for Memory/Graph erasure**.
+  Both live behind the shared-knowledge policy, which permits *any* authenticated identity — so
+  exposing a destructive operation there needs an authorization decision (who may erase
+  organizational knowledge) that is above what this ES may invent. The architectural requirement
+  ("every owning service exposes an erasure path", data-lifecycle §3) is met at the **service**
+  layer; the trigger surface + its policy is a documented follow-up.
+- **DI**: `start_erasure_projector` runs as its own lifespan background task, deliberately separate
+  from the embedding projector (which exits early without an embedding key) — erasure must proceed
+  regardless of AI configuration; both are cancelled on shutdown.
+- **Tests (+17 backend)**: payload erasure projection (4 — erase/mark/converge, live investigations
+  never pending, store outage stays pending, idempotent when bytes already gone); filesystem adapter
+  erase (2 — delete + double-erase no-op, unresolvable/hostile addresses); memory erasure (5 — all
+  versions redacted, structural correlation preserved, idempotent, unknown → error, erasure ≠
+  deprecation); graph entity erasure (4 — redaction, relationships still resolve, idempotent,
+  unknown → error); projector erasure branch (2 — deletes instead of embedding with no provider
+  call, idempotent).
+- **Live proof** (host Postgres + Qdrant, `pytest -m "live or live_qdrant"` → **11 passed**):
+  payload erasure projection over live PG + a content-addressed temp store (live investigation owes
+  nothing → erase → exactly one pending → bytes physically gone + address redacted + converged);
+  and the full memory end-of-life propagation (projected point exists → service erase writes
+  tombstoned versions + intent in one transaction → projector deletes the Qdrant point → outbox
+  drained, every version redacted).
+- **Verification**: `ruff` clean; `mypy app` strict clean (**182 files**); backend default **555
+  passed** / 25 deselected (+17 vs ES-064's 538); `openapi.json` regenerated — the new terminal
+  `erased` values appear in the investigation/memory status enums (AC-15 freshness green). Frontend
+  untouched — the user-visible surface is **ES-066**. Docs: ADR-017 §5 refined to the realized
+  two-intent-shape model; memory-service v1.2.0 and graph-service v1.2.0 record their erasure paths.
+- **TD / deferred**: REST + authorization policy for shared-knowledge erasure (above); automated
+  retention sweep → **Milestone G**; production crypto-shred payload adapter with per-unit keys
+  (resolves the dev adapter's content-address dedup caveat) → **Milestone G**; projector
+  retry/backoff/dead-letter and multi-instance safety → **Milestone G** (both projectors are
+  single-process best-effort loops); backup/restore-erasure interaction → with a backup
+  architecture. Commits are the owner's step.
+
+## ES-066 (Milestone F, close)
+
+- **The milestone's user-visible leg + close**: the analyst erases an investigation from the
+  workspace and the tombstone renders explicitly. **Frontend-only** — no backend/REST change (the
+  DELETE surface + `erased_at` field landed in ES-064), so `openapi.json` is unchanged and the AC-15
+  freshness test stays green without a regen.
+- **Communication + view model**: `eraseInvestigation(id)` over the single `apiClient` (DELETE →
+  tombstone DTO); `InvestigationDto` gains `erased_at`; the shared `InvestigationSummaryViewModel`
+  gains `erased`/`erasedAt`, derived from the server-authoritative status so the workspace renders
+  the erased state from the source of truth (§8a — observable, never hidden).
+- **Erase affordance** (`OverviewSection` "Data lifecycle"): a two-step confirm gates the destructive
+  action — "Erase investigation" reveals a confirm prompt ("Permanently erase … and all its data?")
+  before `useEraseInvestigation` fires; owner+tenant scoping is enforced server-side (ES-064). On
+  success the centralized `invalidateInvestigationData` refreshes every region, so the workspace
+  re-loads and resolves to the tombstone (redacted title, `erased` status badge, `erased_at`). An
+  already-erased investigation shows the tombstone note and no erase control. `StatusBadge` gained an
+  `erased` (danger) tone.
+- **Retention surface — honest scope**: retention *durations* are deployment policy (data-lifecycle
+  §3) and no backend retention surface exists, so the Data-lifecycle panel **states** the posture
+  read-only (erasure cascades + is irreversible; retention is deployment-governed) rather than
+  inventing an editor over configuration the platform does not own. An editable retention config is a
+  documented Milestone G follow-up (with the automated sweep).
+- **Tests (+4 frontend, 78 total)**: erase requires explicit confirmation before firing; the confirm
+  can be cancelled without erasing; an erased investigation renders its tombstone note and hides the
+  control; the view model derives the erased/erasedAt tombstone state from the status. Existing
+  view-model/page fixtures updated for the two new summary fields.
+- **Live proof** (headless-Chrome over CDP — the pane strips Authorization, gotcha #2; seeded stack:
+  host uvicorn + Vite + live PG/Qdrant/Neo4j, real Gemini embeddings): the workspace loads authed
+  with the "Erase investigation" control; confirming erases; the workspace **re-loads to the
+  tombstone** — title `[erased]`, `ERASED` badge, "was erased on …" note, **evidence content + source
+  redacted and integrity showing `[ERASED]`** (the ES-065 payload-erasure projector ran in the live
+  backend's background task and redacted the address), owner/tenant/id/timestamps preserved, reads
+  resolving to the tombstone rather than 404. The **Memory region is untouched** — the §6a
+  shared-knowledge boundary (investigation erasure does not cascade to Memory/Graph) demonstrated
+  live. Captures in the session scratchpad (`es066-{1-live,2-confirm,3-tombstone}.png`).
+- **Verification**: frontend 4-gate green — `lint` clean, `typecheck` strict clean, **78 tests**
+  (+4), `build` green; backend unchanged (default 555 / live 11 from ES-065 stand); `openapi.json`
+  unchanged (no REST change). Docs: roadmap Delivery Record + v1.8.0 (Milestone F row); README status
+  table + Milestone A–F close paragraph; IMPLEMENTATION-PLAN §6 Milestone F → Closed.
+- **Milestone F closed (2026-07-24)**: the erasure lifecycle is realized end to end — governance
+  (RFC-003/ADR-017, data-lifecycle.md Accepted), investigation-family tombstoning (ES-064),
+  secondary-store + person-linked erasure (ES-065), and the user-visible surface (ES-066), proven
+  live. Remaining before Release 1.0: **G** (production hardening) and **H** (governance/release ops +
+  license). Jira SEN Milestone F close is the owner's step; commits are the owner's step.

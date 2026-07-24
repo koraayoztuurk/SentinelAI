@@ -1,14 +1,16 @@
 ---
 title: SentinelAI Data Lifecycle and Erasure
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-23
 ---
 
 # Data Lifecycle and Erasure
 
 > This document defines how data ends its life within SentinelAI: retention, deletion and erasure obligations. It closes the gap between the platform's preservation-oriented architecture (immutable evidence, versioned memory, append-only trace and audit) and the legal reality that a security platform processes personal data that may have to be erased (audit finding M-05).
+
+> **Realized by RFC-003 / ADR-017** (2026-07-23, Milestone F): the erasure lifecycle and a uniform tombstone protocol are admitted as accepted architecture. Per-store realization lands across the milestone — the Investigation family (PostgreSQL tombstoning) in ES-064; the secondary stores (evidence payload bytes, embeddings) plus person-linked Memory/Graph erasure in ES-065. Automated retention enforcement (a scheduled sweep) remains deferred to Milestone G; this document admits the erasure *path*, and retention *durations* stay deployment policy.
 
 ---
 
@@ -91,3 +93,4 @@ Audit records document security-relevant actions, including erasure itself, and 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-07-03 | Initial Data Lifecycle and Erasure specification (audit finding M-05): lifecycle ownership per category, deprecation≠deletion, tombstoning/crypto-shredding strategy categories, audit exception |
+| 1.1.0 | 2026-07-23 | Status Draft→Accepted; erasure lifecycle + tombstone protocol admitted (RFC-003 / ADR-017, Milestone F): terminal `Erased` state, tombstones preserve only non-personal correlation structure and resolve explicitly (§8a), investigation-scoped cascade in one transaction, secondary-store erasure as an ADR-012 outbox projection, per-store strategy an adapter choice; realized across ES-064 (Investigation family) / ES-065 (payloads, embeddings, Memory/Graph) |

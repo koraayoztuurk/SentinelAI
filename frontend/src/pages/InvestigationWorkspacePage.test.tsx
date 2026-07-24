@@ -29,6 +29,8 @@ const viewModel: WorkspaceViewModel = {
     owner: "analyst-erin",
     tenant: "default",
     createdAt: "2026-06-28T09:15:00Z",
+    erased: false,
+    erasedAt: null,
   },
   findings: [
     {

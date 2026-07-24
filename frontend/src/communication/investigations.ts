@@ -17,6 +17,9 @@ export interface InvestigationDto {
   readonly priority: string;
   // Organization access scope (ES-063, ADR-016) — server-derived.
   readonly tenant: string;
+  // End-of-life timestamp (ES-064/066, ADR-017): null for a live investigation,
+  // set once the investigation is a tombstone (status "erased").
+  readonly erased_at: string | null;
 }
 
 export interface FindingDto {
@@ -104,6 +107,16 @@ export function getInvestigation(
   return apiClient.get<InvestigationDto>(
     `/api/v1/investigations/${encodeURIComponent(id)}`,
     { signal },
+  );
+}
+
+// Erase an investigation and its scoped objects (ES-064/066, ADR-017). Returns
+// the tombstone (status "erased", title redacted, erased_at set); the operation
+// is idempotent server-side. A destructive, irreversible action — the caller
+// confirms before invoking.
+export function eraseInvestigation(id: string): Promise<InvestigationDto> {
+  return apiClient.delete<InvestigationDto>(
+    `/api/v1/investigations/${encodeURIComponent(id)}`,
   );
 }
 

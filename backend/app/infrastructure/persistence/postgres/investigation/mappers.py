@@ -57,6 +57,7 @@ def investigation_to_row(investigation: Investigation) -> InvestigationRow:
         created_at=investigation.created_at,
         owner=investigation.owner.value,
         priority=investigation.priority.value,
+        erased_at=investigation.erased_at,
     )
 
 
@@ -69,6 +70,7 @@ def investigation_to_domain(row: InvestigationRow) -> Investigation:
         owner=ActorRef(row.owner),
         priority=Priority(row.priority),
         tenant=TenantId(row.tenant),
+        erased_at=row.erased_at,
     )
 
 

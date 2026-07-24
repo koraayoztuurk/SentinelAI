@@ -97,6 +97,27 @@ class MemoryService:
         )
         return latest
 
+    async def erase(self, memory_id: MemoryItemId) -> MemoryItem:
+        """Erase a Memory Item: tombstone every version, drop its embedding.
+
+        The person-linked (right-to-be-forgotten) erasure path for the shared
+        knowledge layer (data-lifecycle.md §2, ADR-017 §4) — **not** cascaded by
+        investigation erasure, since Memory is a shared knowledge layer (§6a).
+        Distinct from :meth:`deprecate`, which controls relevance rather than
+        existence: erasure redacts the knowledge text of every version and marks
+        them ``ERASED``. The derived embedding is deleted asynchronously through
+        the outbox projection (ADR-012), so this operation writes one store.
+
+        Idempotent: re-erasing an already-erased item returns the tombstone.
+        """
+
+        latest = await self._require_latest(memory_id)
+        if latest.status is MemoryStatus.ERASED:
+            return latest
+        await self._memory.erase(memory_id)
+        logger.info("memory erased id=%s", memory_id.value)
+        return await self._require_latest(memory_id)
+
     async def get_history(
         self, memory_id: MemoryItemId
     ) -> tuple[MemoryItem, ...]:

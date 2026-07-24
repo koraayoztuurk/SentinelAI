@@ -48,7 +48,10 @@ function WorkspaceContent({
   return (
     <WorkspaceProvider>
       <div className="stagger grid gap-5">
-        <OverviewSection summary={viewModel.summary} />
+        <OverviewSection
+          investigationId={investigationId}
+          summary={viewModel.summary}
+        />
         <div className="grid gap-5 lg:grid-cols-2">
           <FindingsSection findings={viewModel.findings} />
           <EvidenceSection

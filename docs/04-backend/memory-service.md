@@ -542,3 +542,4 @@ However, the service responsibilities defined in this document should remain sta
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Memory Service specification created |
 | 1.1.0 | 2026-07-03 | Memory creation flow aligned with ADR-012 (transactional outbox; no dual-write on any request path); embedding port ownership fixed in the application layer (AC-04 compatible) |
+| 1.2.0 | 2026-07-23 | Erasure path added (data-lifecycle.md §2, ADR-017): the Memory Service owns the person-linked end-of-life path for Memory Items — erasure redacts the knowledge text of **every** version and marks them terminal `ERASED` (distinct from deprecation, which controls relevance not existence), and records the derived-embedding erasure intent in the same transaction so the projector deletes the vector point (ADR-012 reused for end-of-life). Not cascaded by investigation erasure: Memory is a shared knowledge layer (§6a) |

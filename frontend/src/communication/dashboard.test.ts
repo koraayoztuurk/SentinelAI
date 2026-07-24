@@ -13,7 +13,24 @@ describe("toDashboardViewModel", () => {
       owner: "analyst-erin",
       tenant: "default",
       createdAt: sampleInvestigation.created_at,
+      erased: false,
+      erasedAt: null,
     });
+  });
+
+  it("derives the erased tombstone state from the status (ES-066)", () => {
+    const tombstone = toDashboardViewModel(
+      {
+        ...sampleInvestigation,
+        title: "[erased]",
+        status: "erased",
+        erased_at: "2026-07-23T12:00:00Z",
+      },
+      [],
+    );
+    expect(tombstone.summary.erased).toBe(true);
+    expect(tombstone.summary.erasedAt).toBe("2026-07-23T12:00:00Z");
+    expect(tombstone.summary.status).toBe("erased");
   });
 
   it("keeps only confirmed findings (validated/accepted)", () => {

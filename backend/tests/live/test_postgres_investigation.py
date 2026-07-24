@@ -11,7 +11,9 @@ session so nothing is read back from a warm identity map.
 """
 
 import asyncio
+import tempfile
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
@@ -21,19 +23,26 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from alembic import command
-from app.application.investigation import InvestigationService
+from app.application.investigation import (
+    EvidencePayloadErasureProjector,
+    InvestigationService,
+    payload_address,
+)
 from app.application.investigation.errors import (
     DuplicateInvestigationError,
     DuplicateOutcomeError,
     EvidenceOwnershipError,
     InvalidLifecycleTransitionError,
+    InvestigationErasedError,
 )
 from app.domain.enums import (
     FindingStatus,
     InvestigationOutcomeStatus,
     InvestigationStatus,
 )
+from app.domain.erasure import REDACTED
 from app.domain.identifiers import (
+    EvidenceId,
     FindingId,
     InvestigationId,
     InvestigationOutcomeId,
@@ -43,6 +52,7 @@ from app.domain.identifiers import (
 from app.domain.investigation_outcome import InvestigationOutcome
 from app.domain.trace import TraceEntry, TraceEntryKind
 from app.domain.value_objects import ActorRef, Confidence
+from app.infrastructure.objectstore import FilesystemEvidencePayloadStore
 from app.infrastructure.persistence.postgres.engine import create_session_factory
 from app.infrastructure.persistence.postgres.investigation.repositories import (
     PostgresEvidenceRepository,
@@ -421,8 +431,183 @@ async def _trace_scenario() -> None:
         assert [e.summary for e in entries] == ["first", "second", "third"]
         assert all(e.created_at == FIXED_TIME for e in entries)
 
-        # The repository port itself is append-only: no update/delete exists.
+        # The repository port itself is append-only for business writes: no
+        # update/delete exists (erase_for_investigation is the documented
+        # end-of-life exception, ADR-017 §4).
         assert not hasattr(PostgresTraceRepository, "update")
         assert not hasattr(PostgresTraceRepository, "delete")
+    finally:
+        await engine.dispose()
+
+
+# ---------------------------------------------------------------------- erasure
+
+
+def test_erase_tombstones_the_family_in_one_transaction() -> None:
+    ensure_schema()
+    asyncio.run(_erasure_scenario())
+
+
+async def _erasure_scenario() -> None:
+    engine = live_engine()
+    try:
+        await _reset(engine)
+        factory = create_session_factory(engine)
+        erased_at = FIXED_TIME + timedelta(days=1)
+
+        # Seed a full family, then erase it — the whole cascade is one
+        # transaction (one store, AC-14).
+        async with session_scope(factory) as session:
+            service = _service(session)
+            await service.create(build_investigation("inv-e", title="Secret"))
+            await service.change_status(
+                InvestigationId("inv-e"), InvestigationStatus.ACTIVE
+            )
+            await service.attach_evidence(
+                build_evidence(
+                    "ev-e",
+                    "inv-e",
+                    source="dns-logs",
+                    integrity="sha256:" + "a" * 64,
+                    content="raw personal payload",
+                )
+            )
+            await service.create_finding(
+                build_finding("f-e", "inv-e", supporting_evidence=("ev-e",))
+            )
+            await service.create_outcome(_outcome("out-e", "inv-e", ("f-e",)))
+            await service.record_trace(
+                _entry("t-e", "inv-e", "sensitive reasoning")
+            )
+
+        async with session_scope(factory) as session:
+            await _service(session).erase(InvestigationId("inv-e"), erased_at)
+
+        # Everything round-trips through a fresh session as tombstones:
+        # personal content redacted, correlation structure preserved.
+        async with session_scope(factory) as session:
+            service = _service(session)
+            investigation = await service.get(InvestigationId("inv-e"))
+            evidence = await service.list_evidence(InvestigationId("inv-e"))
+            outcome = await service.get_outcome(InvestigationId("inv-e"))
+            trace = await service.list_trace(InvestigationId("inv-e"))
+
+        assert investigation.status is InvestigationStatus.ERASED
+        assert investigation.title == REDACTED
+        assert investigation.erased_at == erased_at
+        assert investigation.owner == ActorRef("analyst-1")
+
+        assert [e.content for e in evidence] == [REDACTED]
+        assert [e.source.value for e in evidence] == [REDACTED]
+        # The content address survives so ES-065 can shred the bytes.
+        assert evidence[0].integrity.value == "sha256:" + "a" * 64
+        assert evidence[0].id == EvidenceId("ev-e")
+
+        assert outcome.recommendation == REDACTED
+        assert outcome.detected_conflicts == ()
+        assert outcome.open_questions == ()
+
+        assert [t.summary for t in trace] == [REDACTED]
+        assert trace[0].reference == "action-1"
+
+        # ERASED is terminal: a business write is rejected.
+        async with session_scope(factory) as session:
+            with pytest.raises(InvestigationErasedError):
+                await _service(session).attach_evidence(
+                    build_evidence("ev-e2", "inv-e")
+                )
+
+        # Re-erasure is an idempotent no-op through a real transaction.
+        async with session_scope(factory) as session:
+            again = await _service(session).erase(
+                InvestigationId("inv-e"), FIXED_TIME + timedelta(days=2)
+            )
+        assert again.erased_at == erased_at
+    finally:
+        await engine.dispose()
+
+
+def test_payload_erasure_projection_drains_the_tombstone_intent() -> None:
+    ensure_schema()
+    asyncio.run(_payload_erasure_scenario())
+
+
+async def _payload_erasure_scenario() -> None:
+    """ES-065: the tombstone is the erasure intent; the projector drains it.
+
+    Live PostgreSQL + a temp-dir content-addressed store: erasing an
+    investigation leaves its evidence tombstone pointing at the payload bytes,
+    and the projection erases those bytes and redacts the address so it
+    converges (ADR-017 §5).
+    """
+
+    engine = live_engine()
+    try:
+        await _reset(engine)
+        factory = create_session_factory(engine)
+        content = b"raw personal payload bytes"
+
+        with tempfile.TemporaryDirectory() as directory:
+            payloads = FilesystemEvidencePayloadStore(Path(directory))
+            address = payload_address(content)
+            await payloads.put(address, content)
+
+            async with session_scope(factory) as session:
+                service = InvestigationService(
+                    PostgresInvestigationRepository(session),
+                    PostgresEvidenceRepository(session),
+                    PostgresFindingRepository(session),
+                    PostgresReportRepository(session),
+                    PostgresOutcomeRepository(session),
+                    PostgresTraceRepository(session),
+                    payloads=payloads,
+                )
+                await service.create(build_investigation("inv-p"))
+                await service.attach_evidence(
+                    build_evidence("ev-p", "inv-p", integrity=address)
+                )
+
+            # A live investigation owes no erasure.
+            async with session_scope(factory) as session:
+                projector = EvidencePayloadErasureProjector(
+                    PostgresEvidenceRepository(session), payloads
+                )
+                assert await projector.project_pending() == 0
+            assert await payloads.exists(address)
+
+            async with session_scope(factory) as session:
+                await InvestigationService(
+                    PostgresInvestigationRepository(session),
+                    PostgresEvidenceRepository(session),
+                    PostgresFindingRepository(session),
+                    PostgresReportRepository(session),
+                    PostgresOutcomeRepository(session),
+                    PostgresTraceRepository(session),
+                    payloads=payloads,
+                ).erase(InvestigationId("inv-p"), FIXED_TIME + timedelta(days=1))
+
+            # The tombstone still names the bytes: exactly one pending erasure.
+            async with session_scope(factory) as session:
+                pending = await PostgresEvidenceRepository(
+                    session
+                ).list_pending_payload_erasures(100)
+            assert [e.id.value for e in pending] == ["ev-p"]
+
+            async with session_scope(factory) as session:
+                projector = EvidencePayloadErasureProjector(
+                    PostgresEvidenceRepository(session), payloads
+                )
+                assert await projector.project_pending() == 1
+
+            # Bytes physically gone; the address is redacted, so the projection
+            # converges and the record no longer points at erased bytes.
+            assert not await payloads.exists(address)
+            async with session_scope(factory) as session:
+                repository = PostgresEvidenceRepository(session)
+                assert await repository.list_pending_payload_erasures(100) == ()
+                (item,) = await repository.list_for_investigation(
+                    InvestigationId("inv-p")
+                )
+            assert item.integrity.value == REDACTED
     finally:
         await engine.dispose()

@@ -203,6 +203,7 @@ RFCs should never replace ADRs, and ADRs should never replace the RFC Process.
 | ADR-014 | Lightweight Architectural Proposal Process |
 | ADR-015 | Evidence Payload Store |
 | ADR-016 | Investigation Tenant Scope |
+| ADR-017 | Data Erasure and Tombstoning |
 
 ---
 

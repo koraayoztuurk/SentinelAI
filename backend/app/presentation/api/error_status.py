@@ -23,6 +23,7 @@ from app.application.investigation.errors import (
     EvidencePayloadStoreUnavailableError,
     FindingNotFoundError,
     InvalidLifecycleTransitionError,
+    InvestigationErasedError,
     InvestigationNotFoundError,
     InvestigationValidationError,
     OutcomeNotFoundError,
@@ -60,6 +61,9 @@ _STATUS_BY_CODE: dict[str, int] = {
     DuplicateInvestigationError.code: 409,
     DuplicateEvidenceError.code: 409,
     InvalidLifecycleTransitionError.code: 409,
+    # A business write to an erased (terminal) investigation is a conflict with
+    # its end-of-life state (ADR-017).
+    InvestigationErasedError.code: 409,
     InvestigationValidationError.code: 422,
     EvidenceOwnershipError.code: 422,
     # Evidence payload family (ES-060, ADR-015): a missing payload is 404, a

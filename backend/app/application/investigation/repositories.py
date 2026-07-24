@@ -43,6 +43,39 @@ class EvidenceRepository(Repository, Protocol):
         self, investigation_id: InvestigationId
     ) -> tuple[Evidence, ...]: ...
 
+    async def erase_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> None:
+        """Tombstone every evidence item of an investigation (ADR-017).
+
+        The end-of-life erasure cascade — the only mutation of otherwise
+        immutable evidence (Domain Rule 1); content and source are redacted,
+        the content-address integrity value is retained (ES-065).
+        """
+        ...
+
+    async def list_pending_payload_erasures(
+        self, limit: int
+    ) -> tuple[Evidence, ...]:
+        """Evidence tombstones whose payload bytes are still to be erased.
+
+        The driver of the payload erasure projection (ES-065, ADR-017 §5): the
+        tombstone written in the erasure transaction **is** the durable erasure
+        intent, so this returns evidence of erased investigations that still
+        carry an address-shaped integrity value (their bytes may still exist).
+        """
+        ...
+
+    async def mark_payload_erased(self, evidence_id: EvidenceId) -> None:
+        """Redact an evidence tombstone's payload address once its bytes are gone.
+
+        Completes the payload erasure projection: the reference is replaced by
+        the erasure marker, so the projection converges (the item stops being
+        pending) and the record no longer points at erased bytes — it resolves
+        to an explicit "erased" reference (§8a).
+        """
+        ...
+
 
 class FindingRepository(Repository, Protocol):
     """Persistence operations for Finding aggregates."""
@@ -79,12 +112,25 @@ class OutcomeRepository(Repository, Protocol):
         self, investigation_id: InvestigationId
     ) -> InvestigationOutcome | None: ...
 
+    async def erase_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> None:
+        """Tombstone an investigation's outcome, if any (ADR-017).
+
+        Redacts the free-text recommendation, detected conflicts and open
+        questions; identifiers, references, confidence and status survive.
+        """
+        ...
+
 
 class TraceRepository(Repository, Protocol):
     """Append-only persistence operations for Investigation Trace entries.
 
-    The trace is append-only by contract: no update or delete operation exists.
-    ``list_for_investigation`` returns entries in append order.
+    The trace is append-only by contract: no update or delete operation exists
+    for business writes. ``erase_for_investigation`` is the sole exception — the
+    documented end-of-life erasure path (domain-model.md line 633, ADR-017 §4),
+    never a business write. ``list_for_investigation`` returns entries in append
+    order.
     """
 
     async def add(self, entry: TraceEntry) -> None: ...
@@ -92,3 +138,13 @@ class TraceRepository(Repository, Protocol):
     async def list_for_investigation(
         self, investigation_id: InvestigationId
     ) -> tuple[TraceEntry, ...]: ...
+
+    async def erase_for_investigation(
+        self, investigation_id: InvestigationId
+    ) -> None:
+        """Tombstone every trace entry of an investigation (ADR-017).
+
+        Redacts each entry's summary; kind, actor, reference, append order and
+        timestamps survive. The end-of-life exception to trace append-only.
+        """
+        ...

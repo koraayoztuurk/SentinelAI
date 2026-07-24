@@ -74,7 +74,12 @@ class InvestigationStatusChangeRequest(BaseModel):
 
 
 class InvestigationResponse(BaseModel):
-    """Flat projection of an investigation."""
+    """Flat projection of an investigation.
+
+    ``erased_at`` is ``null`` for a live investigation and carries the erasure
+    timestamp once the investigation is a tombstone (status ``erased``,
+    ADR-017); the redacted ``title`` then reads as the erasure marker.
+    """
 
     id: str
     title: str
@@ -83,6 +88,7 @@ class InvestigationResponse(BaseModel):
     owner: str
     priority: str
     tenant: str
+    erased_at: datetime | None = None
 
     @classmethod
     def from_domain(cls, investigation: Investigation) -> "InvestigationResponse":
@@ -94,6 +100,7 @@ class InvestigationResponse(BaseModel):
             owner=investigation.owner.value,
             priority=investigation.priority.value,
             tenant=investigation.tenant.value,
+            erased_at=investigation.erased_at,
         )
 
 

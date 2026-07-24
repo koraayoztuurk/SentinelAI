@@ -29,3 +29,7 @@ class Investigation:
     # the authorization policy evaluates, layered over owner scoping. Supplied
     # from the authenticated identity's tenant at creation.
     tenant: TenantId
+    # End-of-life timestamp (ADR-017): set when the investigation is erased
+    # (status ERASED), ``None`` for a live investigation. Non-personal
+    # correlation structure the tombstone preserves (data-lifecycle.md §4).
+    erased_at: datetime | None = None

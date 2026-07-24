@@ -20,6 +20,7 @@ owed.
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain.erasure import tombstone_memory_item
 from app.domain.identifiers import InvestigationId, MemoryItemId
 from app.domain.memory_item import MemoryItem
 from app.infrastructure.persistence.postgres.memory.mappers import (
@@ -73,6 +74,34 @@ class PostgresMemoryRepository:
             .order_by(MemoryItemRow.version)
         )
         return tuple(memory_item_to_domain(row) for row in rows)
+
+    async def erase(self, memory_id: MemoryItemId) -> None:
+        """Tombstone every version and enqueue the embedding-erasure intent.
+
+        Both writes hit PostgreSQL in the caller's transaction: the redacted
+        rows and the outbox record commit atomically (AC-14). The projector
+        re-reads the item, sees ``ERASED`` and deletes the derived point.
+        """
+
+        rows = (
+            await self._session.scalars(
+                select(MemoryItemRow).where(MemoryItemRow.id == memory_id.value)
+            )
+        ).all()
+        if not rows:
+            return
+        latest_version = max(row.version for row in rows)
+        for row in rows:
+            tombstoned = tombstone_memory_item(memory_item_to_domain(row))
+            row.content = tombstoned.content
+            row.status = tombstoned.status.value
+        # Same-transaction erasure intent (ADR-012 outbox reused for end-of-life).
+        self._session.add(
+            MemoryOutboxRow(
+                memory_id=memory_id.value, memory_version=latest_version
+            )
+        )
+        await self._session.flush()
 
     async def list_for_investigation(
         self, investigation_id: InvestigationId

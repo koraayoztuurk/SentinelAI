@@ -25,6 +25,8 @@ from app.ai.agents.memory.plan import (
 from app.ai.agents.planner.state import InvestigationState
 from app.application.memory import MemoryEmbeddingError, MemoryService
 from app.application.memory.projector import MemoryEmbeddingProjector
+from app.domain.enums import MemoryStatus
+from app.domain.erasure import REDACTED
 from app.domain.identifiers import InvestigationId, MemoryItemId
 from app.domain.value_objects import Confidence
 from app.infrastructure.ai.retrieval import CompositeRetriever
@@ -194,6 +196,76 @@ async def _retrieval_scenario() -> None:
         assert top.reference == "mq-a"
         assert top.content == "C2 beacon every 60s"
         assert top.confidence.value >= knowledge.items[-1].confidence.value
+    finally:
+        await qdrant.close()
+        await engine.dispose()
+
+
+def test_memory_erasure_deletes_the_projected_point() -> None:
+    ensure_schema()
+    asyncio.run(_erasure_scenario())
+
+
+async def _erasure_scenario() -> None:
+    """ES-065: erasing a Memory Item drops its derived point (ES-050 TD closed).
+
+    The full end-of-life propagation over live stores: erase writes the
+    tombstoned versions **and** the erasure intent in one PostgreSQL
+    transaction, and the projector drains that intent into a Qdrant point
+    deletion (ADR-012 reused for erasure, ADR-017 §5).
+    """
+
+    engine = live_engine()
+    qdrant = live_qdrant_client()
+    try:
+        await _reset(engine)
+        await clear_collection(qdrant)
+        factory = create_session_factory(engine)
+        store = QdrantMemoryVectorStore(qdrant)
+        await store.ensure_collection(_DIM)
+
+        # A projected Memory Item: one point exists.
+        async with session_scope(factory) as session:
+            await PostgresMemoryRepository(session).add(
+                build_memory_item("mq-e", version=1, content="jane.doe notes")
+            )
+        async with session_scope(factory) as session:
+            await MemoryEmbeddingProjector(
+                PostgresOutboxRepository(session),
+                PostgresMemoryRepository(session),
+                _FakeEmbedder(),
+                store,
+            ).project_pending()
+        assert (await qdrant.count(collection_name=COLLECTION_NAME)).count == 1
+
+        # Erase through the service: tombstone + erasure intent, one store.
+        async with session_scope(factory) as session:
+            erased = await MemoryService(
+                PostgresMemoryRepository(session)
+            ).erase(MemoryItemId("mq-e"))
+        assert erased.status is MemoryStatus.ERASED
+        assert erased.content == REDACTED
+
+        # Draining the intent deletes the derived point.
+        async with session_scope(factory) as session:
+            processed = await MemoryEmbeddingProjector(
+                PostgresOutboxRepository(session),
+                PostgresMemoryRepository(session),
+                _FakeEmbedder(),
+                store,
+            ).project_pending()
+        assert processed == 1
+        assert (await qdrant.count(collection_name=COLLECTION_NAME)).count == 0
+        assert await _pending_count(factory) == 0
+
+        # Every persisted version is redacted, not just the latest.
+        async with session_scope(factory) as session:
+            versions = await PostgresMemoryRepository(session).list_versions(
+                MemoryItemId("mq-e")
+            )
+        assert versions
+        assert all(v.content == REDACTED for v in versions)
+        assert all(v.status is MemoryStatus.ERASED for v in versions)
     finally:
         await qdrant.close()
         await engine.dispose()

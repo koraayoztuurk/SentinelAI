@@ -20,6 +20,9 @@ const TONES: Record<string, string> = {
   failed: "border-danger/50 text-danger [--pulse:var(--color-danger)]",
   closed: "border-line-strong text-muted [--pulse:var(--color-muted)]",
   deprecated: "border-line-strong text-muted [--pulse:var(--color-muted)]",
+  // Terminal end-of-life (ADR-017): a destructive, irreversible state — the
+  // danger tone marks it as distinct from a settled "closed".
+  erased: "border-danger/50 text-danger [--pulse:var(--color-danger)]",
 };
 
 const NEUTRAL = "border-line-strong text-muted [--pulse:var(--color-muted)]";

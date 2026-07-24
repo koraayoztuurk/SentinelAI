@@ -45,3 +45,14 @@ class MemoryRepository(Repository, Protocol):
         ``(created_at, id)`` ordering.
         """
         ...
+
+    async def erase(self, memory_id: MemoryItemId) -> None:
+        """Tombstone **every version** of a Memory Item (ES-065, ADR-017).
+
+        End-of-life, distinct from deprecation: each version's knowledge text
+        holds the personal content, so all of them are redacted and marked
+        ``ERASED``. Records the derived-embedding erasure intent in the **same
+        transaction** (the outbox, ADR-012), so the point deletion propagates
+        asynchronously and no request path writes two stores (AC-14).
+        """
+        ...

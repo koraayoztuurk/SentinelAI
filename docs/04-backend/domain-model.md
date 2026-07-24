@@ -874,6 +874,8 @@ Every domain object follows a lifecycle appropriate to its responsibility.
 
 Although lifecycle stages differ, all domain objects should remain observable and traceable.
 
+**End-of-life (erasure) is orthogonal to the business lifecycles below** (data-lifecycle.md, ADR-017). An object may be erased from **any** business state into a terminal `Erased` state — the business transitions shown here are unaffected, and `Erased` admits no further business write or transition. Erasing an investigation cascades to its investigation-scoped objects (evidence, findings, report, outcome, trace); an erased object is tombstoned (only non-personal correlation structure — identifiers, timestamps, owner/tenant scope — survives) and reads resolve to an explicit erased state (database-architecture §8a). This is the realization of "removal is governed by the Data Lifecycle architecture" noted for the append-only trace.
+
 ---
 
 ## Investigation

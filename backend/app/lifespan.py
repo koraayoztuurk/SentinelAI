@@ -20,7 +20,10 @@ from fastapi import FastAPI
 from app.config.database import get_neo4j_settings, get_postgres_settings
 from app.config.settings import get_settings
 from app.config.validation import validate_configuration
-from app.dependencies.projector import start_outbox_projector
+from app.dependencies.projector import (
+    start_erasure_projector,
+    start_outbox_projector,
+)
 from app.infrastructure.persistence.registry import build_registry
 
 logger = logging.getLogger(__name__)
@@ -50,13 +53,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Memory embedding outbox projector (ES-050): the async, idempotent
     # background driver that derives embeddings into the vector store.
     projector_task = start_outbox_projector(registry, settings)
+    # Evidence payload erasure projector (ES-065, ADR-017 §5): drains the
+    # erasure intent carried by investigation tombstones into the object store.
+    erasure_task = start_erasure_projector(registry, settings)
 
     try:
         yield
     finally:
-        if projector_task is not None:
-            projector_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError, Exception):
-                await projector_task
+        for task in (projector_task, erasure_task):
+            if task is not None:
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await task
         await registry.close()
         logger.info("Shutting down %s", settings.app_name)

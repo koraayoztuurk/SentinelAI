@@ -281,6 +281,8 @@ The architecture fixes the following rules for such references:
 - **Eventual consistency applies across stores.** Cross-store references may be temporarily unresolvable during synchronization or failure windows.
 - **Dangling references must remain observable.** A reference that no longer resolves is reported explicitly by the owning service on access; it is never silently dropped, repaired or fabricated.
 
+At end-of-life this rule is realized by **tombstoning** (data-lifecycle.md §4, ADR-017): an erased object is replaced by an explicit erasure marker preserving only non-personal correlation structure (identifiers, timestamps, and the owner/tenant scope keys), so a reference to it resolves to an explicit "erased" state — distinguishable from "never existed", never silently repaired.
+
 ---
 
 # 8b. Evidence Payload Storage
@@ -295,6 +297,8 @@ Until the object store exists, evidence content is carried inline in the Evidenc
 - The Evidence record references its payload by content address (integrity hash); the hash is also the verifiable integrity anchor (Domain Rule 1/9).
 - Payloads are immutable and never mutated in place; corrections are new evidence.
 - Payload storage ownership follows evidence ownership: access is mediated by the Investigation Service.
+
+**Payload end-of-life** (data-lifecycle.md §4, ADR-017): immutability governs modification, not end-of-life. The payload store's designated erasure strategy is **crypto-shredding** for the immutable production object store; the dev-grade filesystem adapter erases by physical deletion. The `EvidencePayloadStore` port gains an erase operation, and an erased investigation's payload bytes are physically erased through the ADR-012 outbox as an erasure projection (realized in ES-065).
 
 ---
 
@@ -754,3 +758,4 @@ However, supporting technologies should never become authoritative sources of bu
 | 1.1.0 | 2026-07-03 | Synchronization scoped to derived representations with named service ownership (undefined "SyncService" removed; Neo4j no longer shown as a sync target); cross-store reference rules added (§8a); Redis governed by ADR-011 |
 | 1.2.0 | 2026-07-03 | Synchronization mechanism fixed as transactional outbox + idempotent projection (ADR-012, AC-14 no-dual-write); Evidence Payload Storage defined (§8b): content-addressed object store as the designated payload home, inline content as accepted interim state |
 | 1.3.0 | 2026-07-17 | Evidence payload store admitted (§8b realized): ADR-015/RFC-001 — content-addressed store as primary storage for raw payload bytes, application-owned addressing, Investigation-Service-mediated access |
+| 1.4.0 | 2026-07-23 | End-of-life realization notes (RFC-003/ADR-017, Milestone F): §8a cross-store references realized by tombstoning at erasure; §8b payload end-of-life strategy (crypto-shredding for the production object store, physical deletion for the dev filesystem adapter; erase via the ADR-012 outbox projection) |

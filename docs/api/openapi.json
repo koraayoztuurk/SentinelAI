@@ -807,12 +807,24 @@
         "type": "object"
       },
       "InvestigationResponse": {
-        "description": "Flat projection of an investigation.",
+        "description": "Flat projection of an investigation.\n\n``erased_at`` is ``null`` for a live investigation and carries the erasure\ntimestamp once the investigation is a tombstone (status ``erased``,\nADR-017); the redacted ``title`` then reads as the erasure marker.",
         "properties": {
           "created_at": {
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "erased_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erased At"
           },
           "id": {
             "title": "Id",
@@ -852,13 +864,14 @@
         "type": "object"
       },
       "InvestigationStatus": {
-        "description": "Lifecycle states of an Investigation.",
+        "description": "Lifecycle states of an Investigation.\n\n``ERASED`` is the terminal end-of-life state (data-lifecycle.md, ADR-017):\nit is orthogonal to the business transitions above \u2014 an investigation may be\nerased from any state \u2014 and admits no further business write or transition.",
         "enum": [
           "created",
           "active",
           "suspended",
           "completed",
-          "archived"
+          "archived",
+          "erased"
         ],
         "title": "InvestigationStatus",
         "type": "string"
@@ -1024,12 +1037,13 @@
         "type": "object"
       },
       "MemoryStatus": {
-        "description": "Lifecycle states of a Memory Item.",
+        "description": "Lifecycle states of a Memory Item.\n\n``DEPRECATED`` controls *relevance* (retrieval-invisible knowledge);\n``ERASED`` is the terminal *end-of-life* state (data-lifecycle.md \u00a73\n\"deprecation is not deletion\", ADR-017): its content is redacted and its\nderived embedding is deleted through the outbox projection.",
         "enum": [
           "candidate",
           "verified",
           "organizational",
-          "deprecated"
+          "deprecated",
+          "erased"
         ],
         "title": "MemoryStatus",
         "type": "string"
@@ -1969,6 +1983,47 @@
       }
     },
     "/api/v1/investigations/{investigation_id}": {
+      "delete": {
+        "description": "Erase an investigation and its investigation-scoped objects (ADR-017).\n\nTombstones the investigation (status ``erased``, personal content redacted,\n``erased_at`` stamped) and cascades to its evidence, outcome and trace;\nfindings/reports remain as structural reference tombstones. Owner+tenant\nscoped like every investigation-scoped surface (the ``investigation_id`` path\nparam routes through the \u00a76a policy). Idempotent: re-erasing returns the\nsame tombstone. Physical erasure of referenced payload bytes is ES-065.",
+        "operationId": "erase_investigation_api_v1_investigations__investigation_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_InvestigationResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Erase Investigation",
+        "tags": [
+          "investigation"
+        ]
+      },
       "get": {
         "operationId": "get_investigation_api_v1_investigations__investigation_id__get",
         "parameters": [

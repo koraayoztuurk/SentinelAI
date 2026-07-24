@@ -29,6 +29,7 @@ from app.application.memory.embedding import MemoryEmbedder, MemoryEmbeddingErro
 from app.application.memory.outbox import OutboxRecord, OutboxRepository
 from app.application.memory.repositories import MemoryRepository
 from app.application.memory.vector_store import MemoryVectorStore
+from app.domain.enums import MemoryStatus
 from app.domain.identifiers import MemoryItemId
 from app.domain.memory_item import MemoryItem
 from app.shared.exceptions import SentinelAIError
@@ -73,6 +74,17 @@ class MemoryEmbeddingProjector:
             if item is None:
                 # The Memory Item is gone; nothing to derive — settle the record.
                 await self._outbox.mark_processed(record.seq)
+                return True
+            if item.status is MemoryStatus.ERASED:
+                # End-of-life (ES-065): derived data is erased with its source
+                # through the same propagation that created it (ADR-012 /
+                # ADR-017 §5). Deletion is idempotent, so a retried record
+                # settles the same way.
+                await self._vector_store.delete(item.id.value)
+                await self._outbox.mark_processed(record.seq)
+                logger.info(
+                    "memory embedding erased memory_id=%s", item.id.value
+                )
                 return True
             vector = await self._embedder.embed(embedding_text(item))
             await self._vector_store.upsert(
