@@ -103,14 +103,21 @@ def test_live_stack_serves_investigation_memory_and_planner() -> None:
     asyncio.run(_reset_database())
 
     with _client() as client:
-        # Readiness reflects the reachable authoritative store (PostgreSQL
-        # gates readiness; the neo4j field is reported but not asserted here —
-        # this suite does not require a live graph store).
+        # Readiness reports every store truthfully, and **both** authoritative
+        # stores gate the verdict since ES-069 (PostgreSQL and Neo4j — an
+        # unreachable graph store is a capability the unit cannot provide).
+        # This suite deliberately requires only PostgreSQL, so the overall
+        # verdict follows the graph store rather than being asserted flat: with
+        # the full stack up it is `ready`, and in a PostgreSQL-only lane (CI's
+        # live job) it is a truthful `not_ready` + 503. What this suite does
+        # assert is that PostgreSQL is reachable and that the business surface
+        # below serves regardless — readiness gates orchestration, not routing.
         ready = client.get("/health/ready")
-        assert ready.status_code == 200
         ready_body = ready.json()
-        assert ready_body["status"] == "ready"
         assert ready_body["postgres"] == "ok"
+        graph_reachable = ready_body["neo4j"] == "ok"
+        assert ready_body["status"] == ("ready" if graph_reachable else "not_ready")
+        assert ready.status_code == (200 if graph_reachable else 503)
 
         # Investigation family end to end — no 503, real persistence.
         created = client.post(

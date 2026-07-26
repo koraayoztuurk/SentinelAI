@@ -316,7 +316,7 @@ jobs:
       # HIGH/CRITICAL is a build failure.
       - name: Vulnerability report
         if: always() && steps.build.outcome == 'success'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.ref.outputs.image }}
           format: json
@@ -325,7 +325,7 @@ jobs:
           exit-code: "0"
 
       - name: Vulnerability gate (fixable HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.ref.outputs.image }}
           format: table

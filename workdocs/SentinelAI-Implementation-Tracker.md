@@ -4385,3 +4385,42 @@ Next ES
   policy, license — the owner's decision — disclosure policy, governed promotion) and **ES-073**
   (readiness gate, release rehearsal, close). Jira SEN Milestone H and commits are the owner's
   step.
+
+
+## ES-071 — CI follow-up (2026-07-26)
+
+First push of the ES-067…071 work exposed two CI-only failures. Both are recorded here
+because both are *verification* lessons rather than defects in the delivered behaviour.
+
+- **`Backend (live persistence)` red — the live lane's readiness assumption went stale in
+  ES-069 and nothing caught it locally.** `tests/live/test_live_api.py` asserted
+  `/health/ready` → `200 ready`, written when **PostgreSQL alone** gated readiness. ES-069
+  made **Neo4j gating too** (platform-observability §4: an unreachable graph store is a
+  capability the unit cannot provide). CI's live job provides PostgreSQL only — by the
+  suite's own docstring, deliberately — so the endpoint truthfully answered `503 not_ready`
+  and the assertion failed. Every local run had the full compose stack up, so the
+  contradiction was invisible: **the suite claimed to be PostgreSQL-only while asserting a
+  verdict that needed the graph store.** Fixed by asserting what this lane actually owns —
+  `postgres == "ok"` — and deriving the overall verdict from the reported `neo4j` field, so
+  the test is honest with *and* without a graph store, and the business surface below it is
+  still exercised (readiness gates orchestration, not routing). Verified both ways locally:
+  `NEO4J_URI` pointed at a dead port → **22 passed** (CI-shaped), full stack → **22 passed**;
+  **negative control**: the pre-fix assertion fails in the CI-shaped lane, which is exactly
+  the red job.
+- **`Image (backend)` / `Image (frontend)` red before doing any work** — `Unable to resolve
+  action aquasecurity/trivy-action@0.28.0`. The tag never existed: that action's releases are
+  **`v`-prefixed** (`v0.28.0`), and the reference was written from the un-prefixed convention
+  most other actions use. GitHub resolves every `uses:` before the job starts, so both matrix
+  legs died in ~3s without building anything. Pinned to **`@v0.36.0`** (current stable,
+  bundles Trivy v0.70.0; every input this workflow passes — `image-ref`, `format`, `output`,
+  `severity`, `exit-code`, `ignore-unfixed` — verified present in that tag's `action.yaml`).
+- **Standing consequence:** the image pipeline has never actually executed its Trivy gate, so
+  the next green run is the first time fixable HIGH/CRITICAL findings can fail the build.
+  That is the gate working, not a regression.
+- **Lesson recorded:** a lane that declares which stores it needs must be *run* that way at
+  least once. The local live run with the full compose stack up cannot verify a
+  PostgreSQL-only claim; pointing `NEO4J_URI` at a dead port is the cheap way to check it.
+- Node-20 deprecation warnings on every job (`actions/checkout@v4`, `setup-python@v5`,
+  `setup-node@v4`, `upload-artifact@v4`) are **warnings, not failures** — GitHub already
+  forces those actions onto Node 24. Bumping the pins is CI hygiene, deliberately left as the
+  owner's call rather than folded into a red-build fix.
