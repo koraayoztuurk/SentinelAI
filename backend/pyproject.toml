@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sentinelai-backend"
-version = "0.1.0"
+version = "1.0.0"
 description = "SentinelAI backend application skeleton (ES-002)."
 readme = "README.md"
 requires-python = ">=3.12"

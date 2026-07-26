@@ -18,8 +18,15 @@ Every deployment unit declares the same platform version, and a release tag
 
 ## [Unreleased]
 
-The platform has not been released yet. The capability below is delivered and
-verified against live infrastructure; it will constitute **1.0.0**.
+Nothing yet.
+
+---
+
+## [1.0.0] - 2026-07-26
+
+First release. Every deployment unit declares `1.0.0`, and the compatibility
+promise described above begins here: from this version on, a breaking change to
+`docs/api/openapi.json` requires a major release.
 
 ### Added
 
@@ -56,6 +63,11 @@ verified against live infrastructure; it will constitute **1.0.0**.
 
 ### Notes for operators
 
+- The backend image prepares its evidence-payload directory owned by the
+  unprivileged runtime user. A named volume created by a **pre-release** image is
+  root-owned and must be repaired once — see
+  [`infrastructure/README.md`](infrastructure/README.md); a fresh deployment
+  needs nothing.
 - Retention enforcement is **off** unless `RETENTION_INVESTIGATION_DAYS` is set:
   no default retention period is correct, so none is assumed.
 - Readiness gates on PostgreSQL **and** Neo4j; Qdrant is reported but never

@@ -31,6 +31,17 @@ RUN pip install --no-cache-dir /tmp/*.whl \
 
 # Run as an unprivileged user (least privilege).
 RUN useradd --create-home --uid 10001 appuser
+
+# Prepare the evidence payload store's mount point **owned by the runtime user**
+# (ES-073). Docker initializes an empty named volume from the image's directory
+# at that path: when the path does not exist in the image, the volume is created
+# root-owned and an unprivileged process cannot write to it — evidence upload
+# then fails with a payload-store PermissionError in every containerized
+# deployment, which is exactly what the release rehearsal caught. The path is
+# the one the compose files pass as EVIDENCE_PAYLOAD_ROOT; the image only
+# prepares the directory, it does not choose it.
+RUN mkdir -p /data/evidence-payloads && chown -R appuser:appuser /data
+
 USER appuser
 
 EXPOSE 8000

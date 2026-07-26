@@ -82,6 +82,7 @@
 | ES-070 | Erasure operationalization: retention sweep + crypto-shred payload store + RFC-005/ADR-019 capability-gated shared-knowledge erasure + platform operational surface (Milestone G closed) | ✅ Completed |
 | ES-071 | Governance conformance: RFC-006/ADR-020 architecture documentation lifecycle + public per-document known gaps + AC-16 machine-checked governance freshness (Milestone H opener) | ✅ Completed |
 | ES-072 | Release identity & promotion: ADR-021 one-platform version + compatibility surface + Apache-2.0 licence + coordinated disclosure policy + changelog + verified digest-pinned promotion workflow | ✅ Completed |
+| ES-073 | Release 1.0: readiness gate evaluated with evidence + release rehearsal from published digest-pinned images on the staging overlay + version 1.0.0 + Milestone H close | ✅ Completed |
 
 ---
 
@@ -4516,3 +4517,72 @@ because both are *verification* lessons rather than defects in the delivered beh
   looks for it (`…:sha256-79c57a23….sig`). Not verified: `cosign verify` itself and the
   environment-approval gate — both need the workflow to actually run (cosign is not installed
   locally, and the gate is a repository setting). Recorded as a **verification gap**, not as done.
+
+
+## ES-073 (Milestone H, close — Release 1.0)
+
+- **The rehearsal earned its place in the plan on its first run.** Running the staging overlay
+  from **published, digest-pinned images** (`backend@sha256:f413c279…`,
+  `frontend@sha256:65cd4c28…`) surfaced a defect no previous live proof could have: evidence
+  upload failed with `investigation.evidence_payload_store_unavailable` (payload-store
+  `PermissionError`). Cause: Docker initializes an empty named volume from the image's directory
+  at the mount point, and `/data/evidence-payloads` **did not exist in the image**, so the volume
+  was created `root:root 755` while the process runs as uid 10001. Every containerized deployment
+  had a broken evidence-upload path — ES-060/061 were only ever proven with a host-side backend,
+  which is exactly the class of gap a release rehearsal exists to catch. Fixed in the image
+  definition (`mkdir` + `chown` before `USER appuser`) and **proven on a fresh volume**
+  (`10001:10001`, `WRITE_OK`); pre-existing volumes need a one-time `chown`, documented in
+  `infrastructure/README.md` and in the changelog's operator notes.
+- **The rehearsal also proved what it was meant to prove**, all through the TLS edge with a real
+  JWT (`AUTH_PROVIDER=jwt`), in the production-shaped posture (retention on, crypto-shredding
+  payloads, durable audit, rate limiting, `read_only` containers, JSON logs):
+  SPA over HTTPS **200**; unauthenticated API **401**; payload upload + **byte-identical verified
+  download** (89 bytes) through the crypto-shredding store; run **200** with a 9-entry trace;
+  erasure **200 → tombstone** (`status=erased`, `title='[erased]'`, `erased_at` stamped) → payload
+  **404** → repeat DELETE **200** (idempotent); audit chain **0 broken links** across 27 records
+  in 4 action categories (including `investigation.erased` ×2 — the erasure outlives the erased
+  data); rate limit **429 with `retry-after: 28`** and the standard error envelope past the
+  120/60s per-identity budget; platform status `ready (postgres/neo4j/qdrant ok) · retention=30d
+  enforced · payloads=crypto_shred · audit=durable`, every provider circuit `closed`.
+- **The run reached `exhausted`, and that is reported as observed rather than as hoped.** 3
+  cycles, 636s, 27 provider calls with visible retry/backoff (`reason=timeout delay=0.46s`) — the
+  NVIDIA free tier was minutes-per-call tonight, so the planner never reached completion and no
+  outcome was synthesized (synthesis runs on a *completed* run). Terminal, observable degradation
+  is the documented contract (ADR-013), not a defect; outcome synthesis stays proven by ES-055's
+  live evidence and the suite. A rehearsal that reported success here would have been worthless.
+- **`version=0.1.0` in the rehearsal's platform status is the version-identity mechanism working**,
+  not a bug: the published image was built from the pre-bump tree. The manifests now declare
+  **1.0.0** (backend `pyproject.toml`, frontend `package.json` + lockfile), AC-16 verifies their
+  agreement, and CI's tag-only `release-identity` job verifies the `v1.0.0` tag against them —
+  so the sequence is *push → CI republishes with the fix → tag*, and a tag pushed out of order
+  fails loudly.
+- **A near-miss worth recording**: bumping the frontend version by blanket string replacement hit
+  **three** `"version": "0.1.0"` occurrences in `package-lock.json` — the third was the
+  `yocto-queue` dependency, whose `resolved`/`integrity` still pointed at 0.1.0. Caught by
+  reading back what changed and restored; `npm ci --dry-run` then exits 0. A lockfile is not a
+  text file with a version in it.
+- **Release readiness evaluated with evidence, not asserted**: every §7 gate item ticked against
+  the repository (milestones A–G, production identity, durable audit sink, hardening, registry +
+  environment targets, licence, corpus governance, Delivery Record reality) plus the two items
+  this ES added — the rehearsal itself and a mechanically consistent platform version.
+- **Verification**: `ruff` clean; `mypy app` strict clean (200 files); backend default **690
+  passed** / 38 deselected; frontend 4-gate green (lint 0 findings, typecheck clean, **89 tests**,
+  build ✓); `openapi.json` unchanged (no REST surface touched — AC-15 unaffected). Docs: roadmap
+  v1.12.0 (rehearsal row), `infrastructure/README.md` volume-ownership upgrade note, CHANGELOG
+  `[1.0.0]` with operator notes, README release/milestone statement.
+- **Milestone H closed (2026-07-26) — Release 1.0 is ready to tag.** Governance conformance
+  (ES-071), release identity/compatibility + licence + governed promotion (ES-072), readiness gate
+  + rehearsal (ES-073). **A–H all closed.**
+- **Owner steps to actually release**: (1) commit + push — CI republishes images carrying the
+  volume-ownership fix; (2) tag **`v1.0.0`** — the `release-identity` job checks the tag against
+  the 1.0.0 manifests, then the images job publishes `1.0.0`/`1.0` signed with SBOM + provenance;
+  (3) optionally run `promote.yml` with version `1.0.0` to produce a verified digest-pinned pair;
+  (4) the two repository settings — environment protection with a required reviewer (the promotion
+  gate) and private vulnerability reporting (the `SECURITY.md` channel); (5) Jira SEN Milestone H
+  close.
+- **TD / deferred (post-1.0)**: the rehearsal could not execute `cosign verify` (not installed
+  locally) or the environment approval gate — both need the workflow to run in CI. Outcome
+  synthesis was not re-proven tonight (provider latency). No hosted environment, so promotion
+  remains exercised rather than operated; rollback stays deployment-level while migrations are
+  forward-only. Everything else carried forward: multi-instance scale-out, S3-compatible payload
+  backend, audit query surface, per-tenant shared knowledge, the remaining specialized agents.

@@ -97,6 +97,28 @@ no gate:
 
 ---
 
+## Upgrade note: evidence payload volume ownership (ES-073)
+
+The backend runs as an unprivileged user (uid `10001`). Docker initializes an
+empty named volume from the image's directory at the mount point, so the image
+now **creates `/data/evidence-payloads` owned by that user** — otherwise the
+volume is created root-owned and evidence upload fails with
+`investigation.evidence_payload_store_unavailable` (a payload-store
+`PermissionError`) in every containerized deployment. The release rehearsal is
+what caught it.
+
+A volume created by an **earlier** image keeps its root ownership. Repair it once,
+without losing payloads:
+
+```bash
+docker run --rm -v <project>_evidence-payloads:/v alpine chown -R 10001:10001 /v
+```
+
+A fresh deployment needs nothing: the volume inherits the ownership from the
+image.
+
+---
+
 ## Environment targets
 
 | Environment | Compose invocation | Notes |
