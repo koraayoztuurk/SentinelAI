@@ -19,6 +19,7 @@ lives in the Architecture Testing constraint catalogue like every other AC.
 """
 
 import importlib
+import json
 import pkgutil
 import re
 from pathlib import Path
@@ -270,4 +271,33 @@ def test_configuration_example_documents_every_setting() -> None:
     assert not undocumented, (
         "Configuration fields the platform reads but `.env.example` never mentions "
         f"(configuration-management, AC-16): {undocumented}"
+    )
+
+
+def test_deployment_units_declare_the_same_platform_version() -> None:
+    """One platform, one version (release-management §4a, ADR-021 §1).
+
+    The units are not independently versionable — the frontend speaks exactly
+    one API contract and both are published from the same commit — so a
+    disagreement here is a release-identity defect, not a difference of opinion.
+    The third declaration, the release tag, is verified by CI: it is not in the
+    tree, so no test can read it.
+    """
+
+    backend_manifest = (_REPO_ROOT / "backend" / "pyproject.toml").read_text(
+        encoding="utf-8"
+    )
+    backend = re.search(r'^version = "([^"]+)"', backend_manifest, re.MULTILINE)
+    assert backend is not None, "backend/pyproject.toml declares no version"
+
+    frontend_manifest = json.loads(
+        (_REPO_ROOT / "frontend" / "package.json").read_text(encoding="utf-8")
+    )
+    declared = {
+        "backend/pyproject.toml": backend.group(1),
+        "frontend/package.json": frontend_manifest["version"],
+    }
+    assert len(set(declared.values())) == 1, (
+        "The deployment units declare different platform versions "
+        f"(ADR-021 §1): {declared}"
     )

@@ -179,6 +179,18 @@ For architectural concerns, please explain which architectural principle, respon
 
 Well-described Issues help maintain the quality and consistency of the project.
 
+**Security vulnerabilities are the exception: never open a public Issue for one.** Use GitHub's private vulnerability reporting instead — see [`SECURITY.md`](SECURITY.md), which also states what is in scope and what a reporter can expect.
+
+---
+
+## Licensing of Contributions
+
+SentinelAI is released under the **Apache License 2.0** ([`LICENSE`](LICENSE)).
+
+By submitting a contribution you agree that it is licensed under those same terms, including its patent grant, and that you have the right to submit it. Please do not contribute code you cannot license this way — third-party code with an incompatible licence cannot be accepted, however useful it is.
+
+Significant files you author may carry the standard Apache-2.0 header; the project does not require it and does not maintain a separate contributor list in source files. Attribution lives in the git history.
+
 ---
 
 ## Development Philosophy

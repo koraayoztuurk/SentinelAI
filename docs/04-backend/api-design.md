@@ -1,6 +1,6 @@
 ---
 title: SentinelAI API Design
-version: 1.8.0
+version: 1.9.0
 status: Accepted
 owner: SentinelAI Team
 last_updated: 2026-07-26
@@ -606,6 +606,14 @@ The API contract exists in one authoritative, machine-readable form: the publish
 
 This resolves the multiple-hand-written-copies risk (backend schemas, frontend DTOs, mocks) identified by the architecture audit (E-05).
 
+## The Contract Artifact Is the Compatibility Surface (ADR-021)
+
+The same artifact carries the platform's **compatibility promise**: what a release version commits to is defined against `docs/api/openapi.json` and nothing else (Release Management §4a). A breaking change to the artifact is a major release; an additive change is a minor one.
+
+Two surfaces described in this document are deliberately **outside** that promise, and both say so where they are defined: the **Planner Action Resource** (§ transitional contract status — no compatibility commitment) and the **operational endpoints** (liveness, readiness, metrics), which answer an orchestrator and a scraper rather than an API consumer and must stay free to evolve with operational needs. The Platform Status Resource is part of the business API and therefore inside the promise.
+
+Because the artifact is kept current by constraint, a compatibility-affecting change is visible in the same diff that makes it — the promise is inspectable rather than asserted.
+
 ---
 
 # 15. Future Evolution
@@ -677,3 +685,4 @@ Recorded per ADR-020 §3: each item below is deliberately open. It states what t
 | 1.6.0 | 2026-07-26 | Traffic protection and cacheability made explicit (§13): rate limits are evaluated per identity and per operation between authentication and authorization, the run surface carries its own limit, an over-limit request returns the standard error response with a retry indication, and the counters are protection state rather than request state (Stateless Requests preserved); anonymous flood protection assigned to the deployment edge. Cacheability derived from ownership scope (ADR-016) and the erasure lifecycle (ADR-017): the business API and the operational endpoints are non-storable, the cacheable surface is the immutable presentation assets — realized by ES-068 |
 | 1.7.0 | 2026-07-26 | Shared-knowledge **erasure** surfaces defined (§8: `DELETE /api/v1/memory/{id}`, `DELETE /api/v1/graph/entities/{id}`) — the person-linked right-to-be-forgotten path, gated by a granted capability (§6c, RFC-005/ADR-019) because destroying organizational knowledge is not governed by the promotion boundary that makes reading it open. **Platform Status Resource** added (`GET /api/v1/platform/status`): the platform reporting its own operational posture — the documented exception to Resource Ownership, since it owns no business state and delegates to no service; distinct from the operational health/metrics endpoints, and backed by the same readiness probes so the two cannot disagree. Realized by ES-070 |
 | 1.8.0 | 2026-07-26 | Version-history ordering corrected (the 1.7.0 row preceded 1.6.0), status Draft → **Accepted** (ADR-020 §2), and a Known Gaps section added (§3) stating the open API surface questions — pagination, the asynchronous run surface, the missing investigation list and investigation-scoped entity listing, and validation detail |
+| 1.9.0 | 2026-07-26 | §14a records that the committed contract artifact **is** the platform's compatibility surface (**ADR-021**, ES-072): a breaking change to it is a major release, an additive one a minor release, and the two surfaces outside the promise — the transitional Planner Action Resource and the operational endpoints — are named explicitly, while the Platform Status Resource is inside it |

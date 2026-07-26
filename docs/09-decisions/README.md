@@ -1,6 +1,6 @@
 ---
 title: Architecture Decision Records
-version: 1.1.0
+version: 1.2.0
 status: Accepted
 owner: SentinelAI Team
 last_updated: 2026-07-26
@@ -215,6 +215,7 @@ RFCs should never replace ADRs, and ADRs should never replace the RFC Process.
 | ADR-018 | Audit Lifecycle and Durable Sink |
 | ADR-019 | Shared-Knowledge Erasure Authorization |
 | ADR-020 | Architecture Documentation Lifecycle |
+| ADR-021 | Release Identity and Compatibility |
 
 This index is **complete by constraint**: every decision file in this directory
 appears here and every entry here resolves to a file (AC-16, ADR-020 §4).
@@ -251,3 +252,4 @@ Architectural consistency is preferred over short-term implementation convenienc
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial ADR governance README created |
 | 1.1.0 | 2026-07-26 | Front matter and version history introduced (the document governed decision status while declaring none of its own — the drift AC-16 now prevents); ADR-020 indexed and the index declared complete in both directions by constraint |
+| 1.2.0 | 2026-07-26 | ADR-021 (Release Identity and Compatibility) indexed — the first decision recorded without an RFC since ADR-014 established the threshold, and it states why in its own Status section |

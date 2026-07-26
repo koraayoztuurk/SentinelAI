@@ -1,6 +1,6 @@
 ---
 title: Security Architecture
-version: 1.1.0
+version: 1.2.0
 status: Accepted
 owner: SentinelAI Team
 last_updated: 2026-07-26
@@ -613,7 +613,7 @@ Recorded per ADR-020 §3: each item below is deliberately open. It states what t
 
 - **Traffic protection is rate limiting, not abuse detection.** Limits are per identity and per operation and their state is per instance; behavioural abuse detection and a shared limiter store are open (the latter pairs with multi-instance deployment).
 - **Transport security belongs to the deployment edge.** TLS termination, security headers and anonymous flood protection are realized by the edge configuration, not by the application; a deployment that omits the edge loses them.
-- **Vulnerability disclosure has no published policy.** The image pipeline scans and signs artifacts, but the project states no way to report a vulnerability in the platform itself — a release-governance obligation rather than a technical one.
+- **Vulnerability disclosure is published but unstaffed.** `SECURITY.md` (ES-072) states the coordinated-disclosure channel, what is in scope and what a reporter can expect. What it cannot state is a service level: the project has one maintainer, no on-call rotation and no security team, so response is best-effort — and saying so is part of the policy rather than an omission from it. Private reporting must also be **enabled on the hosting platform** for the channel to exist; that is a repository setting, not repository content.
 - **The identity boundary's production depth is bounded** by the open items in authentication-authorization.md (asymmetric verification, session continuity, capability administration).
 
 ---
@@ -624,3 +624,4 @@ Recorded per ADR-020 §3: each item below is deliberately open. It states what t
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Security Architecture specification created |
 | 1.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): abuse detection, the edge-owned transport boundary, the missing disclosure policy and the bounded identity depth stated as open |
+| 1.2.0 | 2026-07-26 | Coordinated vulnerability disclosure published (`SECURITY.md`, ES-072): the Known Gap becomes a stated channel with an explicit scope and an explicitly best-effort response — a single-maintainer project promising a service level it cannot keep would be worse than promising none |

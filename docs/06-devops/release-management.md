@@ -1,7 +1,7 @@
 ---
 title: Release Management
-version: 1.1.0
-status: Draft
+version: 1.2.0
+status: Accepted
 owner: SentinelAI Team
 last_updated: 2026-07-26
 ---
@@ -171,6 +171,41 @@ Controlled release progression reduces operational uncertainty while preserving 
 
 ---
 
+# 4a. Release Identity and Compatibility (ADR-021, Normative)
+
+A release must be identifiable, and what it promises must be stated. This section records the decision (ADR-021); the registry, tag scheme and verification commands remain technology specifics and live with the deployment infrastructure.
+
+## One Platform Version
+
+SentinelAI releases as a **single platform**, not as independently versioned deployment units. Every deployment unit declares the same version, and a release tag `vX.Y.Z` names it.
+
+The units are not independently versioned because they are not independently usable: the presentation unit speaks exactly one version of the API contract, and both units are built and published from the same commit by the same pipeline. Independent version lines would advertise an independence the Deployment Architecture does not provide.
+
+Agreement between the declared versions is mechanically verified (Architecture Testing, AC-16), so a manifest left behind is a failing check rather than an operational surprise.
+
+## The Compatibility Surface
+
+The committed API contract artifact (API Design §14a), kept current by constraint, **is** the surface a version promises. Compatibility is defined against that artifact and nothing else.
+
+Deliberately outside the promise:
+
+- the Planner Action Resource, already documented as transitional
+- the operational endpoints (liveness, readiness, metrics), which answer an orchestrator and a scraper rather than a client
+- the persistence schema and internal module structure
+- the content of AI-generated output
+
+A promise narrow enough to keep is worth more than a broad one that is quietly abandoned.
+
+## What a Version Change Promises
+
+- **MAJOR** — a change that can break a conforming consumer: a removed or renamed endpoint, field or error code; a narrowed input; a changed meaning for an existing field.
+- **MINOR** — new capability a conforming consumer can ignore: new endpoints, new optional fields, new output enum members.
+- **PATCH** — behaviour-preserving fixes.
+
+**Before the first major release the platform promises nothing** — that is what the leading zero means. Removal follows a two-step path: deprecation announced in a MINOR release, removal no earlier than the next MAJOR.
+
+---
+
 # 5. Release Stages
 
 Release Management recognizes multiple logical stages of operational progression.
@@ -246,6 +281,23 @@ Release stages represent increasing levels of operational confidence rather than
 Every release stage preserves the same architectural ownership, deployment boundaries and operational responsibilities while supporting progressively greater operational maturity.
 
 Release stages differ in operational maturity rather than architectural responsibility.
+
+---
+
+## 5a. Promotion Between Stages (ADR-021, Normative)
+
+Stages describe maturity; **promotion** is the act of moving a release from one to the next. Producing an artifact and deciding to run it are different responsibilities (§6), so promotion is explicit rather than a side effect of a successful build.
+
+Every promotion:
+
+- **targets an immutable artifact identity.** A release is promoted by digest, never by a moving tag: a tag can be re-pointed after it was verified, so a tag-following deployment cannot know what it is running. Tags remain a convenience for humans.
+- **verifies integrity before deployment, not only at production time.** The artifact's signature and its supply-chain attestations are checked at the moment of promotion. Verifying only where the artifact was built proves nothing about the bytes an environment later pulls.
+- **is explicitly authorized.** Promotion requires the approval of the release owner for the target environment. Authorization is a release responsibility, not a pipeline capability.
+- **leaves a record.** Who promoted which artifact identity to which environment, and when — the traceability §8 requires, independent of anyone's memory.
+
+A promotion that cannot verify its artifact does not proceed. Refusing to deploy an unverifiable artifact is the mechanism working, not an outage.
+
+Promotion carries no environment-specific behaviour: the same verified artifact identity progresses through environments, and only configuration differs (Configuration Management, Environment Architecture).
 
 ---
 
@@ -493,6 +545,16 @@ Release traceability should complement the architectural accountability establis
 
 ---
 
+## 8a. Release Record (ADR-021, Normative)
+
+Lifecycle traceability needs an artifact, not a practice. Every release carries a **human-readable record of what it contains**, kept in the repository beside the code it describes, so a consumer can learn what changed without reconstructing it from commit history.
+
+The record states, per version: the capabilities added, the changes that affect a consumer of the compatibility surface (§4a) — including deprecations and removals — and anything an operator must do when upgrading (configuration or migration obligations).
+
+The record is consumer-facing and deliberately distinct from the maintainer's engineering history, which carries decisions, trade-offs and technical debt. Two audiences, two artifacts: merging them makes the release record unreadable and the engineering record incomplete.
+
+---
+
 # 9. Extensibility
 
 The Release Management architecture is designed to evolve together with SentinelAI while preserving its architectural release model.
@@ -564,10 +626,10 @@ Release Management should continue to evolve together with the platform while pr
 
 Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
 
-- **A release has no identity.** The document defines release stages, ownership and readiness, but not what a version *is*: the deployment units carry unrelated version numbers, and no policy states what a version change promises.
-- **No compatibility policy exists.** The committed API contract (`docs/api/openapi.json`) is the platform's compatibility surface and is kept current by constraint (AC-15), but nothing states which changes to it are breaking, or what a major/minor/patch release commits to.
-- **Promotion is undefined.** CI produces signed, scanned, versioned images; the governed path by which a Candidate becomes an Operational release — who approves, what is verified before deployment, and how a release is recorded — is not specified.
-- **There is no human-readable release record** (a changelog): the git history and the maintainer's tracker are the only account of what a release contains.
+- **No environment is hosted, so promotion is exercised rather than operated.** The mechanism verifies an artifact and resolves it to an immutable identity, and the deployment it hands that identity to is a compose invocation on a machine somebody runs (Deployment Architecture). Approval is enforced by the hosting platform's environment protection, which is deployment configuration rather than repository content — a deployment that leaves it unconfigured has a mechanism without a gate.
+- **Rollback is deployment-level, not release-level.** Promoting an earlier digest restores earlier code; whether it restores earlier *behaviour* depends on schema migrations, which are forward-only (Database Architecture). A release-level rollback contract needs the backup architecture that data-lifecycle §6 also waits for.
+- **No release is signed as a release.** Images are signed and attested individually; the version itself — the claim "these two digests together are 1.0.0" — carries no signature of its own.
+- **The release record is written by hand.** Nothing derives it from the contract diff, so a compatibility-affecting change reaches the changelog through review rather than by construction; AC-15 makes the diff visible, not the prose about it.
 
 ---
 
@@ -577,3 +639,4 @@ Recorded per ADR-020 §3: each item below is deliberately open. It states what t
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial Release Management specification created |
 | 1.1.0 | 2026-07-26 | Known Gaps section added (ADR-020 §3). The document **stays Draft** by the promotion rule (§2): release identity, the compatibility policy and the promotion path are normative content this document is missing rather than deferring, and they are the subject of the next engineering specification |
+| 1.2.0 | 2026-07-26 | Release identity, compatibility and promotion decided (**ADR-021**, ES-072): §4a one platform version across every deployment unit (agreement verified by AC-16) with the committed API contract named as the compatibility surface and SemVer given a subject; §5a promotion as an explicit, authorized act on an immutable artifact identity, verified before deployment and recorded; §8a the human-readable release record. Status Draft → **Accepted** (ADR-020 §2): the content ES-071 recorded as missing is now present, and the Known Gaps section states what remains open |

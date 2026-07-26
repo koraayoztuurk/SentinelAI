@@ -1,0 +1,156 @@
+# Promotion (ES-072, ADR-021 §4 / release-management §5a).
+#
+# CI produces a *candidate*: an image that is scanned, described by an SBOM,
+# attested and signed. This workflow performs the separate, governed act of
+# promoting a candidate towards an environment — because producing an artifact
+# and deciding to run it are different responsibilities (release-management §6).
+#
+# It does four things and deliberately stops there:
+#   1. resolves the requested version to an immutable **digest** per unit,
+#   2. **verifies the signature and the supply-chain attestations** of those
+#      digests before anything is deployed (verifying only at build time proves
+#      nothing about the bytes an environment pulls later),
+#   3. emits a digest-pinned image pair the deployment consumes, and
+#   4. records who promoted which digests to which environment.
+#
+# It does **not** deploy: no environment is hosted (deployment-architecture
+# Known Gaps), and a workflow that pretended to would be theatre. The compose
+# overlays take BACKEND_IMAGE/FRONTEND_IMAGE, so the promotion record is
+# directly consumable by the environment that runs them.
+#
+# The approval gate is the GitHub Environment's protection rule (required
+# reviewers), which is deployment configuration rather than repository content:
+# an environment with no reviewer configured has a mechanism without a gate.
+
+name: Promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Candidate to promote: a release version (1.0.0), a branch tag (main) or sha-<full-sha>"
+        required: true
+        type: string
+      environment:
+        description: "Promotion target"
+        required: true
+        type: choice
+        options: [staging, production]
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  promote:
+    name: Promote ${{ inputs.version }} → ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    # The environment is the authorization boundary: its protection rules decide
+    # whether this job runs at all, and GitHub records the approver.
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to the registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: sigstore/cosign-installer@v3
+
+      # A tag is a moving reference; the digest is the release identity. Every
+      # step below works on the digest, never on the tag it came from.
+      - name: Resolve candidate digests
+        id: resolve
+        run: |
+          set -euo pipefail
+          owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          for unit in backend frontend; do
+            image="${REGISTRY}/${owner}/sentinelai-${unit}"
+            digest=$(docker buildx imagetools inspect "${image}:${{ inputs.version }}" \
+              --format '{{.Manifest.Digest}}')
+            echo "${unit}_image=${image}" >> "$GITHUB_OUTPUT"
+            echo "${unit}_digest=${digest}" >> "$GITHUB_OUTPUT"
+            echo "Resolved ${unit}: ${image}@${digest}"
+          done
+
+      # Keyless verification against the *publishing workflow's* OIDC identity:
+      # the signature proves which pipeline produced these exact bytes, and no
+      # signing key exists that could be stolen to forge it.
+      - name: Verify signatures
+        run: |
+          set -euo pipefail
+          verify() {
+            cosign verify "$1@$2" \
+              --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\.github/workflows/ci\.yml@.*" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              > /dev/null
+            echo "signature ok: $1@$2"
+          }
+          verify "${{ steps.resolve.outputs.backend_image }}" "${{ steps.resolve.outputs.backend_digest }}"
+          verify "${{ steps.resolve.outputs.frontend_image }}" "${{ steps.resolve.outputs.frontend_digest }}"
+
+      # An unsigned-but-attested image and a signed-but-unattested one are both
+      # incomplete supply chains, so both are checked before promotion.
+      - name: Verify SBOM and provenance attestations
+        run: |
+          set -euo pipefail
+          check() {
+            for attestation in SBOM Provenance; do
+              value=$(docker buildx imagetools inspect "$1@$2" \
+                --format "{{json .${attestation}}}")
+              if [ -z "$value" ] || [ "$value" = "null" ]; then
+                echo "::error::$1@$2 carries no ${attestation} attestation — not promotable"
+                exit 1
+              fi
+              echo "${attestation} present: $1@$2"
+            done
+          }
+          check "${{ steps.resolve.outputs.backend_image }}" "${{ steps.resolve.outputs.backend_digest }}"
+          check "${{ steps.resolve.outputs.frontend_image }}" "${{ steps.resolve.outputs.frontend_digest }}"
+
+      # What the environment actually consumes: the compose overlays read these
+      # two variables, so a promoted release is a file, not an instruction.
+      - name: Emit the promotion record
+        run: |
+          set -euo pipefail
+          # The overlay file for "production" is docker-compose.prod.yml; the
+          # environment name and the file name are not the same vocabulary.
+          overlay="${{ inputs.environment }}"
+          [ "$overlay" = "production" ] && overlay="prod"
+          {
+            echo "# SentinelAI promotion record"
+            echo "# version=${{ inputs.version }} environment=${{ inputs.environment }}"
+            echo "# promoted_by=${{ github.actor }} run=${{ github.run_id }} at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "BACKEND_IMAGE=${{ steps.resolve.outputs.backend_image }}@${{ steps.resolve.outputs.backend_digest }}"
+            echo "FRONTEND_IMAGE=${{ steps.resolve.outputs.frontend_image }}@${{ steps.resolve.outputs.frontend_digest }}"
+          } > promotion.env
+          cat promotion.env
+
+          {
+            echo "## Promoted \`${{ inputs.version }}\` → **${{ inputs.environment }}**"
+            echo ""
+            echo "Signature and attestations verified before promotion; the pair below is digest-pinned."
+            echo ""
+            echo '```env'
+            cat promotion.env
+            echo '```'
+            echo ""
+            echo "Run it with the environment's overlay:"
+            echo ""
+            echo '```bash'
+            echo "docker compose --env-file promotion.env -f docker-compose.yml \\"
+            echo "  -f docker-compose.${overlay}.yml --profile data up -d"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish the promotion record
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-${{ inputs.environment }}-${{ inputs.version }}
+          path: promotion.env

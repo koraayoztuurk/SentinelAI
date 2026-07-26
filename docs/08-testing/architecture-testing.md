@@ -1,6 +1,6 @@
 ---
 title: Architecture Testing
-version: 1.4.0
+version: 1.5.0
 status: Accepted
 owner: SentinelAI Team
 last_updated: 2026-07-26
@@ -299,7 +299,7 @@ Constraints are stated technology-independently. How each constraint is verified
 
 | ID | Constraint | Source | Verification |
 |----|------------|--------|--------------|
-| AC-16 | Governance artifacts stay consistent and complete: every architecture document declares valid front matter with a status from the defined vocabulary and agrees with its own version history; the decision and proposal indexes are complete in both directions; every decision or proposal referenced by a document exists; every constraint recorded as *Enforced* names a verification that exists; and every configuration field the platform reads is documented in the configuration example. | ADR-020, API Design §14a (pattern) | Enforced (`backend/tests/governance`) |
+| AC-16 | Governance artifacts stay consistent and complete: every architecture document declares valid front matter with a status from the defined vocabulary and agrees with its own version history; the decision and proposal indexes are complete in both directions; every decision or proposal referenced by a document exists; every constraint recorded as *Enforced* names a verification that exists; every configuration field the platform reads is documented in the configuration example; and **every deployment unit declares the same platform version** (Release Management §4a). | ADR-020, ADR-021, API Design §14a (pattern) | Enforced (`backend/tests/governance`) |
 
 AC-16 verifies that governance artifacts are **consistent and complete**, never that they are *correct*: accuracy, completeness and clarity of prose remain review responsibilities (ADR-020 §5). The constraint exists so that drift cannot happen silently — not to simulate review.
 
@@ -641,3 +641,4 @@ Architecture Testing should continue to evolve together with the platform while 
 | 1.2.0 | 2026-07-03 | AC-14 declared (no dual-write; outbox-only propagation, ADR-012) and AC-15 enforced (API contract artifact freshness, API Design §14a) |
 | 1.3.0 | 2026-07-26 | AC-14 moved from *declared* to **enforced**: the no-dual-write constraint is now mechanically verified per service operation, with the sanctioned outbox projections classified explicitly rather than excluded silently (ES-069) |
 | 1.4.0 | 2026-07-26 | **AC-16** declared and enforced (governance constraints): governance artifacts — document front matter, version histories, the ADR/RFC indexes, decision references, the catalogue's own *Enforced* claims and the configuration example — are machine-checked, generalizing the AC-15 pattern (ADR-020/RFC-006, ES-071); AC-11/12/13 keep their *Declared* status with the reason each resists mechanical verification stated |
+| 1.5.0 | 2026-07-26 | AC-16 coverage extended to **release identity** (ES-072): the deployment units must declare the same platform version (Release Management §4a / ADR-021). Recorded as coverage of the existing constraint rather than a new one — it is the same rule (derivable governance metadata stays consistent) applied to one more artifact, and a separate AC would imply a distinct architectural rule where none exists |

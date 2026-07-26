@@ -81,6 +81,7 @@
 | ES-069 | Verifiable operation: RFC-004 + ADR-018 audit lifecycle + hash-chained durable audit sink + AC-14 mechanical enforcement + readiness gating + secret startup fail-fast | ✅ Completed |
 | ES-070 | Erasure operationalization: retention sweep + crypto-shred payload store + RFC-005/ADR-019 capability-gated shared-knowledge erasure + platform operational surface (Milestone G closed) | ✅ Completed |
 | ES-071 | Governance conformance: RFC-006/ADR-020 architecture documentation lifecycle + public per-document known gaps + AC-16 machine-checked governance freshness (Milestone H opener) | ✅ Completed |
+| ES-072 | Release identity & promotion: ADR-021 one-platform version + compatibility surface + Apache-2.0 licence + coordinated disclosure policy + changelog + verified digest-pinned promotion workflow | ✅ Completed |
 
 ---
 
@@ -4424,3 +4425,94 @@ because both are *verification* lessons rather than defects in the delivered beh
   `setup-node@v4`, `upload-artifact@v4`) are **warnings, not failures** — GitHub already
   forces those actions onto Node 24. Bumping the pins is CI hygiene, deliberately left as the
   owner's call rather than folded into a red-build fix.
+
+
+## ES-072 (Milestone H, part 2)
+
+- **The platform could say whether it was ready, but not what it was.** Three version numbers
+  existed and none agreed: backend `0.1.0`, frontend `0.0.0`, image tags from git tags that
+  nothing checked against either. No statement of what a version promises, which surface the
+  promise covers, or how a built artifact becomes a running release — and no licence at all, the
+  last non-technical release blocker.
+- **Recorded as ADR-021, deliberately without an RFC — and the ADR says why.** ADR-014 §1 scopes
+  the RFC requirement to superseding/amending an ADR, changing a boundary or enforced constraint,
+  changing domain semantics, or adding a service/persistence category. Release versioning does
+  none of those. This is the **first decision to use ADR-014's "proceed directly as an ADR" path
+  since the threshold was established**, so the Status section states the reasoning rather than
+  leaving the absence of an RFC to look like an oversight.
+- **One platform version, because the units are not independently usable.** The frontend speaks
+  exactly one API contract and both images are published from one commit by one pipeline;
+  separate version lines would advertise an independence the deployment architecture does not
+  provide. Cost accepted and written down: a frontend-only fix still ships a backend version bump.
+- **The compatibility surface is named, which is what makes the promise checkable.** `openapi.json`
+  (kept current by AC-15) *is* the promise, so a breaking change is visible in the same diff that
+  makes it. Explicitly outside it: the transitional Planner Action Resource, the operational
+  endpoints (they answer an orchestrator, not a client), the schema, internals, and AI output
+  content. **Platform Status is inside** — it is business API. A promise narrow enough to keep
+  beats a broad one abandoned at the first inconvenience; `0.x` promises nothing, which is what
+  the leading zero is for.
+- **Promotion is an act, not a build outcome.** CI makes a *candidate*; `promote.yml` (manual
+  dispatch, environment-gated) resolves the requested version to a **digest** per unit, verifies
+  the cosign signature **and** the presence of SBOM + provenance attestations *before* deployment,
+  then emits a digest-pinned `BACKEND_IMAGE`/`FRONTEND_IMAGE` pair — the two variables the
+  overlays already read — plus a record of who promoted what, where. Verifying only at build time
+  proves nothing about the bytes an environment pulls later, and a verified *tag* can be
+  re-pointed a minute later; that is the whole argument for digests.
+- **The workflow refuses to pretend it deploys.** No environment is hosted, so it stops at
+  verified + pinned + recorded and says so. Two things are deployment configuration rather than
+  repository content and are therefore the **owner's step**: environment protection with a
+  required reviewer (without it the mechanism has no gate) and enabling private vulnerability
+  reporting (without it `SECURITY.md` advertises a channel that does not exist). Both are recorded
+  in `infrastructure/README.md` as a table rather than buried in prose.
+- **A vocabulary trap caught in review**: the GitHub environment is `production` but the overlay
+  file is `docker-compose.prod.yml`. The promotion record now maps the two instead of emitting a
+  command that would fail exactly once, in production, at the worst moment.
+- **Licence: Apache-2.0** (owner's decision), canonical text downloaded rather than transcribed
+  (sha256 `cfc7749b…`, the published digest of `LICENSE-2.0.txt`) with the appendix copyright
+  filled in. CONTRIBUTING gained an inbound-licensing statement and the "never open a public issue
+  for a vulnerability" exception; README's placeholder badge and "to be determined" section are
+  gone.
+- **`SECURITY.md` promises what a one-maintainer project can keep**: private reporting as the only
+  channel, an explicit scope with *reasons* rather than dismissals (dependency CVEs go upstream —
+  unless exploitable through the platform in a way upstream does not cover; the dev auth provider
+  in production is a deployment error; a documented Known Gap being *worse than documented* is in
+  scope), and response that is best-effort by design — a service level nobody can honour would be
+  worse than none.
+- **AC-16 coverage extended rather than a new AC invented.** Version agreement between the units
+  is the same rule (derivable governance metadata stays consistent) applied to one more artifact;
+  a separate AC-17 would imply a distinct architectural rule where none exists — and would have
+  put a version check across the ADR-014 threshold for no gain. The **third** declaration, the
+  release tag, cannot be read from the tree, so CI owns it: a new tag-only `release-identity` job
+  fails a `vX.Y.Z` push whose manifests disagree.
+- **Tests (+1 backend: 690 default; frontend 89 unchanged)**: the deployment units declare the
+  same platform version. Deliberately one test — the remaining release properties live in CI (the
+  tag) or in a workflow that needs a registry (promotion), and a test double for a registry would
+  verify the double.
+- **Verification**: `ruff` clean; `mypy app` strict clean (200 files); backend default **690
+  passed**; frontend 4-gate green (lint/typecheck/**89 tests**/build) — the version bump touches
+  `package.json` **and its lockfile root**, or `npm ci` would drift; both workflow files parse as
+  YAML. `openapi.json` unchanged (no REST surface touched — AC-15 unaffected). Docs:
+  **ADR-021** (+ index, ADR README v1.2.0), release-management **v1.2.0 → Accepted** (§4a identity
+  and compatibility, §5a promotion, §8a release record — the document ES-071 deliberately left
+  `Draft` is now promoted for the stated reason), api-design v1.9.0 (§14a: the artifact *is* the
+  compatibility surface), security-architecture v1.2.0 (disclosure Known Gap resolved),
+  architecture-testing v1.5.0 (AC-16 coverage), roadmap v1.11.0 (Delivery Record row).
+- **TD / deferred**: **promotion is exercised, not operated** — no hosted environment, and the
+  approval gate lives in repository settings. **Rollback is deployment-level**: an earlier digest
+  restores earlier code, not earlier data — migrations are forward-only, so a release-level
+  rollback contract waits for the backup architecture (data-lifecycle §6). **No release-level
+  signature**: images are signed individually; the claim "these two digests together are 1.0.0"
+  carries none. **The changelog is hand-written** — nothing derives it from the contract diff, so
+  AC-15 makes the change visible while the prose about it still depends on review. **No runtime
+  build revision**: the platform reports its version, and the commit identity lives only in the
+  `sha-<full-sha>` image tag. Milestone H closes with **ES-073** (readiness gate evaluated with
+  evidence, release rehearsal from published images, final bookkeeping). Jira and commits are the
+  owner's step.
+- **Promotion verified against the real registry, not only as YAML.** Using the image the last
+  green CI run published: digest resolution returned `sha256:79c57a23…`, and the two attestation
+  format strings the workflow relies on returned real content at that digest (**SBOM 3.18 MB
+  SPDX**, **provenance 43 KB SLSA**) — a format-string typo is the likeliest bug in that workflow
+  and it is now excluded empirically. The cosign **signature artifact** is present where cosign
+  looks for it (`…:sha256-79c57a23….sig`). Not verified: `cosign verify` itself and the
+  environment-approval gate — both need the workflow to actually run (cosign is not installed
+  locally, and the gate is a repository setting). Recorded as a **verification gap**, not as done.

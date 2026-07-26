@@ -207,6 +207,29 @@ jobs:
       - name: Build
         run: npm run build
 
+  release-identity:
+    name: Release identity (tag matches the units)
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # ADR-021 §1: the platform has one version and every deployment unit
+      # declares it. The suite verifies unit-to-unit agreement (AC-16); only CI
+      # can verify the third declaration, because the tag is not in the tree.
+      # A release tag that disagrees with the manifests would publish images
+      # whose name contradicts what they report at runtime.
+      - name: Assert the tag matches every declared version
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          backend=$(grep -m1 '^version = ' backend/pyproject.toml | cut -d'"' -f2)
+          frontend=$(node -p "require('./frontend/package.json').version")
+          echo "tag=${tag} backend=${backend} frontend=${frontend}"
+          if [ "$tag" != "$backend" ] || [ "$tag" != "$frontend" ]; then
+            echo "::error::release tag ${GITHUB_REF_NAME} disagrees with the declared versions (backend ${backend}, frontend ${frontend}) — see ADR-021 §1"
+            exit 1
+          fi
+
   compose:
     name: Deployment overlays (validate)
     runs-on: ubuntu-latest

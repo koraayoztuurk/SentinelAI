@@ -8,7 +8,7 @@ Bilgi Grafiği • Çoklu-Ajan AI • RAG • Uzun Süreli Hafıza
 ![Architecture](https://img.shields.io/badge/Mimari-First-2563eb)
 ![Documentation](https://img.shields.io/badge/Dok%C3%BCmantasyon-v1.0-success)
 ![Status](https://img.shields.io/badge/Durum-Aktif%20Geli%C5%9Ftirme-orange)
-![License](https://img.shields.io/badge/Lisans-Belirlenecek-lightgrey)
+![License](https://img.shields.io/badge/Lisans-Apache%202.0-blue)
 
 ---
 
@@ -231,8 +231,9 @@ SentinelAI, **Mimari ve Temel** aşamasından **canlı implementasyon** aşamas�
 | Milestone G — Doğrulanabilir işletim: RFC-004/ADR-018 hash-zincirli dayanıklı audit sink + AC-14 mekanik enforcement + readiness gating + secret startup fail-fast (ES-069) | ✅ Tamamlandı |
 | Milestone G — Erasure operasyonelleştirme: retention sweep + crypto-shred payload store + RFC-005/ADR-019 capability-korumalı paylaşılan-bilgi erasure + platform operasyon yüzeyi ve kapanış (ES-070) | ✅ Tamamlandı |
 | Milestone H — Yönetişim uyumu: RFC-006/ADR-020 doküman yaşam döngüsü + her dokümanın kendi açık boşluklarını beyan etmesi + AC-16 ile makine-denetimli yönetişim tazeliği (ES-071) | ✅ Tamamlandı |
+| Milestone H — Sürüm kimliği & promotion: ADR-021 tek-platform sürümü + uyumluluk yüzeyi + Apache-2.0 lisansı + koordineli açıklama politikası + changelog + doğrulanmış digest-pinli promotion akışı (ES-072) | ✅ Tamamlandı |
 
-Platformun temel uçtan uca iddiası — önerilen bir AI kararının yürütülmesi, kalıcı olarak izlenmesi ve tarayıcıda mock'suz görünmesi — artık canlı olarak kanıtlanmıştır. **Milestone A–G kapatılmıştır:** Bilgi Katmanı (RAG retrieval), çoklu-ajan/karar katmanı (Decision Engine + Validation/Graph Analysis/Threat Intelligence ajanları), kanıt yükleme hattı (içerik-adresli payload store), production kimlik (JWT), çok-kiracılık (tenant izolasyonu), veri yaşam sonu (erasure/tombstoning) ve **production sertleştirme** — her hata kenarında dayanıklılık, hız sınırlama ve imzalı/taranmış sürümlü imaj hattı, kurcalamaya karşı kanıtlanabilir audit kaydı, otomatik retention uygulaması ve platformun kendi operasyonel duruşunu gösteren yüzey — canlı olarak teslim edilmiştir. Release öncesi kalan tek milestone: **H** (yönetişim/sürüm operasyonları + lisans) — **açıldı ve ilk adımı teslim edildi (ES-071)**: mimari dokümantasyon artık kendi durumunu bildiriyor (ADR-020 doküman yaşam döngüsü; her doküman ya gerçeklenmiş ya da kendi içinde sınırlanmış olduğunda `Accepted`), bilinçli olarak açık bırakılan sorular ilgili dokümanın **Known Gaps** bölümünde kamuya açık duruyor ve yönetişim tazeliği artık AC-16 ile makine tarafından denetleniyor. Sürüm kimliği/uyumluluk politikası, lisans ve yönetilen promotion (ES-072) ile release hazırlık kapısı + prova (ES-073) kaldı. Çok-instance yatay ölçekleme (projektör/sweep leader election, paylaşımlı hız-sınırı durumu) bilinçli olarak release sonrasına bırakılmıştır.
+Platformun temel uçtan uca iddiası — önerilen bir AI kararının yürütülmesi, kalıcı olarak izlenmesi ve tarayıcıda mock'suz görünmesi — artık canlı olarak kanıtlanmıştır. **Milestone A–G kapatılmıştır:** Bilgi Katmanı (RAG retrieval), çoklu-ajan/karar katmanı (Decision Engine + Validation/Graph Analysis/Threat Intelligence ajanları), kanıt yükleme hattı (içerik-adresli payload store), production kimlik (JWT), çok-kiracılık (tenant izolasyonu), veri yaşam sonu (erasure/tombstoning) ve **production sertleştirme** — her hata kenarında dayanıklılık, hız sınırlama ve imzalı/taranmış sürümlü imaj hattı, kurcalamaya karşı kanıtlanabilir audit kaydı, otomatik retention uygulaması ve platformun kendi operasyonel duruşunu gösteren yüzey — canlı olarak teslim edilmiştir. Release öncesi kalan tek milestone: **H** (yönetişim/sürüm operasyonları + lisans) — **açıldı ve ilk adımı teslim edildi (ES-071)**: mimari dokümantasyon artık kendi durumunu bildiriyor (ADR-020 doküman yaşam döngüsü; her doküman ya gerçeklenmiş ya da kendi içinde sınırlanmış olduğunda `Accepted`), bilinçli olarak açık bırakılan sorular ilgili dokümanın **Known Gaps** bölümünde kamuya açık duruyor ve yönetişim tazeliği artık AC-16 ile makine tarafından denetleniyor. **ES-072** ile sürüm kimliği de yerine oturdu: platform tek sürüm olarak yayımlanıyor (ADR-021), uyumluluk yüzeyi commit'lenen API sözleşmesi olarak adlandırıldı, proje **Apache-2.0** ile lisanslandı, koordineli açıklama politikası (`SECURITY.md`) ve changelog yayımlandı; promotion artık imza + SBOM/provenance doğrulaması yapıp **digest'e sabitlenmiş** bir imaj çifti üreten, onaya bağlı ve kayıt bırakan ayrı bir adım. Kalan tek adım: release hazırlık kapısının delille değerlendirilmesi ve yayınlanan imajlarla prova (ES-073). Çok-instance yatay ölçekleme (projektör/sweep leader election, paylaşımlı hız-sınırı durumu) bilinçli olarak release sonrasına bırakılmıştır.
 
 ### Yol Haritası
 
@@ -277,9 +278,17 @@ Sertifika sağlama, imza doğrulama, imaj etiketleme şeması ve ortam hedefleri
 
 SentinelAI, **Architecture First** iş akışıyla geliştirilmektedir. Katkıda bulunmadan önce `docs/` dizinindeki mimari dokümantasyona aşina olunması önerilir. Mimari değişiklikler; evrim önerisi için **RFC**, kabul edilen kararların kaydı için **ADR** yönetişim modelini takip etmelidir.
 
+### Güvenlik
+
+Güvenlik açıklarını **herkese açık issue olarak değil**, GitHub'ın özel bildirim akışıyla iletin (Security → Report a vulnerability). Kapsam, beklenen yanıt ve yayımlanan imajların imza doğrulaması: [`SECURITY.md`](SECURITY.md).
+
+### Sürümleme
+
+Platform **tek sürüm** olarak yayımlanır: tüm dağıtım birimleri aynı sürümü beyan eder ve `vX.Y.Z` etiketi o sürümü adlandırır (ADR-021). Uyumluluk yüzeyi, commit'lenen API sözleşmesi `docs/api/openapi.json`'dır; **`0.x` hiçbir uyumluluk taahhüdü vermez** — taahhüt 1.0.0 ile başlar. Sürüm içerikleri: [`CHANGELOG.md`](CHANGELOG.md).
+
 ### Lisans
 
-Proje lisansı, ilk kamuya açık sürümden önce belirlenecektir.
+SentinelAI, **Apache License 2.0** altında yayımlanır — tam metin: [`LICENSE`](LICENSE). Apache-2.0; atıf ve değişiklik bildirimi yükümlülüğüyle birlikte açık bir patent hibesi taşıdığı için güvenlik/altyapı araçlarının olağan tercihidir.
 
 </details>
 

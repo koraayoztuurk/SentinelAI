@@ -60,6 +60,43 @@ cosign verify ghcr.io/<owner>/sentinelai-backend:<tag> \
 
 ---
 
+## Promotion (ES-072, ADR-021)
+
+CI publishes a **candidate**. Deciding to run one is a separate, authorized act —
+`.github/workflows/promote.yml` (manual dispatch: version + target environment).
+
+The workflow resolves the requested version to a **digest** per unit, verifies
+the cosign signature and the presence of the SBOM and provenance attestations
+**before** anything is deployed, and emits a digest-pinned pair:
+
+```env
+BACKEND_IMAGE=ghcr.io/<owner>/sentinelai-backend@sha256:<digest>
+FRONTEND_IMAGE=ghcr.io/<owner>/sentinelai-frontend@sha256:<digest>
+```
+
+That file (`promotion.env`, published as a run artifact) is what an environment
+consumes — the overlays already read those two variables:
+
+```bash
+docker compose --env-file promotion.env -f docker-compose.yml \
+  -f docker-compose.staging.yml --profile data up -d
+```
+
+Deployments follow **digests, not tags**: a tag can be re-pointed after it was
+verified, so a tag-following deployment cannot know what it is running.
+
+The workflow **stops at the verified, pinned, recorded pair** — it does not
+deploy, because no environment is hosted. Two things are deployment
+configuration rather than repository content, and without them the mechanism has
+no gate:
+
+| Setting | Where | Why it matters |
+|---|---|---|
+| Environment protection with a required reviewer, for `staging` and `production` | repository → Settings → Environments | This is the authorization step (release-management §5a). An environment with no reviewer promotes without approval. |
+| Private vulnerability reporting | repository → Settings → Security | The channel `SECURITY.md` publishes only exists once it is enabled. |
+
+---
+
 ## Environment targets
 
 | Environment | Compose invocation | Notes |
