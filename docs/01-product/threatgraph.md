@@ -1,9 +1,9 @@
 ---
 title: SentinelAI ThreatGraph
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-26
 ---
 
 # SentinelAI ThreatGraph
@@ -771,8 +771,18 @@ Its primary objective is not automation alone, but trustworthy investigation sup
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **ThreatGraph is not implemented.** The platform delivers the Knowledge Graph (Neo4j entities and relationships, graph-service.md) and graph-based enrichment through the Graph Analysis Agent; the investigation-oriented ThreatGraph utilization layer described here has no runtime realization. ADR-007 remains Accepted and the concept intentionally awaits the reasoning capabilities that consume it (attack-path analysis, richer graph analytics) — those capabilities are specified before it is built, not the other way round.
+- **Attack-path and multi-hop traversal semantics** are undefined beyond the neighbourhood the Graph Analysis Agent reads today. Defining them is an ADR-level decision (traversal ownership, bounds, cost) rather than a documentation gap.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial ThreatGraph architecture document created |
+| 1.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the document describes a capability the platform has deliberately not built, and now says so |

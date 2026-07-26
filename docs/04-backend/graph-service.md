@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Graph Service
-version: 1.1.0
-status: Draft
+version: 1.3.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Graph Service
@@ -452,6 +452,16 @@ However, the service responsibilities defined in this document should remain sta
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **The canonical relationship/entity-type vocabulary is not write-validated** (§11a): the service owns the vocabulary, but a write using an unknown type is not rejected and there is no versioned migration step for vocabulary changes. The three deferral conditions recorded in §11a still hold.
+- **Entity resolution is identifier equality**, with no merge path and no deprecation state; semantic-duplicate rejection is not performed.
+- **Traversal is a bounded neighbourhood**: shortest-path/attack-path traversal and graph statistics are unimplemented (see threatgraph.md).
+
+---
+
 # Version History
 
 | Version | Date | Description |
@@ -459,3 +469,4 @@ However, the service responsibilities defined in this document should remain sta
 | 1.0.0 | 2026-06-26 | Initial Graph Service specification created |
 | 1.1.0 | 2026-07-03 | Schema evolution defined (§11a): versioned, idempotent graph migrations and Graph Service ownership of the canonical relationship/entity-type vocabulary (audit finding E-03) |
 | 1.2.0 | 2026-07-23 | Entity erasure path added (data-lifecycle.md §2, ADR-017): the Graph Service owns the person-linked end-of-life path — erasure redacts an entity's identifying payload (display name, aliases, attributes) while the node keeps its stable identifier, so incident relationships still resolve to an explicit erased node (§8a); relationships carry only structural references and need no redaction. Person-linkage is **never inferred from data content** — the caller names the entity by identifier (mapping obligations to data is a deployment/compliance concern). Not cascaded by investigation erasure: the Knowledge Graph is a shared knowledge layer (§6a) and entities are investigation-independent (Domain Rule 8) |
+| 1.3.0 | 2026-07-26 | Front matter corrected to match the document's own history (it had remained at 1.1.0 since 2026-07-23 while the history reached 1.2.0), status Draft → **Accepted** (ADR-020 §2), and a Known Gaps section added (§3) covering vocabulary validation, entity resolution and traversal depth |

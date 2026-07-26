@@ -9,6 +9,7 @@ are introduced.
 from sqlalchemy import MetaData
 
 from app.infrastructure.persistence.postgres import base
+from app.infrastructure.persistence.postgres.audit import orm as audit_orm
 from app.infrastructure.persistence.postgres.investigation import (
     orm as investigation_orm,
 )
@@ -19,6 +20,7 @@ from app.infrastructure.persistence.postgres.memory import (
 
 __all__ = [
     "metadata",
+    "audit_orm",
     "investigation_orm",
     "memory_orm",
     "memory_outbox_orm",

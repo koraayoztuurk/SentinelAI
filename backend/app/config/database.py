@@ -35,6 +35,20 @@ class PostgresSettings(BaseSettings):
     user: str = "sentinelai"
     password: SecretStr = SecretStr("change_me")
 
+    # Connection-pool tuning (ES-067, closing the ES-040 "defaults only" debt).
+    # SQLAlchemy's defaults (pool 5 / overflow 10) are sized for a single
+    # modest process; the request path plus two background projectors share
+    # this pool, so the values are made explicit and deployment-tunable rather
+    # than implicit. ``pool_recycle`` pre-empts connections dropped by an idle
+    # timeout on the server or a network middlebox — ``pool_pre_ping`` (already
+    # on) then has less to catch.
+    pool_size: int = 5
+    pool_max_overflow: int = 10
+    # Seconds to wait for a free connection before failing rather than hanging.
+    pool_timeout_seconds: float = 30.0
+    # Seconds before a pooled connection is discarded and reopened.
+    pool_recycle_seconds: int = 1800
+
     @property
     def dsn(self) -> str:
         """Return the async SQLAlchemy DSN for this PostgreSQL configuration."""
@@ -135,6 +149,13 @@ class EvidencePayloadSettings(BaseSettings):
     (relative paths resolve against the process working directory — the dev
     default; deployments set an absolute path onto a mounted volume).
     ``max_bytes`` bounds a single uploaded payload at the API boundary.
+
+    ``crypto_shred`` (ES-070, ADR-015 §6 / ADR-017 §6) selects the production
+    erasure strategy: payloads are stored encrypted and erasure destroys the
+    key, so bytes surviving in an immutable tier or a backup are unrecoverable.
+    Off by default — the dev store deletes files, which is honest locally — and
+    the key material then lives under ``<root>/keys``, a directory a deployment
+    must keep **out of its backups** for shredding to mean anything.
     """
 
     model_config = SettingsConfigDict(
@@ -147,6 +168,7 @@ class EvidencePayloadSettings(BaseSettings):
 
     root: str = "var/evidence-payloads"
     max_bytes: int = 10 * 1024 * 1024
+    crypto_shred: bool = False
 
 
 @lru_cache

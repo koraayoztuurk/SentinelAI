@@ -12,23 +12,28 @@ observable for the next cycle). A missing embedding key stops the runner cleanly
 without breaking startup (memory writes still work; embeddings simply wait).
 Cancelled on shutdown. Not started when disabled by settings (tests drive the
 projector directly).
+
+Per-record resilience is the projector's own (ES-067): a failed record backs
+off and is eventually dead-lettered rather than retried every poll interval.
+This runner owns the *observability* half of that — the application layer
+returns what each cycle did and the composition root records it, so the layers
+stay clean (services never import the metrics registry).
 """
 
 import asyncio
 import logging
-from pathlib import Path
 
 from app.application.investigation import EvidencePayloadErasureProjector
-from app.application.memory.projector import MemoryEmbeddingProjector
+from app.application.memory.projector import (
+    MemoryEmbeddingProjector,
+    ProjectionRetryPolicy,
+)
 from app.application.secrets import SecretNotFoundError
 from app.config.ai import get_gemini_embedding_settings
-from app.config.database import get_evidence_payload_settings
 from app.config.settings import Settings
+from app.dependencies.payloads import build_payload_store
 from app.infrastructure.ai.gemini_embedding import GeminiEmbeddingProvider
 from app.infrastructure.ai.memory_embedding import EmbeddingMemoryAdapter
-from app.infrastructure.objectstore.filesystem import (
-    FilesystemEvidencePayloadStore,
-)
 from app.infrastructure.persistence.postgres.investigation.repositories import (
     PostgresEvidenceRepository,
 )
@@ -44,6 +49,7 @@ from app.infrastructure.persistence.qdrant.memory_vector_store import (
 )
 from app.infrastructure.persistence.registry import PersistenceRegistry
 from app.infrastructure.secrets import EnvironmentSecretProvider
+from app.observability.metrics import metrics
 
 logger = logging.getLogger(__name__)
 
@@ -76,16 +82,19 @@ def start_erasure_projector(
 async def _run_erasure(
     registry: PersistenceRegistry, settings: Settings
 ) -> None:
-    payloads = FilesystemEvidencePayloadStore(
-        Path(get_evidence_payload_settings().root)
-    )
+    # The same store the request path writes through, so what shreds a payload
+    # matches what stored it (ES-070).
+    payloads = build_payload_store()
     while True:
         try:
             async with session_scope(registry.session_factory) as session:
                 projector = EvidencePayloadErasureProjector(
                     PostgresEvidenceRepository(session), payloads
                 )
-                await projector.project_pending()
+                outcome = await projector.project_pending()
+            # Erasure never dead-letters; a deferred count that stays above
+            # zero is the signal that erasure is stuck (ES-067).
+            metrics.record_deferred_erasures(outcome.deferred)
         except Exception as exc:  # noqa: BLE001 - best-effort background loop
             # Pending erasures keep their address and are retried next cycle;
             # CancelledError is a BaseException, so shutdown is not swallowed.
@@ -109,6 +118,11 @@ async def _run(registry: PersistenceRegistry, settings: Settings) -> None:
 
     vector_store = QdrantMemoryVectorStore(registry.qdrant_client)
     collection_ready = False
+    retry_policy = ProjectionRetryPolicy(
+        max_attempts=settings.projection_max_attempts,
+        backoff_base_seconds=settings.projection_backoff_base_seconds,
+        backoff_max_seconds=settings.projection_backoff_max_seconds,
+    )
 
     while True:
         try:
@@ -121,8 +135,12 @@ async def _run(registry: PersistenceRegistry, settings: Settings) -> None:
                     PostgresMemoryRepository(session),
                     embedder,
                     vector_store,
+                    retry_policy,
                 )
-                await projector.project_pending()
+                outcome = await projector.project_pending()
+            metrics.record_dead_letters(
+                "memory_embedding", outcome.dead_lettered
+            )
         except Exception as exc:  # noqa: BLE001 - best-effort background loop
             # Any store/provider outage is logged and retried next cycle (the
             # collection is re-ensured after a Qdrant blip). CancelledError is a

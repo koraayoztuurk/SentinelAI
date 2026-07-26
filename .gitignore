@@ -160,3 +160,12 @@ workdocs/*
 # -----------------------
 
 backend/var/
+
+# -----------------------
+# Edge TLS material (ES-068): the deployment's certificate and private key are
+# mounted into the frontend container from here. Deployment secrets, never
+# repository content (secrets-management.md).
+# -----------------------
+
+infrastructure/tls/*
+!infrastructure/tls/.gitkeep

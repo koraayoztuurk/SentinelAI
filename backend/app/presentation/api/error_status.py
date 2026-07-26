@@ -46,6 +46,7 @@ from app.presentation.api.errors import (
     InvalidPayloadError,
     PayloadTooLargeError,
     PersistenceUnavailableError,
+    RateLimitedError,
     ServiceNotConfiguredError,
 )
 from app.shared.exceptions import SentinelAIError
@@ -84,6 +85,9 @@ _STATUS_BY_CODE: dict[str, int] = {
     InvalidActionError.code: 422,
     AuthenticationError.code: 401,
     AuthorizationError.code: 403,
+    # Traffic protection (ES-068): the identity is valid and the request is
+    # well-formed — only its timing is refused.
+    RateLimitedError.code: 429,
     BlankValueError.code: 422,
     InvalidConfidenceError.code: 422,
     MissingSupportingEvidenceError.code: 422,

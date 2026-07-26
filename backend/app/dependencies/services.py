@@ -25,9 +25,9 @@ stable code, never a leaked driver exception. Data-level database errors
 (e.g. constraint violations) are not masked.
 """
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, Request
 from sqlalchemy.exc import InterfaceError, OperationalError
@@ -58,6 +58,7 @@ from app.application.graph import GraphService
 from app.application.investigation import InvestigationService
 from app.application.memory import MemoryService
 from app.application.planner import PlannerService
+from app.application.secrets import SecretNotFoundError
 from app.config.ai import (
     ExternalKnowledgeProviderChoice,
     LLMProviderChoice,
@@ -68,16 +69,21 @@ from app.config.ai import (
     get_nvd_settings,
     get_nvidia_settings,
 )
-from app.config.auth import AuthProviderChoice, get_auth_selection, get_jwt_settings
-from app.config.database import get_evidence_payload_settings
+from app.config.auth import (
+    AuthProviderChoice,
+    get_auth_selection,
+    get_dev_auth_settings,
+    get_jwt_settings,
+)
 from app.config.settings import get_settings
+from app.dependencies.payloads import build_payload_store
 from app.infrastructure.ai.attack_catalog import AttackCatalogProvider
+from app.infrastructure.ai.fallback import FallbackLLMProvider
 from app.infrastructure.ai.gemini import GeminiLLMProvider
 from app.infrastructure.ai.gemini_embedding import GeminiEmbeddingProvider
 from app.infrastructure.ai.nvd import NvdCveProvider
 from app.infrastructure.ai.nvidia import NvidiaLLMProvider
 from app.infrastructure.ai.retrieval import CompositeRetriever
-from app.infrastructure.objectstore import FilesystemEvidencePayloadStore
 from app.infrastructure.persistence.neo4j.repositories import (
     Neo4jGraphRepository,
 )
@@ -117,6 +123,8 @@ from app.presentation.api.v1.investigation.dependencies import (
 )
 from app.presentation.api.v1.memory.dependencies import get_memory_service
 
+logger = logging.getLogger(__name__)
+
 
 def _registry(request: Request) -> PersistenceRegistry:
     registry = getattr(request.app.state, "persistence", None)
@@ -154,11 +162,9 @@ def _investigation_service(session: AsyncSession) -> InvestigationService:
         PostgresReportRepository(session),
         PostgresOutcomeRepository(session),
         PostgresTraceRepository(session),
-        # Evidence payload store (ES-060, ADR-015): the dev-grade
-        # content-addressed filesystem adapter under the configured root.
-        payloads=FilesystemEvidencePayloadStore(
-            Path(get_evidence_payload_settings().root)
-        ),
+        # Evidence payload store (ES-060, ADR-015): the content-addressed
+        # filesystem adapter, optionally crypto-shredding (ES-070).
+        payloads=build_payload_store(),
     )
 
 
@@ -190,19 +196,45 @@ def _graph_service(request: Request) -> GraphService:
     return GraphService(Neo4jGraphRepository(_registry(request).neo4j_driver))
 
 
+def _build_llm(choice: LLMProviderChoice) -> LLMProvider:
+    """The concrete adapter for one provider choice."""
+
+    if choice is LLMProviderChoice.NVIDIA:
+        return NvidiaLLMProvider(
+            get_nvidia_settings(), EnvironmentSecretProvider()
+        )
+    return GeminiLLMProvider(get_gemini_settings(), EnvironmentSecretProvider())
+
+
 def _llm_provider() -> LLMProvider:
     """The configured concrete LLM adapter (``LLM_PROVIDER``, ES-054).
 
     The port stays provider-neutral (ADR-005); the selection is
     configuration. A missing API key for the selected provider surfaces as
     ``SecretNotFoundError`` at composition (503 ``secret.not_found``).
+
+    ``LLM_FALLBACK_PROVIDER`` (ES-067) optionally wraps the pair in the
+    failover chain. The fallback is built defensively: if its key is missing,
+    composition keeps the primary alone rather than failing the request — an
+    unconfigured *fallback* must never take down a working primary.
     """
 
-    if get_llm_selection().provider is LLMProviderChoice.NVIDIA:
-        return NvidiaLLMProvider(
-            get_nvidia_settings(), EnvironmentSecretProvider()
+    selection = get_llm_selection()
+    primary = _build_llm(selection.provider)
+    fallback_choice = selection.fallback_provider
+    if fallback_choice is None:
+        return primary
+    try:
+        secondary = _build_llm(fallback_choice)
+    except SecretNotFoundError:
+        logger.warning(
+            "llm fallback not composed: %s key not configured",
+            fallback_choice.value,
         )
-    return GeminiLLMProvider(get_gemini_settings(), EnvironmentSecretProvider())
+        return primary
+    return FallbackLLMProvider(
+        primary, secondary, selection.provider.value, fallback_choice.value
+    )
 
 
 def _external_knowledge_providers() -> tuple[ExternalKnowledgeProvider, ...]:
@@ -352,7 +384,11 @@ def live_authenticator() -> Authenticator:
 
     if get_auth_selection().provider is AuthProviderChoice.JWT:
         return JwtAuthenticator(get_jwt_settings(), EnvironmentSecretProvider())
-    return SharedTokenAuthenticator(EnvironmentSecretProvider())
+    # The dev provider has no identity provider to assert capabilities, so it
+    # grants the configured set (empty by default, ADR-019 §6).
+    return SharedTokenAuthenticator(
+        EnvironmentSecretProvider(), get_dev_auth_settings().granted()
+    )
 
 
 async def live_authorizer(request: Request) -> AsyncIterator[Authorizer]:

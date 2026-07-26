@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Data Lifecycle and Erasure
-version: 1.1.0
+version: 1.2.0
 status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-23
+last_updated: 2026-07-26
 ---
 
 # Data Lifecycle and Erasure
@@ -88,9 +88,22 @@ Audit records document security-relevant actions, including erasure itself, and 
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Backup and restore have no architecture**, so their interaction with erasure is undefined: a restored backup can resurrect erased data, and the obligation to prevent that currently sits with the deployment (§6).
+- **Erasure is per category, invoked per category.** There is no single subject-wide operation that erases everything about a person across every store; each owning service exposes its own path (ADR-017).
+- **The erasure unit is the content address** for evidence payloads: byte-identical payloads share one object and therefore one fate. Per-item erasure would require a non-content-derived object identity (an ADR-015 decision).
+- **Encryption keys are never rotated** — a key lives as long as the payload it protects.
+- **Retention duration remains deployment policy.** The platform enforces the configured period and enforces nothing when none is configured; choosing the number is not the platform's decision to make.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-07-03 | Initial Data Lifecycle and Erasure specification (audit finding M-05): lifecycle ownership per category, deprecation≠deletion, tombstoning/crypto-shredding strategy categories, audit exception |
 | 1.1.0 | 2026-07-23 | Status Draft→Accepted; erasure lifecycle + tombstone protocol admitted (RFC-003 / ADR-017, Milestone F): terminal `Erased` state, tombstones preserve only non-personal correlation structure and resolve explicitly (§8a), investigation-scoped cascade in one transaction, secondary-store erasure as an ADR-012 outbox projection, per-store strategy an adapter choice; realized across ES-064 (Investigation family) / ES-065 (payloads, embeddings, Memory/Graph) |
+| 1.2.0 | 2026-07-26 | Known Gaps section added (ADR-020 §3): the missing backup architecture, the per-category erasure boundary, the content-address erasure unit, absent key rotation and the deployment-owned retention duration stated in the document that owns them |

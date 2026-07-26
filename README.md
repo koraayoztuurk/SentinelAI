@@ -226,8 +226,13 @@ SentinelAI, **Mimari ve Temel** aşamasından **canlı implementasyon** aşamas�
 | Milestone F — Veri yaşam sonu: RFC-003/ADR-017 + investigation-family tombstoning cascade + DELETE yüzeyi (ES-064) | ✅ Tamamlandı |
 | Milestone F — Secondary-store erasure propagation: payload byte silme + embedding point silme + kişiye-bağlı Memory/Graph erasure (ES-065) | ✅ Tamamlandı |
 | Milestone F — Workspace erasure yüzeyi + tombstone gösterimi + kapanış (ES-066) | ✅ Tamamlandı |
+| Milestone G — Her hata kenarında dayanıklılık: sağlayıcı devre kesici/retry/fallback + projektör retry/dead-letter (ES-067) | ✅ Tamamlandı |
+| Milestone G — Kenar ve dağıtım sertleştirme: kimlik başına hız sınırlama + TLS/edge overlay + imaj tedarik zinciri (tarama/SBOM/provenance/imza) + sürümlü registry (ES-068) | ✅ Tamamlandı |
+| Milestone G — Doğrulanabilir işletim: RFC-004/ADR-018 hash-zincirli dayanıklı audit sink + AC-14 mekanik enforcement + readiness gating + secret startup fail-fast (ES-069) | ✅ Tamamlandı |
+| Milestone G — Erasure operasyonelleştirme: retention sweep + crypto-shred payload store + RFC-005/ADR-019 capability-korumalı paylaşılan-bilgi erasure + platform operasyon yüzeyi ve kapanış (ES-070) | ✅ Tamamlandı |
+| Milestone H — Yönetişim uyumu: RFC-006/ADR-020 doküman yaşam döngüsü + her dokümanın kendi açık boşluklarını beyan etmesi + AC-16 ile makine-denetimli yönetişim tazeliği (ES-071) | ✅ Tamamlandı |
 
-Platformun temel uçtan uca iddiası — önerilen bir AI kararının yürütülmesi, kalıcı olarak izlenmesi ve tarayıcıda mock'suz görünmesi — artık canlı olarak kanıtlanmıştır. **Milestone A–F kapatılmıştır:** Bilgi Katmanı (RAG retrieval), çoklu-ajan/karar katmanı (Decision Engine + Validation/Graph Analysis/Threat Intelligence ajanları), kanıt yükleme hattı (içerik-adresli payload store), production kimlik (JWT), çok-kiracılık (tenant izolasyonu) ve veri yaşam sonu (erasure/tombstoning) canlı olarak teslim edilmiştir. Sonraki aşama, release öncesi kalan milestone'lara odaklanmaktadır: **G** (production sertleştirme) ve **H** (yönetişim/sürüm operasyonları + lisans).
+Platformun temel uçtan uca iddiası — önerilen bir AI kararının yürütülmesi, kalıcı olarak izlenmesi ve tarayıcıda mock'suz görünmesi — artık canlı olarak kanıtlanmıştır. **Milestone A–G kapatılmıştır:** Bilgi Katmanı (RAG retrieval), çoklu-ajan/karar katmanı (Decision Engine + Validation/Graph Analysis/Threat Intelligence ajanları), kanıt yükleme hattı (içerik-adresli payload store), production kimlik (JWT), çok-kiracılık (tenant izolasyonu), veri yaşam sonu (erasure/tombstoning) ve **production sertleştirme** — her hata kenarında dayanıklılık, hız sınırlama ve imzalı/taranmış sürümlü imaj hattı, kurcalamaya karşı kanıtlanabilir audit kaydı, otomatik retention uygulaması ve platformun kendi operasyonel duruşunu gösteren yüzey — canlı olarak teslim edilmiştir. Release öncesi kalan tek milestone: **H** (yönetişim/sürüm operasyonları + lisans) — **açıldı ve ilk adımı teslim edildi (ES-071)**: mimari dokümantasyon artık kendi durumunu bildiriyor (ADR-020 doküman yaşam döngüsü; her doküman ya gerçeklenmiş ya da kendi içinde sınırlanmış olduğunda `Accepted`), bilinçli olarak açık bırakılan sorular ilgili dokümanın **Known Gaps** bölümünde kamuya açık duruyor ve yönetişim tazeliği artık AC-16 ile makine tarafından denetleniyor. Sürüm kimliği/uyumluluk politikası, lisans ve yönetilen promotion (ES-072) ile release hazırlık kapısı + prova (ES-073) kaldı. Çok-instance yatay ölçekleme (projektör/sweep leader election, paylaşımlı hız-sınırı durumu) bilinçli olarak release sonrasına bırakılmıştır.
 
 ### Yol Haritası
 
@@ -256,6 +261,17 @@ curl http://localhost:8080/health          # {"status":"ok","name":"SentinelAI",
 ```
 
 Veri katmanı `data` compose profiliyle opsiyoneldir; backend, veritabanları çalışmasa da başlar. `docker compose down` ile kapatılır (veri servislerini de kaldırmak için `--profile data`, volume'leri silmek için `-v` eklenir).
+
+#### Staging / Production dağıtımı
+
+Geliştirme dışındaki ortamlar, CI'ın yayımladığı **sürümlenmiş, taranmış ve imzalanmış** imajları çalıştırır (`ghcr.io/<owner>/sentinelai-{backend,frontend}`) ve dağıtım sertleştirmesini ekler: TLS sonlandırma, güvenlik başlıkları, anonim istek seli koruması, kaynak/log sınırları ve istek kenarında kimlik başına hız sınırlama.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile data up -d
+docker compose -f docker-compose.yml -f docker-compose.prod.yml    --profile data up -d
+```
+
+Sertifika sağlama, imza doğrulama, imaj etiketleme şeması ve ortam hedefleri: [`infrastructure/README.md`](infrastructure/README.md).
 
 ### Katkıda Bulunma
 

@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Agent Architecture
-version: 1.2.0
-status: Draft
+version: 1.3.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Agent Architecture
@@ -1108,6 +1108,16 @@ Every new agent introduced into SentinelAI should strengthen the architecture th
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **The Timeline Agent and the Report Agent are specified here but not implemented.** They were deferred at the Milestone B close; the delivered agent set is Planner, Memory, Validation, Graph Analysis and Threat Intelligence. Both remain documented capability awaiting their own engineering specification.
+- **Planner-selected agent dispatch is not realized.** The specialized agents run as fixed run-phase and completion-phase steps of the Investigation Loop rather than being chosen by the planner; the planner action catalogue that would allow dispatch is itself deferred (planner-service.md).
+- **Agent-level audit contribution was decided against**, not overlooked: the Investigation Trace is erasable investigation data and the audit record is retention-bound (ADR-018), so the two are deliberately not merged.
+
+---
+
 # Version History
 
 | Version | Date | Description |
@@ -1115,3 +1125,4 @@ Every new agent introduced into SentinelAI should strengthen the architecture th
 | 1.0.0 | 2026-06-26 | Initial Agent Architecture document created |
 | 1.1.0 | 2026-07-03 | Terminology disambiguated: "Investigation Workspace" (Application Domain capability) vs the frontend page vs the State Assembler port (ADR-010) |
 | 1.2.0 | 2026-07-03 | Aligned with ADR-013: typed result envelope owned by the runtime (single execution path), provider resilience contract, external knowledge provider interface added |
+| 1.3.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the deferred agents and the unrealized planner-selected dispatch are now stated in the document that specifies them |

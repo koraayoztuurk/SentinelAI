@@ -16,8 +16,13 @@ external knowledge stays visible but never dominant (rag-architecture §17).
 
 Contract realization (ADR-013), mirroring the NVIDIA adapter (ES-054):
 
-- **Bounded execution time** — every call runs under ``asyncio.timeout`` with
-  the configured bound (httpx gets the same value as its network timeout).
+- **Bounded execution time** — every attempt runs under ``asyncio.timeout``
+  with the configured bound (httpx gets the same value as its network timeout).
+- **Resilience (ES-067)** — the call goes through
+  :class:`~app.infrastructure.ai.resilience.ResilientHttpCaller`: bounded retry
+  with backoff for transient failures behind a process-wide circuit breaker
+  (ADR-013 §4). NVD's keyless rate limit (5 requests / 30s) makes 429 the
+  expected transient signal here, and backoff is the documented remedy.
 - **Total error mapping** — transport failures, non-success HTTP statuses
   (rate limits included) and malformed payloads all map to
   ``ExternalKnowledgeError`` with a bounded, key-free message; a malformed
@@ -30,7 +35,6 @@ Contract realization (ADR-013), mirroring the NVIDIA adapter (ES-054):
   never in the URL, never in errors or logs.
 """
 
-import asyncio
 import logging
 import re
 
@@ -46,8 +50,17 @@ from app.application.secrets import (
     SecretNotFoundError,
     SecretProvider,
 )
-from app.config.ai import NvdSettings
+from app.config.ai import (
+    AIResilienceSettings,
+    NvdSettings,
+    get_ai_resilience_settings,
+)
 from app.domain.value_objects import Confidence
+from app.infrastructure.ai.resilience import (
+    ProviderCallError,
+    ResilientHttpCaller,
+    breaker_for,
+)
 from app.shared.secret import Secret
 
 logger = logging.getLogger(__name__)
@@ -65,6 +78,8 @@ _ERROR_DETAIL_LIMIT = 200
 _CONTENT_LIMIT = 500
 # NVD reports no relevance measure (see module docstring).
 _NEUTRAL_CONFIDENCE = Confidence(0.5)
+# Breaker registry key: one shared health signal per provider, process-wide.
+PROVIDER_NAME = "nvd"
 
 
 class NvdCveProvider:
@@ -75,6 +90,7 @@ class NvdCveProvider:
         settings: NvdSettings,
         secrets: SecretProvider,
         transport: httpx.AsyncBaseTransport | None = None,
+        resilience: AIResilienceSettings | None = None,
     ) -> None:
         self._settings = settings
         # The key is optional (NVD contract): resolved eagerly when present,
@@ -87,6 +103,13 @@ class NvdCveProvider:
         # Injectable transport keeps the contract tests deterministic
         # (httpx.MockTransport); None means the real network.
         self._transport = transport
+        policy = resilience or get_ai_resilience_settings()
+        self._caller = ResilientHttpCaller(
+            PROVIDER_NAME,
+            settings.timeout_seconds,
+            policy,
+            breaker_for(PROVIDER_NAME, policy),
+        )
 
     async def lookup(
         self, query: ExternalKnowledgeQuery
@@ -94,18 +117,11 @@ class NvdCveProvider:
         """Look up CVEs for the query within the configured time bound."""
 
         try:
-            async with asyncio.timeout(self._settings.timeout_seconds):
-                response = await self._get(query.query)
-        except TimeoutError as exc:
-            raise ExternalKnowledgeError(
-                f"NVD call exceeded the {self._settings.timeout_seconds}s "
-                f"execution bound."
-            ) from exc
-        except httpx.HTTPError as exc:
-            # Transport-level failure (connect/read/write, DNS, TLS...).
-            raise ExternalKnowledgeError(
-                f"NVD transport failure: {type(exc).__name__}."
-            ) from exc
+            response = await self._caller.run(lambda: self._get(query.query))
+        except ProviderCallError as exc:
+            # Timeout, transport failure or an open circuit — all already
+            # bounded and key-free (ES-067).
+            raise ExternalKnowledgeError(exc.detail) from exc
 
         if response.status_code != 200:
             raise ExternalKnowledgeError(

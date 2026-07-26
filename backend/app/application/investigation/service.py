@@ -126,6 +126,19 @@ class InvestigationService:
 
         return await self._require_investigation(investigation_id)
 
+    async def list_expired(
+        self, created_before: datetime, limit: int
+    ) -> tuple[Investigation, ...]:
+        """Investigations past their retention cutoff and not yet erased.
+
+        The Investigation Service owns its family's lifecycle, so it also owns
+        the question of which of its investigations have outlived their
+        retention (data-lifecycle §2/§3). The cutoff is caller-supplied: the
+        duration behind it is deployment policy, not a business rule.
+        """
+
+        return await self._investigations.list_expired(created_before, limit)
+
     async def change_status(
         self, investigation_id: InvestigationId, new_status: InvestigationStatus
     ) -> Investigation:

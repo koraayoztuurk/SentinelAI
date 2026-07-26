@@ -15,6 +15,7 @@ from app.presentation.api.authorization import require_authorization
 from app.presentation.api.v1.investigation.dependencies import (
     get_investigation_service,
 )
+from tests.support.auth import override_identity
 
 pytestmark = pytest.mark.operational
 
@@ -26,6 +27,9 @@ def _raise_unexpected() -> None:
 def _failing_client() -> TestClient:
     app = create_app()
     app.dependency_overrides[require_authorization] = lambda: None
+    # The rate-limit seam chains authentication independently of the
+    # authorization seam (ES-068), so a stubbed identity is required too.
+    override_identity(app)
     app.dependency_overrides[get_investigation_service] = _raise_unexpected
     # The server-side containment is exactly what is under test here.
     return TestClient(app, raise_server_exceptions=False)

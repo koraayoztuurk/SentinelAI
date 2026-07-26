@@ -1,9 +1,9 @@
 ---
 title: RFC Process
-version: 1.1.0
-status: Draft
+version: 1.2.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # RFC Process
@@ -560,6 +560,24 @@ Regardless of future platform evolution, explicit proposal ownership, decision t
 
 ---
 
+# 12. Current RFCs
+
+| RFC | Proposal | Status | Resulting ADR |
+|------|----------|--------|----------------|
+| RFC-001 | Evidence Payload Object Store | Accepted | ADR-015 |
+| RFC-002 | Investigation Tenant Scoping | Accepted | ADR-016 |
+| RFC-003 | Data Erasure and Tombstoning | Accepted | ADR-017 |
+| RFC-004 | Audit Lifecycle and Durable Sink | Accepted | ADR-018 |
+| RFC-005 | Shared-Knowledge Erasure Authorization | Accepted | ADR-019 |
+| RFC-006 | Architecture Documentation Lifecycle | Accepted | ADR-020 |
+
+`RFC-000-template.md` is the single-page form of §3a, not a proposal.
+
+This index is **complete by constraint**: every proposal file in this directory
+appears here and every entry here resolves to a file (AC-16, ADR-020 §4).
+
+---
+
 # Closing Statement
 
 The RFC Process establishes the architectural governance foundation for evolving SentinelAI through structured architectural proposals.
@@ -580,3 +598,4 @@ The RFC Process should continue to evolve together with SentinelAI while preserv
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial RFC Process specification created |
 | 1.1.0 | 2026-07-03 | Scope threshold and lightweight single-page form made normative (ADR-014); full lifecycle retained as the scale-up model |
+| 1.2.0 | 2026-07-26 | RFC index added (§12) — every proposal listed with its status and resulting ADR, complete in both directions by constraint (AC-16, ADR-020); the directory previously had no index while the ADR directory did |

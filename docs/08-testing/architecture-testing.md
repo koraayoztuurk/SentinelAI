@@ -1,9 +1,9 @@
 ---
 title: Architecture Testing
-version: 1.2.0
-status: Draft
+version: 1.4.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # Architecture Testing
@@ -275,6 +275,7 @@ Constraints are stated technology-independently. How each constraint is verified
 | AC-07 | No backend service accesses another service's persistence contracts; cross-service collaboration goes through service interfaces only. | ADR-003, ADR-004 | Enforced (`backend/tests/architecture`) |
 | AC-08 | The domain layer and backend services generate no identifiers; identifiers are caller-supplied. | Engineering decision (Domain) | Enforced (`backend/tests/architecture`) |
 | AC-09 | The domain layer and backend services read no clock; timestamps are caller-supplied. | Engineering decision (Domain) | Enforced (`backend/tests/architecture`) |
+| AC-14 | No request path writes to more than one store; derived representations propagate only through the owning service's transactional outbox. | ADR-012, Database Architecture | Enforced (`backend/tests/architecture`) |
 
 ---
 
@@ -294,6 +295,16 @@ Constraints are stated technology-independently. How each constraint is verified
 
 ---
 
+## Governance Constraints
+
+| ID | Constraint | Source | Verification |
+|----|------------|--------|--------------|
+| AC-16 | Governance artifacts stay consistent and complete: every architecture document declares valid front matter with a status from the defined vocabulary and agrees with its own version history; the decision and proposal indexes are complete in both directions; every decision or proposal referenced by a document exists; every constraint recorded as *Enforced* names a verification that exists; and every configuration field the platform reads is documented in the configuration example. | ADR-020, API Design §14a (pattern) | Enforced (`backend/tests/governance`) |
+
+AC-16 verifies that governance artifacts are **consistent and complete**, never that they are *correct*: accuracy, completeness and clarity of prose remain review responsibilities (ADR-020 §5). The constraint exists so that drift cannot happen silently — not to simulate review.
+
+---
+
 ## Declared, Not Yet Mechanically Enforced
 
 The following documented constraints are normative but currently verified through review rather than automated checks. They are listed here so their verification status remains explicit rather than assumed:
@@ -303,7 +314,8 @@ The following documented constraints are normative but currently verified throug
 | AC-11 | Controllers contain no business logic; business validation belongs to backend services. | ADR-008, API Design |
 | AC-12 | Redis is never an authoritative store; removing all cached data must not affect business correctness. | ADR-011, Database Architecture |
 | AC-13 | Frontend state categories are modified only by their architectural owner. | UI State Management |
-| AC-14 | No request path writes to more than one store; derived representations propagate only through the owning service's transactional outbox. | ADR-012, Database Architecture | 
+
+Each of these requires semantic analysis the current verification suites do not perform: AC-11 needs a notion of "business logic" distinguishable from request handling, AC-12 needs a store to exist before its non-authority can be observed (Redis remains deliberately unbound — ADR-011), and AC-13 needs ownership analysis of frontend state mutations. A weak automated approximation would be worse than an explicit declaration, because a constraint that passes vacuously is indistinguishable from one that holds.
 
 When one of these constraints becomes mechanically verifiable, its row moves to the enforced tables above through a documentation update.
 
@@ -627,3 +639,5 @@ Architecture Testing should continue to evolve together with the platform while 
 | 1.0.0 | 2026-06-28 | Initial Architecture Testing specification created |
 | 1.1.0 | 2026-07-03 | Normative Architectural Constraint Catalogue added (AC-01…AC-13); this document declared the authoritative source of concrete constraints, mirrored by trackers and test suites |
 | 1.2.0 | 2026-07-03 | AC-14 declared (no dual-write; outbox-only propagation, ADR-012) and AC-15 enforced (API contract artifact freshness, API Design §14a) |
+| 1.3.0 | 2026-07-26 | AC-14 moved from *declared* to **enforced**: the no-dual-write constraint is now mechanically verified per service operation, with the sanctioned outbox projections classified explicitly rather than excluded silently (ES-069) |
+| 1.4.0 | 2026-07-26 | **AC-16** declared and enforced (governance constraints): governance artifacts — document front matter, version histories, the ADR/RFC indexes, decision references, the catalogue's own *Enforced* claims and the configuration example — are machine-checked, generalizing the AC-15 pattern (ADR-020/RFC-006, ES-071); AC-11/12/13 keep their *Declared* status with the reason each resists mechanical verification stated |

@@ -23,6 +23,12 @@ from app.application.authorization.errors import AuthorizationError
 # inward); single-tenant deployments run entirely within it.
 DEFAULT_TENANT = "default"
 
+# The capability that authorizes destroying organizational knowledge (ADR-019
+# §2). Named here, in the layer that decides, because it is an authorization
+# fact rather than a transport detail. The empty default on every identity is
+# what keeps the surface closed.
+ERASE_SHARED_KNOWLEDGE = "knowledge:erase"
+
 
 @dataclass(frozen=True, slots=True)
 class OperationContext:
@@ -41,6 +47,9 @@ class OperationContext:
     identity_kind: str
     correlation_id: str
     tenant: str = DEFAULT_TENANT
+    # Authorization facts asserted by the credential (§6c, ADR-019). Empty by
+    # default, so a privileged operation stays unavailable unless granted.
+    capabilities: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,7 +61,11 @@ class AuthorizationRequest:
     investigation-scoped resource of the operation when the boundary can
     identify one (§6a) — ``None`` for non-investigation-scoped operations.
     ES-063 adds ``tenant``: the identity's organization scope the policy
-    matches against the investigation's tenant (ADR-016).
+    matches against the investigation's tenant (ADR-016). ES-070 adds
+    ``capabilities``: the authorization facts the credential asserts (§6c,
+    ADR-019), which gate privileged operations — scoping says whose data it
+    is, a capability says whether this identity may perform the operation at
+    all.
     """
 
     subject: str
@@ -61,6 +74,7 @@ class AuthorizationRequest:
     correlation_id: str = ""
     investigation_id: str | None = None
     tenant: str = DEFAULT_TENANT
+    capabilities: frozenset[str] = frozenset()
 
     @classmethod
     def for_context(
@@ -79,6 +93,7 @@ class AuthorizationRequest:
             correlation_id=context.correlation_id,
             investigation_id=investigation_id,
             tenant=context.tenant,
+            capabilities=context.capabilities,
         )
 
 

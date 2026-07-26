@@ -18,6 +18,7 @@ from app.main import create_app
 from app.presentation.api.authorization import require_authorization
 from app.presentation.api.generation import get_clock, get_id_generator
 from app.presentation.api.v1.memory.dependencies import get_memory_service
+from tests.support.auth import override_identity
 
 _FIXED_TIME = datetime(2026, 6, 30, tzinfo=UTC)
 
@@ -93,6 +94,9 @@ def _client() -> TestClient:
     app.dependency_overrides[get_id_generator] = lambda: ids
     app.dependency_overrides[get_clock] = lambda: _FixedClock()
     app.dependency_overrides[require_authorization] = lambda: None
+    # The rate-limit seam chains authentication independently of the
+    # authorization seam (ES-068), so a stubbed identity is required too.
+    override_identity(app)
     return TestClient(app)
 
 
@@ -263,6 +267,9 @@ def test_list_memory_requires_investigation_id() -> None:
 def test_service_not_configured_returns_503() -> None:
     app = create_app()
     app.dependency_overrides[require_authorization] = lambda: None
+    # The rate-limit seam chains authentication independently of the
+    # authorization seam (ES-068), so a stubbed identity is required too.
+    override_identity(app)
     client = TestClient(app)
     response = client.post("/api/v1/memory", json=_create_payload())
     assert response.status_code == 503

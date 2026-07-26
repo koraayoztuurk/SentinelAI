@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Frontend Architecture
-version: 1.1.0
-status: Draft
+version: 1.2.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-02
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Frontend Architecture
@@ -1583,9 +1583,20 @@ The primary objective of the frontend is to present trustworthy investigation in
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Transitional DTOs are hand-written.** The communication layer's types are maintained by hand against the committed contract artifact (api-design.md §14a); generating them from `docs/api/openapi.json` is deferred tooling, not a structural change.
+- **Design-system depth, internationalization and accessibility hardening are partial.** The primitive component set carries no variant/theming system beyond the delivered theme, the UI is single-language, and accessibility is not audited.
+- **No route-level code splitting or list virtualization.** The bundle is loaded as one artifact and collections render in full.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Frontend Architecture specification created |
 | 1.1.0 | 2026-07-02 | Clarified server-state (cached backend data) as a distinct concern from the owned client-state categories |
+| 1.2.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): DTO derivation, design-system/i18n/a11y depth and loading strategy stated as open |

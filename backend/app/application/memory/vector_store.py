@@ -40,7 +40,13 @@ class MemoryVectorStore(Protocol):
     """Reads and writes derived Memory Item embeddings in the vector store."""
 
     async def ensure_collection(self, dimensions: int) -> None:
-        """Create the memory-embeddings collection if it does not exist."""
+        """Create the memory-embeddings collection if it does not exist.
+
+        An existing collection built for a different vector size is a
+        consistency failure, not a usable store: implementations reject it
+        (``memory.vector_dimension_mismatch``, ES-067) rather than accepting
+        writes that cannot succeed.
+        """
         ...
 
     async def upsert(

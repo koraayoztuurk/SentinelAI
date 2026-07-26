@@ -1,9 +1,9 @@
 ---
 title: Investigation Workspace
-version: 1.1.0
-status: Draft
+version: 1.2.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-02
+last_updated: 2026-07-26
 ---
 
 # Investigation Workspace
@@ -539,9 +539,20 @@ Future implementations may introduce additional capabilities, visualizations and
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **The timeline is reconstructed, not sourced.** Events are derived from the timestamps of investigation artifacts because the domain has no canonical investigation-event concept (domain-model.md); ordering is therefore only as faithful as the artifacts' own timestamps.
+- **Regions do not cross-highlight.** Selecting an entity does not highlight the related timeline events or evidence, and relationship detail is not inspectable — the entity-to-event mapping is undocumented.
+- **Panel layout and visibility are not persisted** across sessions (ui-state-management.md).
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Investigation Workspace specification created |
 | 1.1.0 | 2026-07-02 | Clarified the Timeline event source and the AI Insights/Memory region data dependency |
+| 1.2.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the derived timeline, absent cross-region highlighting and unpersisted layout stated as open |

@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Planner Agent
-version: 1.1.0
-status: Draft
+version: 1.2.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Planner Agent
@@ -802,9 +802,20 @@ Planning responsibilities should remain stable even if planning algorithms evolv
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **The action catalogue is not exposed to the planner as a selectable set.** The planner decides one action per request from the documented action vocabulary; assigning specialized agents through that vocabulary (planner-selected dispatch) awaits the action-catalogue specification.
+- **Objectives are single and title-derived.** Richer objective management — multiple objectives, objective lifecycle, progress against an objective — is undocumented and therefore unimplemented by design.
+- **Loop policy depth is deferred**: confidence-threshold completion, no-op/delay decisions and richer replanning are not modelled; the loop completes on the documented terminal conditions or exhausts its cycle budget.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Planner Agent document created |
 | 1.1.0 | 2026-07-03 | Terminology disambiguated: Investigation Workspace (Application Domain capability) vs the frontend page; State Assembler port referenced (ADR-010) |
+| 1.2.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the action catalogue, objectives model and loop-policy depth stated as open |

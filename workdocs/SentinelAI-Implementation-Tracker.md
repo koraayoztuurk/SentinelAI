@@ -76,6 +76,11 @@
 | ES-064 | Data end-of-life: RFC-003 + ADR-017 + Investigation-family tombstoning (PostgreSQL erasure cascade + DELETE surface) — Milestone F opener | ✅ Completed |
 | ES-065 | Secondary-store erasure propagation: payload byte erasure projection + embedding point deletion + person-linked Memory/Graph erasure | ✅ Completed |
 | ES-066 | Workspace erasure surface + tombstone rendering + data-lifecycle note (Milestone F closed) | ✅ Completed |
+| ES-067 | Resilience at every failure edge: provider breakers/retry/fallback + projection retry/dead-letter + Qdrant containment (Milestone G opener) | ✅ Completed |
+| ES-068 | Edge & deployment hardening: per-identity rate limiting + cache posture + TLS/edge overlay + image supply chain (scan/SBOM/provenance/sign) + versioned registry | ✅ Completed |
+| ES-069 | Verifiable operation: RFC-004 + ADR-018 audit lifecycle + hash-chained durable audit sink + AC-14 mechanical enforcement + readiness gating + secret startup fail-fast | ✅ Completed |
+| ES-070 | Erasure operationalization: retention sweep + crypto-shred payload store + RFC-005/ADR-019 capability-gated shared-knowledge erasure + platform operational surface (Milestone G closed) | ✅ Completed |
+| ES-071 | Governance conformance: RFC-006/ADR-020 architecture documentation lifecycle + public per-document known gaps + AC-16 machine-checked governance freshness (Milestone H opener) | ✅ Completed |
 
 ---
 
@@ -443,6 +448,10 @@ The following are intentionally NOT implemented.
 ---
 
 # Open Documentation Gaps
+
+> **Superseded by ES-071 (ADR-020 §3).** Every still-open gap is now stated publicly in the
+> document that owns it, under a "Known Gaps (Release 1.0)" section. This list is kept as
+> history; the owning documents are the register.
 
 The following architecture questions have already been discovered.
 
@@ -3791,3 +3800,588 @@ Next ES
   secondary-store + person-linked erasure (ES-065), and the user-visible surface (ES-066), proven
   live. Remaining before Release 1.0: **G** (production hardening) and **H** (governance/release ops +
   license). Jira SEN Milestone F close is the owner's step; commits are the owner's step.
+
+## ES-067 (Milestone G, part 1)
+
+- **Milestone G (production hardening) opened**; ES-067 is its resilience anchor: the platform's
+  two failure edges — the outbound **provider** edge (LLM/embedding/external knowledge) and the
+  background **projection/persistence** edge — get the same treatment (bounded retry, backoff,
+  classified and contained failure, observable health). Grouping both in one ES was deliberate:
+  they share one mechanism and one test vocabulary. Closes the ADR-013 §4 deferral, the ES-050
+  projector-hardening TD, both ES-053 findings and the ES-040 pool-defaults TD. **No REST change**
+  — `openapi.json` untouched, AC-15 freshness green without a regen.
+- **Provider edge** (`infrastructure/ai/resilience.py`): a shared `ResilientHttpCaller` — all four
+  concrete adapters are one-endpoint httpx clients, so the layer is expressed once in HTTP terms
+  and each adapter keeps sole ownership of its port error wording (it re-raises `ProviderCallError`
+  as its own `LLMProviderError`/`EmbeddingProviderError`/`ExternalKnowledgeError`). Per-**attempt**
+  `asyncio.timeout` (ADR-013 §1), exponential backoff + half-to-full jitter, and a circuit breaker
+  — explicitly **outside** the provider-neutral ports (ADR-013 §4). Applied to Gemini LLM, NVIDIA
+  NIM, Gemini embedding and NVD; the in-memory ATT&CK catalog needs none.
+- **Two judgement calls, both recorded in ADR-013's Notes**: (a) only *transient* failures
+  (timeout, transport, 408/425/429/5xx) are retried and counted toward the breaker — a **4xx means
+  the provider answered**, so it is healthy and our request was wrong; retrying it would burn quota
+  and cannot succeed. (b) The breaker registry is **process-scoped, keyed by provider name**,
+  because `dependencies/services.py` builds adapters per request — health state on the adapter
+  instance would never accumulate.
+- **Retry amplification taken seriously**: a retry multiplies worst-case wall-clock by the attempt
+  count and a run makes ~6 sequential LLM calls (the NVIDIA bound alone is 180s), so
+  `AI_RESILIENCE_MAX_ATTEMPTS` defaults to **2** (one retry). Raising it is a deployment decision.
+- **Cross-provider LLM fallback** (`infrastructure/ai/fallback.py`, opt-in via
+  `LLM_FALLBACK_PROVIDER`): with two adapters available since ES-054, a capacity outage on one (the
+  multi-hour Gemini 503 windows) is served by the other instead of escalating. It composes as an
+  `LLMProvider`, so no consumer knows; it sits *above* the per-adapter resilience, so the primary
+  has already spent its budget — and once its circuit is open, fails fast — before the secondary is
+  asked. Both down produces one `LLMProviderError` naming both, and the loop degrades to ESCALATED
+  exactly as before (ADR-013 §3): **the chain adds an attempt, never a new failure mode**.
+  Composition is defensive — a missing fallback key keeps the primary alone rather than failing the
+  request.
+- **Projection edge**: `OutboxRepository` gains explicit outcomes — `list_due` (replacing
+  `list_pending`), `mark_retry(seq, error, delay_seconds)` and `mark_dead_letter` — because a
+  failure is now *either* a scheduled retry *or* a retirement. `OutboxRecord` carries `attempts`;
+  the projector's `ProjectionRetryPolicy` decides, and returns a typed `ProjectionOutcome` the
+  composition root turns into metrics (the application layer stays free of observability wiring).
+  Migration **0006** adds `next_attempt_at` and **rewrites existing `failed` rows to `pending`** —
+  before ES-067 they were terminal by accident (nothing ever retried them), so they are derivations
+  the platform still owes.
+- **A real bug found by the live suite, not by review**: `mark_retry` first computed the deadline
+  from the *application* clock while `list_due` compared it against the **database** clock. Mixing
+  two clocks means any host/container skew shifts due-ness in either direction — and it contradicted
+  the docstring I had just written. Fixed to `func.now() + interval`, so the deadline is written and
+  compared on the same clock (which also makes it multi-instance-correct for free).
+- **Qdrant containment (both ES-053 findings)**: `upsert` now maps driver errors to the stable
+  `memory.vector_store_unavailable` contract like the read path — the write path used to leak raw
+  driver exceptions (a dimension-mismatch 400 among them) into the loop's broad catch, so a failed
+  projection could not be classified. `ensure_collection` refuses a collection built for a different
+  vector size (new `memory.vector_dimension_mismatch`) instead of letting every upsert fail one by
+  one; an *unreadable* vector config does **not** block startup ("I cannot tell" is not evidence of
+  a mismatch). The dim-3-vs-768 collision is additionally removed at its source: the adapter takes
+  an overridable collection name and the live suite uses `memory_embeddings_test`, so the suite and
+  the application no longer fight over one collection — the guard is the second line of defence.
+- **Erasure projection deliberately does NOT dead-letter.** A missing embedding is a degraded
+  search experience; an unerased payload is a compliance obligation (data-lifecycle §3, ADR-017), so
+  "we gave up" is not an available outcome. It keeps the ES-065 indefinite retry and instead
+  *reports* what it could not erase (`ErasureProjectionOutcome.deferred`, a gauge) so a stuck
+  erasure is loud rather than quietly terminal.
+- **Observability** (ADR-013's rationale: a breaker that hides provider health is worse than no
+  breaker): `/metrics` gains provider circuit state, LLM failovers, projection dead-letters and
+  deferred payload erasures.
+- **Pool tuning (ES-040 TD)**: size/overflow/checkout-timeout/recycle are configuration rather than
+  library defaults — the request path and two background projectors share one pool, and a bounded
+  checkout makes an exhausted pool fail fast instead of hanging a request.
+- **Tests (+33 backend: 588 default, was 555)**: resilience (18 — retry only on transient class,
+  4xx never retried and never a health signal, backoff schedule and cap, per-attempt timeout bound,
+  breaker open/half-open/re-open/streak-reset, fail-fast without touching the provider, registry
+  sharing, error-detail key hygiene); fallback (6); projector retry/dead-letter (6, including "the
+  Memory Item survives its embedding being abandoned"); Qdrant adapter (9). Deterministic
+  throughout — injected sleep/jitter/clock, no real waiting.
+- **Live proof**: `live`+`live_qdrant` **17 passed, stable across 5 consecutive runs** (migration
+  0006 from empty; a record leaves the due set under backoff, re-enters when rescheduled, and
+  dead-letters when its budget is spent — all on the database clock); `live_neo4j` 6; **`live_ai`
+  4/4 against real NVIDIA MiniMax-M3** — a full run persists its chronological trace through the
+  resilience layer (281s), and an invalid credential escalates in **9s with no retry**, which is the
+  live proof of the 4xx rule.
+- **Two pre-existing defects found and fixed while verifying** (both confirmed against a stashed
+  baseline before attributing them): `live_ai` had been **red since ES-062** — `test_live_run.py`
+  overrode authorization but not `require_identity`, so every request 401'd (`test_live_api.py` got
+  the override in c97b860, this file did not); and `test_invalid_provider_key_escalates…` had been
+  **vacuous since ES-054** — it poisoned `GOOGLE_API_KEY` while `LLM_PROVIDER=nvidia`, so the run
+  stayed perfectly healthy. It now poisons the *configured* provider's key (the backlog's
+  "provider-parameterized live-AI lane" item, partially addressed).
+- **My own test bug, recorded rather than hidden**: the first live retry tests slept 0.7s to cross a
+  0.5s deadline and were flaky in a shared environment. Rewritten to assert *structurally* — a 60s
+  backoff must hold a record back, a 0s backoff must release it — so no assertion races a wall-clock
+  boundary.
+- **Verification**: `ruff` clean; `mypy app` strict clean (**184 files**); backend default **588
+  passed** / 27 deselected; live 17 + neo4j 6 + live_ai 4; `openapi.json` unchanged (no REST
+  change). Docs: ADR-013 Notes record the realization and the two judgement calls; memory-service
+  v1.3.0 gains "Embedding Failure Handling" (bounded retry + terminal *observable* state);
+  `.env.example` documents `LLM_FALLBACK_PROVIDER`, `AI_RESILIENCE_*`, `PROJECTION_*`,
+  `POSTGRES_POOL_*`. Frontend untouched.
+- **TD / deferred**: multi-instance projector leader election and load-based readiness stay
+  **post-release** (this ES makes the single-process runner resilient, not clustered); no automated
+  recovery path for a dead-lettered record (it is observable; re-projection is an operator action);
+  breaker thresholds are global rather than per-provider; response caching, rate limiting, AC-14
+  mechanical enforcement, readiness gating and the durable audit sink are ES-068/069 as planned.
+  Commits are the owner's step.
+
+
+## ES-068 (Milestone G, part 2)
+
+- **The deployment boundary in one ES**: the request edge the API exposes (rate limiting, cache
+  posture) and the artifact/edge infrastructure that serves it (TLS edge, container hardening,
+  image supply chain, versioned registry). Closes the release checklist's **rate limiting**,
+  **TLS/edge**, **image supply-chain** and **registry + versioned images** items plus the ES-028
+  and ES-030 deployment-hardening TD. **No REST change** — `openapi.json` byte-identical after a
+  regen (a 429 is an error-envelope status, not a schema change), so AC-15 stays green.
+- **Documentation first (api-design v1.6.0)**: §13 previously said only "the API may apply request
+  limits" and "caching should remain configurable". It now records what the platform actually
+  guarantees — limits evaluated **per identity and per operation, between authentication and
+  authorization**; the run surface carrying its own budget; an over-limit request answered with the
+  standard envelope and a retry indication; and the fact that the counters are *protection* state
+  rather than *request* state, so Stateless Requests survives them. Anonymous flood protection is
+  assigned to the deployment edge, which is where it can actually be done.
+- **The enforcement ladder is 401 → 429 → 403**, and each step is deliberate. The seam chains
+  `require_identity`, so an anonymous caller is rejected as unauthenticated and never counted —
+  answering 429 to an anonymous request would confirm that *some* credential was accepted. It runs
+  before `require_authorization`, so an authenticated caller probing forbidden routes is still
+  throttled, and the limiter shields the authorizer itself rather than sitting behind it.
+- **Sliding window, not fixed**: a fixed window admits twice the budget across a boundary and can
+  only answer "wait until the window rolls over". Retaining the timestamps still inside the window
+  makes both the decision and `Retry-After` exact — the oldest retained request *is* the moment
+  budget frees up. A denied request is deliberately **not** recorded, so hammering a closed budget
+  never pushes its own recovery further away.
+- **Two bugs in my own limiter, both caught before they could ship.** (a) The key-space sweep ran
+  *after* inserting the new key, and an empty deque looks exactly like an inactive one — so every
+  brand-new budget was dropped the moment the limiter was at capacity. Found by the memory-bound
+  test. (b) The sweep used the *calling* policy's window for every key, so a short-window caller
+  could forget a long-window budget still being spent — free requests handed out precisely under
+  memory pressure. Found in self-review; fixed by storing each key's window with its entry, and
+  locked down by a test that sweeps a 3600s key with a 60s caller.
+- **A framework change found by a failing test, not by reading release notes**: with FastAPI 0.139
+  / Starlette 1.3 included routers are no longer flattened into the app's routing table, so
+  `scope["route"].path` is the **router-local** template (`/investigations/{id}`) and `app.routes`
+  no longer exposes full paths at all. The limiter recovers the prefix arithmetically — the local
+  template covers the request path's trailing segments, everything before them is the prefix —
+  rather than substituting parameter *values* back into the path, which would mistake a literal
+  segment for a parameter whenever an identifier happened to equal one. The run surface's constant
+  is asserted against `app.openapi()["paths"]`, so a route rename fails loudly instead of silently
+  demoting the expensive operation to the default budget.
+- **Keys are `(tenant, subject, operation)`**: subjects are only unique inside their organization
+  scope (ADR-016), so two tenants must neither share a budget nor be able to exhaust each other's.
+  The label on `sentinelai_rate_limited_total` is the route template, so metric cardinality is
+  bounded by the number of API operations rather than by the number of investigations.
+- **A design consequence worth recording**: a second router-level dependency means overriding
+  `require_authorization` no longer bypasses the *whole* chain. 27 existing tests went red at once
+  — not a regression but the honest cost of the ladder, and the fix was 6 override sites (3 test
+  files + the live Neo4j suite) each gaining the already-existing `override_identity` helper. The
+  alternative (hiding traffic validation inside the authorization seam) would have cost nothing in
+  churn and lied about the router's dependency list.
+- **Audit attribution followed**: a 429 is refused *before* the authorization context exists, so
+  the audit event fell back to `subject=None` — a security-relevant refusal recorded as anonymous.
+  The middleware now falls back to the authenticated identity. The **action vocabulary was left
+  closed** (`operation.performed`/`failed`): extending it is the RFC-004 audit-lifecycle work in
+  ES-069, not a side effect here.
+- **Response caching: the enumeration honestly ends at zero.** Two platform rules remove the whole
+  business API from the cacheable set — every response is identity/tenant-scoped (ADR-016), and
+  investigation data can be **erased at any moment** (ADR-017), so a stored copy would outlive its
+  own erasure, which is a compliance failure rather than a stale read. Operational answers are
+  about *now*. So the backend declares `no-store` and the platform's cacheable surface is the
+  content-hashed frontend assets at the edge. Deliberately **no env knob** for a cacheable
+  allow-list: an environment variable that could silently turn an erased resource back on is a
+  hazard, not a feature — admitting a cacheable surface is a per-surface decision in code.
+  Implemented as a plain ASGI middleware (one header needs no request/response objects and no
+  per-request task group), which also makes it cover error envelopes and streaming downloads.
+- **Deployment edge** (`infrastructure/nginx/edge.conf`, mounted by both non-dev overlays): TLS
+  termination + HTTP→HTTPS, HSTS/CSP/nosniff/DENY/Referrer-Policy/Permissions-Policy,
+  `limit_req` per client address (the anonymous half of traffic protection — complementary to the
+  per-identity limiter, not redundant), `client_max_body_size` aligned to
+  `EVIDENCE_PAYLOAD_MAX_BYTES`, and **per-surface proxy timeouts**: 600s for the run surface
+  (several sequential provider calls, ADR-013 §1) against 60s everywhere else, because one shared
+  short timeout would sever a run the backend is still legitimately executing. `/metrics` and
+  `/health/ready` return 404 publicly — they describe the deployment, and a scraper reaches the
+  backend on the internal network.
+- **An nginx inheritance trap avoided**: `add_header` is inherited from an outer level only while
+  the inner level declares none, so an `add_header Cache-Control` in the assets block would have
+  silently dropped *every security header* for asset responses. The block uses `expires` instead,
+  paying only the `immutable` hint for it.
+- **Overlays**: production and staging both run the *published* image (`pull_policy: always`),
+  drop all capabilities, forbid privilege escalation, mount the backend root filesystem read-only,
+  bound CPU/memory and bound log growth, and enable rate limiting. Two compose merge behaviours
+  had to be handled explicitly: sequences are **appended**, so `ports: !override` was required or
+  the dev 8080 mapping survived into production; and the data tier's loopback publishes (there for
+  the opt-in live suites) are removed with `ports: !reset null` — production has no such caller.
+  Staging differs from production only where its *operational responsibility* differs
+  (environment-architecture §5): `APP_ENV=staging`, JSON logs at DEBUG, smaller bounds.
+- **Image supply chain (CI)**: the `images` job is now matrixed per deployment unit and produces
+  versioned tags (semver from `v*` tags, `sha-<full>` always, `latest` only on the default branch),
+  a Trivy scan, an SPDX SBOM and SLSA `mode=max` provenance attached to the image, and a **cosign
+  keyless signature** bound to the workflow's OIDC identity — no signing key exists to leak. The
+  scan **reports** CRITICAL/HIGH/MEDIUM as an artifact but **gates** only on *fixable*
+  CRITICAL/HIGH: an unfixed upstream base-image finding is triaged, never a permanent block on a
+  fix we cannot make. Pull requests build and scan without publishing.
+- **The published frontend image is built without `VITE_API_BASE_URL`** — the SPA then calls its
+  own origin and nginx proxies it, so one artifact runs behind any hostname. That closes the
+  ES-028 "reverse-proxy base-URL coupling" TD for published images.
+- **A new CI job guards the overlays themselves** (`compose`): it validates the base and both
+  overlays and then *asserts the hardening is present* — `no-new-privileges`, `read_only`,
+  `RATE_LIMIT_ENABLED`, the TLS mount, and that no `8080` mapping survives. A merge error in a
+  deployment overlay otherwise only surfaces at deploy time. Backend pip caching landed too
+  (ES-030 TD).
+- **Tests (+24 backend: 612 default, was 588)**: rate limiting (21 — window arithmetic, exact
+  `Retry-After`, a refusal never extending its own penalty, per-identity/per-tenant/per-operation
+  separation, the run surface's own budget, the memory bound and the per-key sweep window, the
+  401-before-429 ladder, the 429 envelope + header, disabled by default, the audit subject, the
+  metric, the route-template derivation, and **authentication running exactly once** now that two
+  router dependencies chain it); cache policy (3 — API, error and operational responses, and the
+  surface enumeration). Deterministic throughout — an injected clock, no waiting.
+- **Live proof** (real uvicorn, real auth chain, live PostgreSQL, `RATE_LIMIT_ENABLED=true`,
+  budget 3/60s): three requests answered `404 investigation.not_found`, the fourth and fifth
+  `429 api.rate_limited` with **`Retry-After: 60`**; the run surface refused on its *second* call
+  under its own 1/60s budget while the default budget was already spent; an anonymous caller got
+  `401` + `WWW-Authenticate: Bearer` **four times running, never 429**; a second subject was
+  served normally; `Cache-Control: no-store` on API *and* `/health`; `/metrics` showing
+  `sentinelai_rate_limited_total` per operation template. The edge config was validated by real
+  nginx (`nginx -t` inside the compose network, with a throwaway self-signed pair) — upstream
+  resolution, TLS load, `limit_req_zone`, `http2 on` and the regex location all accepted.
+- **Verification**: `ruff` clean; `mypy app` strict clean (**187 files**); backend default **612
+  passed** / 27 deselected; live **17** + `live_neo4j` **6**; frontend 4-gate green (78 tests,
+  untouched); `openapi.json` unchanged; all three compose configurations valid (with and without a
+  `.env` present, matching CI). Docs: api-design v1.6.0 (§13 realization + version-history row;
+  its stale frontmatter version, left at 1.3.0 since ES-044, was corrected to match);
+  `infrastructure/README.md` documents the registry, tagging scheme, environment targets,
+  signature verification and TLS provisioning; README gains a staging/production section;
+  `.env.example` documents `RATE_LIMIT_*`; `.gitignore` excludes the edge TLS material.
+- **TD / deferred**: the CI pipeline is **not executed in-session** (it runs on the owner's push —
+  the ES-028 constraint stands), so the supply-chain leg is proven by configuration and local
+  equivalents rather than by a green run; the rate-limit state is per-instance, and a shared-store
+  limiter pairs with the post-release multi-instance work; the rate-limit budgets are validated by
+  pydantic bounds at construction rather than by ES-029's `validate_configuration` — wiring them
+  into startup fail-fast belongs to that leg of **ES-069**; abuse detection beyond simple limits,
+  and a cacheable API surface, stay documented follow-ups; path-filtered/matrixed CI jobs are
+  still deferred (not trivial with required checks); CD **promotion policy** remains **Milestone
+  H** — this ES delivers the artifact, not the governance around releasing it. Commits are the
+  owner's step.
+
+
+## ES-069 (Milestone G, part 3)
+
+- **Four "trust us" postures made mechanically verifiable**: what the platform did (durable audit),
+  what it guarantees (AC-14 enforced rather than compliant by construction), whether it is healthy
+  (readiness gating) and whether it is configured (startup fail-fast). Closes the release
+  checklist's **durable audit sink** and **AC-14 enforcement** items, the ES-021 audit TD, the
+  ES-064 erasure-action deferral, the ES-050 AC-14 debt and the documented readiness deviation.
+  **Third exercised RFC** (ADR-014 threshold a+c) — governance first, code second.
+- **The documentation gap was the actual blocker, and it was closed with documentation.**
+  audit-and-observability.md §4 already demanded records that are *tamper-resistant,
+  non-repudiable and complete*; nothing made those words mean anything, and no sink could be
+  written without inventing the policy in code. **RFC-004 → ADR-018 → audit-and-observability
+  v1.1.0 (Draft→Accepted, new §7a Audit Lifecycle)** fixes owner, append-only rule, integrity
+  model, retention, vocabulary and failure behaviour. Two entries in that section are the ones
+  worth defending:
+  - **Non-repudiation is deliberately bounded.** The chain proves the sequence has not been
+    altered *since it was written*; it does **not** prove authorship to a third party. Signing and
+    external notarization need a key with its own rotation/revocation lifecycle
+    (secrets-management), so 1.0 states the narrower guarantee it can support — overstating an
+    accountability guarantee is itself an accountability failure.
+  - **The AI Runtime contributes *nothing* to audit directly**, and that is a decision rather than
+    an omission: every AI step is already in the Investigation Trace, which is investigation-scoped
+    and **erasable**, while audit records are retention-bound and **survive erasure**
+    (data-lifecycle §5). Two records with opposite lifecycles must not be merged. Closes the
+    ES-021 "AI Runtime audit contribution" TD by deciding it away with a reason.
+- **Why the audit exception is defensible, stated once and enforced in the model**: audit records
+  survive the erasure they document *because* they carry **identifiers, not content** — subject,
+  operation, resource id, outcome, correlation id, timestamp. Retention and erasure obligations
+  stop competing when the retained record holds nothing to erase. The ORM carries **no foreign
+  keys to business data** for the same reason: a referential dependency on erasable rows would make
+  the exception unimplementable.
+- **Hash chain** (`postgres/audit/chain.py`): each record seals its own content plus its
+  predecessor's digest, so alteration, removal and reordering all break every digest that follows.
+  Sealing and verification live in one module because they are two halves of one rule and a drift
+  between them would silently make every stored record "invalid" — or accept a forged one. The
+  field separator is a control character precisely so **no value can forge a field boundary**
+  (asserted by a test that shifts a character across two adjacent fields).
+- **Two consequences of the chain, both handled rather than discovered later**: (a) the digest
+  covers `recorded_at`, so the adapter supplies the timestamp — a database-assigned value does not
+  exist yet when the digest is computed (this is the one place the ES-067 "use the DB clock" lesson
+  does *not* apply, because nothing compares this timestamp against a DB clock); (b) retention
+  expiry truncates the chain's oldest end, so verification treats the earliest **retained**
+  record's predecessor link as *unverifiable rather than broken* — otherwise the check would cry
+  wolf on every deployment that actually honours its retention policy.
+- **A single global chain means appends must serialize.** A transaction-scoped
+  `pg_advisory_xact_lock` does it; `SELECT … FOR UPDATE` on the head would not, because it locks
+  nothing when the table is empty and the very first two records could still race. ADR-018 records
+  the serialization cost and names per-tenant partitioning as the scale path.
+- **The audit write is its own transaction** (ADR-018 §9), never joined to the business
+  transaction — so AC-14 holds and audit cannot fail the analyst's work. The cost is explicit: an
+  activity and its record are **not atomic**. Atomicity was the tempting alternative and is
+  dismissed in RFC-004 for exactly this reason — it would let the audit store roll back real work.
+- **Vocabulary widened, but no value that nothing emits.** `investigation.erased` (the ES-064
+  deferral), `traffic.limit_enforced` (the ES-068 429, recorded as **denied** — nothing went wrong,
+  the platform declined) and `service.started`/`service.stopped` join the three ES-021 actions. The
+  §4 *administrative* category stays **unrepresented**: the platform exposes no administrative
+  surface, and a placeholder would assert accountability it does not have (asserted by a test that
+  pins the whole vocabulary).
+- **Every record now names the affected resource** — the *last* path parameter, which is the most
+  specific one the route named (`/investigations/{id}/evidence/{evidence_id}` affects the evidence
+  item). An identifier, never content.
+- **AC-14 mechanically enforced** (`tests/architecture/test_no_dual_write.py`), and the check is
+  built so it cannot rot: (1) each port is mapped to a store family in an explicit registry, and a
+  **completeness test fails** if a new port is unclassified; (2) a port method counts as a *write*
+  when the port declares it returning `None` — derived from the port declarations rather than a
+  hand-kept list of verbs, so a new write operation is covered the day it is declared; (3) writes
+  are propagated through the class's own internal calls, so a write hidden in a private helper
+  still counts against the public operation reaching it; (4) the two outbox projectors — which
+  write two stores **by design**, that being the ADR-012 mechanism — are exempt by **name**, so a
+  newly added class is checked by default and can only become exempt by decision. Plus a
+  **negative control**: a synthetic dual-write service must be detected, because a check that
+  quietly stopped finding anything would look exactly like a passing constraint.
+  architecture-testing.md v1.3.0 moves AC-14 from *declared* to *enforced*.
+- **Readiness gating resolved by ownership, not preference** (platform-observability v1.1.0 §4):
+  a store holding data the platform is **authoritative** for gates readiness — PostgreSQL, and
+  **Neo4j since ES-048** (a graph write has nowhere else to go, so an unreachable graph store is a
+  capability the unit cannot provide). Qdrant is **derived** and reproducible, and retrieval
+  already degrades to a contained failure, so it is reported but never gates: gating on a derived
+  store converts a partial capability loss into a total outage. A new `degraded` status makes the
+  distinction visible — an operator must be able to see a degraded dependency **without the
+  platform having to fail in order to disclose it**.
+- **Startup fail-fast is about *when* a missing secret is discovered** (secrets-management v1.1.0
+  §6): at use it looks like a runtime failure of the analyst's request; at startup it is what it
+  actually is — a configuration failure. Outside development the secrets of the **configured**
+  capabilities must be present or the process refuses to start. The required set is *derived from
+  configuration* (`required_secret_names`), which is the part that needed care: the JWT secret only
+  when JWT is selected, the NVIDIA key when NVIDIA is primary **or fallback** (a fallback that
+  cannot authenticate is not a fallback), the Google key while the embedding projector runs even in
+  an NVIDIA-only deployment (ES-050 binds the vector dimension to Gemini), and **never**
+  `NVD_API_KEY` — optional by NVD's own contract, so requiring it would refuse a startup over a
+  capability that works without it. All missing secrets are reported at once; the error names
+  identities, never values.
+- **Tests (+40 backend: 652 default, was 612; +11 live: 28)**: audit chain (9 — written from the
+  attacker's side: content edit, *resealed* edit caught by the next record's link, mid-chain
+  removal, reordering, field-boundary forgery, per-field digest coverage, retention boundary);
+  AC-14 (4, incl. the negative control); audit vocabulary/containment (7 — the closed vocabulary,
+  429-as-denied, unauthenticated-as-identity-failure, most-specific resource, a sink failure
+  neither failing the request nor going uncounted); readiness gating (6 — parametrized over the
+  gating stores, the derived store reported-not-gating, and truthful reporting *while* gating);
+  secret availability (13 — mostly the derivation). Live (11): a real chain that verifies, genesis
+  link, tamper detected via direct `UPDATE`, mid-chain `DELETE` detected, retention removing whole
+  records and leaving a valid chain, expiry not editing a retained record, 8 concurrent appends not
+  forking the chain, the record surviving a caller's rollback, the erasure action stored as
+  recorded.
+- **Live proof** (real backend, live PostgreSQL, `AUDIT_SINK=durable`): an 11-record chain from
+  `service.started` through create/read/**401**/run/**erase** to `investigation.erased` — each
+  record's `previous_hash` equal to its predecessor's `record_hash`, verification **valid**; a
+  direct `UPDATE` on one record reported `valid=False broken_at=<that seq>`; restoring it returned
+  the chain to valid. **An unplanned bonus**: the fail-fast proof ran four lifespans in *separate
+  processes* concurrently with the API backend, so their `service.started`/`stopped` records
+  interleaved into the same chain — and it still verified, which is cross-process append
+  serialization proven by accident. Startup fail-fast proved in four configurations: development +
+  missing JWT secret → **starts** (lazy); production + JWT selected without its secret → **refuses**
+  (`config.missing_secret`); production + NVIDIA *fallback* without its key → **refuses**;
+  production with every configured capability's secret → **starts**.
+- **Verification**: `ruff` clean; `mypy app` strict clean (**193 files**); backend default **652
+  passed** / 38 deselected; live **28** + `live_neo4j` **6**; frontend 4-gate green (78 tests,
+  untouched — it consumes no readiness surface); `openapi.json` **regenerated** (AC-15: the
+  readiness endpoint's description changed — the only contract movement, no schema change).
+  Migration **0007** adds `audit_log`. Docs: RFC-004 + ADR-018 (+ ADR index);
+  audit-and-observability v1.1.0 **Accepted** with §7a; platform-observability v1.1.0
+  (liveness/readiness + gating rule); secrets-management v1.1.0 (§6 Secret Availability);
+  architecture-testing v1.3.0 (AC-14 enforced); `.env.example` documents `AUDIT_SINK`,
+  `AUDIT_RETENTION_DAYS` and the production secret requirement.
+- **A contract-hygiene catch while regenerating**: the first readiness docstring named a private
+  code identifier (`_GATING_STORES`), which FastAPI publishes verbatim as the endpoint description
+  — an implementation detail leaking into the API contract. Reworded to describe behaviour; the
+  code detail stayed a comment.
+- **Two self-review catches, both about being exact where exactness is the point.** (a) The
+  erasure action was first selected by "a DELETE with an investigation id in the path", which a
+  future DELETE of a sub-resource (evidence detach is an open doc gap) would have silently
+  recorded as an *investigation erasure* — a mis-stated action in a retention-bound compliance
+  record is the last place to accept an approximation. Now matched against the exact operation,
+  and the constant is pinned to the published contract so a route rename fails loudly instead of
+  quietly retiring the category. This promoted ES-068's route-template derivation into
+  `context.py` as `route_template`, shared by the traffic budget and the audit classification —
+  the same question ("which operation is this?") answered once. (b) `verify(limit=…)` was written
+  for the "periodic job at volume" case ADR-018 names but had no test; it now has two, including
+  one proving a bounded pass still detects tampering inside its range.
+- **TD / deferred**: **automated retention enforcement** — the expiry path exists and is tested,
+  but nothing schedules it; it rides with the retention sweeper in **ES-070** rather than being
+  built twice. **No audit query/export surface** (reading the audit log needs its own authorization
+  model — "whoever may call the API" is not the answer). **Signing / external notarization /
+  write-once media** stay the documented evolution path; chain verification is O(n) and becomes a
+  periodic job at volume; the chain is global, with per-tenant partitioning as the scale path.
+  **Per-business-operation semantic audit inside services** (ES-021 TD) still deferred — the
+  boundary recorder derives the action from the request; the widened vocabulary is what makes the
+  richer version possible. Commits are the owner's step.
+
+
+## ES-070 (Milestone G, close)
+
+- **Milestone F delivered erasure as a *path*; this makes it happen.** Four legs plus the
+  milestone's user-visible close: automated retention enforcement, the production
+  crypto-shredding payload store, the shared-knowledge erasure surface (governance-first,
+  **RFC-005/ADR-019** — the fourth exercised RFC) and a platform operational surface. Closes the
+  ES-064/065/066 retention deferral, the ES-060/065 production-adapter TD and the ES-065
+  shared-knowledge REST TD. **Milestone G closed.**
+- **RFC-005 answered a question the platform had avoided**: §6a places the shared-knowledge
+  isolation boundary at *promotion*, so any authenticated identity may read organizational
+  knowledge — correct for retrieval, and plainly wrong for destruction. But leaving the path
+  unexposed was not neutral either: the erasure obligation is legal, and it was exercisable only
+  by someone with **direct database access** — ungoverned and unaudited. So the choice was never
+  "expose or not"; it was "governed API or database console".
+- **Granted capabilities, deliberately not a role model.** An identity may carry opaque
+  authorization facts asserted by its credential; `knowledge:erase` gates the destructive
+  operations and nothing else changes. The **empty default makes the change behaviour-preserving
+  by construction** — every credential issued before ADR-019 keeps exactly the access it had.
+  Adopting RBAC to gate one operation would have been the largest possible answer to the smallest
+  question; ADR-019 records that as a decision, not an omission.
+- **The untenanted limitation is written down rather than hidden.** Memory and the Graph carry no
+  tenant (the ADR-016 follow-up), so a capability holder can erase shared knowledge regardless of
+  which tenant contributed it. A gate that *looks* like isolation but is not would be worse than
+  no gate, so §6a now says so explicitly.
+- **Retention sweep introduces no erasure semantics.** It calls the same
+  `InvestigationService.erase` an analyst's request calls (ES-064), so tombstoning, the scoped
+  cascade, idempotence and the secondary-store projections are identical whether erasure was
+  requested or expired — an automated destructive path behaving even slightly differently from
+  the manual one is the worst place for a divergence. Bounded per cycle (a backlog drains over
+  several cycles instead of one long transaction), and **one poisonous investigation does not
+  abandon the rest of the batch**: a retention obligation is per investigation, not per cycle.
+- **Disabled by default, and that is the design.** `RETENTION_INVESTIGATION_DAYS=0` starts no
+  sweeper: no retention period is architecturally correct, and erasing an analyst's
+  investigations because nobody chose a number would be the worst kind of helpful. The *duration*
+  stays deployment policy (data-lifecycle §3); the platform owns only the enforcement.
+- **Crypto-shredding is a composition, not a new backend.** Payload bytes and keys live in two
+  separate stores *of the same kind*, so a deployment can hold the payload tier immutable and
+  backed up while the key tier stays mutable and **excluded from backups** — that separation is
+  the entire security argument, because shredding is only real if the key tier can actually
+  forget. Both are `EvidencePayloadStore`s, so it composes the filesystem adapter today and an
+  S3-compatible one tomorrow with **no port change**. AES-256-GCM with the address as additional
+  authenticated data: a tampered payload is refused rather than returned as corrupted evidence,
+  and ciphertext relocated to another address does not decrypt.
+- **AC-14 was the reason for a design choice, not an afterthought**: keys live in the object
+  store's own key space rather than in PostgreSQL, so storing a payload still writes exactly one
+  store family. A key table in the authoritative store would have made every upload a dual write.
+- **A claim in the plan corrected rather than quietly accepted.** ES-070's plan expected
+  crypto-shredding to *resolve* the ES-065 content-address dedup caveat (two evidence items with
+  byte-identical payloads sharing one object and therefore one fate). It does not, and cannot:
+  the erasure unit **is** the content address, so per-item keys would need a non-content-derived
+  object identity — an ADR-015 decision, not an oversight. The caveat is unchanged and recorded
+  in the adapter's own docstring so nobody re-derives this later.
+- **The operational surface is the milestone's honest deliverable.** Everything ES-067/068/069
+  added works *silently*: a breaker that never opens, a projection that never dead-letters, an
+  audit chain nobody reads, a sweep that erases on its own. Silent is exactly the problem — an
+  operator cannot confirm a guarantee they cannot see. `GET /api/v1/platform/status` reports
+  store readiness, provider circuits, dead-letters/deferred erasures, the configured lifecycle
+  policy, the audit posture and **the caller's own capabilities**, and the workspace gained a
+  Platform region rendering it.
+- **api-design v1.7.0 records the one resource that maps to no backend service** — the Platform
+  Status Resource owns no business state and delegates to nothing, which is why it needed to be
+  written down as the documented exception to Resource Ownership rather than left as an anomaly.
+  It shares the readiness probe with `/health/ready`, so the two surfaces cannot disagree about
+  whether the platform is ready — two answers to that question is worse than one wrong answer.
+- **The UI offers the erase control only to an identity that holds the capability** — presentation
+  courtesy, not enforcement (the backend refuses regardless, and must). Offering a control that
+  would only ever be refused invites an analyst to attempt what they cannot do.
+- **Tests (+30 backend: 682 default; +11 frontend: 89)**: retention sweep (6 — the cutoff is
+  supplied not computed, batch bound, one failure not abandoning the batch, a concurrent erasure
+  counted as success); crypto-shredding (9 — the stored bytes are not the payload, a backend that
+  *refuses to delete* still cannot serve the payload after shredding, tamper and
+  relocation refused, idempotence, re-upload keeping its key); shared-knowledge authorization (8 —
+  reading and writing need no capability, erasing does, an unrelated capability does not open it,
+  and a denied destructive request changes nothing at all); platform status (7 — readiness
+  matching the orchestrator probe, gating stores named, "not enforced" said plainly). Frontend:
+  Platform region (7) and the capability-gated Memory erase control (4, incl. the confirmation
+  step).
+- **Live proof** (real backend, live PostgreSQL, all four legs enabled): a payload stored through
+  the crypto-shredding store landed as **52 bytes of ciphertext for a 35-byte plaintext, with the
+  plaintext absent from disk** and its key in a separate tier; a Memory Item was erased with the
+  capability (`200 erased`, idempotent on repeat); the platform surface reported
+  `ready (gating: postgres, neo4j) · retention=30d enforced · payloads=crypto_shred ·
+  audit=durable · capabilities=knowledge:erase`; and an investigation backdated 90 days was
+  **erased by the sweep on its own** — status `erased`, title `[erased]`, `erased_at` stamped —
+  with the surface then reporting `1 erased, 0 failed`. The capability *denial* path is proven by
+  the policy and API tests rather than live, because the dev provider grants its configured set to
+  every subject.
+- **Verification**: `ruff` clean; `mypy app` strict clean (**200 files**); backend default **682
+  passed** / 38 deselected; live **28** + `live_neo4j` **6**; frontend 4-gate green (**89
+  tests**); `openapi.json` regenerated (three new routes: memory erasure, graph entity erasure,
+  platform status — AC-15). New dependency: `cryptography>=42` (hand-rolling authenticated
+  encryption for a security platform's evidence is not a trade worth making). Docs: RFC-005 +
+  ADR-019 (+ ADR index); authentication-authorization v1.2.0 (§6c Granted Capabilities + the §6a
+  destructive-operation rule); api-design v1.7.0 (erasure surfaces + Platform Status Resource);
+  roadmap v1.9.0 Delivery Record (**production hardening delivered; durable audit sink moves
+  Deferred → Delivered**); README milestone table + the A–G close paragraph; `.env.example`
+  documents `RETENTION_*`, `EVIDENCE_PAYLOAD_CRYPTO_SHRED` and `AUTH_DEV_CAPABILITIES`.
+- **Milestone G closed (2026-07-26)**: production hardening is realized end to end — resilience at
+  both failure edges (ES-067), the request/deployment edge with a signed and scanned versioned
+  image pipeline (ES-068), verifiable operation with a tamper-evident audit record and mechanically
+  enforced AC-14 (ES-069), and erasure operationalized with its authorization governed (ES-070).
+  Remaining before Release 1.0: **H** (governance/release ops + license). Jira SEN Milestone G
+  close is the owner's step; commits are the owner's step.
+- **TD / deferred**: **multi-instance scale-out** stays post-release — the sweeper is
+  single-instance (concurrent sweeps are *safe* because erasure is idempotent and the query
+  excludes tombstones, merely wasteful), alongside projector leader election and shared
+  rate-limit state. **No S3-compatible backend yet**: the crypto-shredding store composes the
+  filesystem adapter, and the production object store slots in behind the same port without
+  touching the strategy. **Key rotation / re-encryption** for the payload store is unmodelled (a
+  key lives as long as its payload). **No capability administration**: the IdP grants them, and
+  `AUTH_DEV_CAPABILITIES` is a development convenience that must not reach production. **Bulk
+  subject-wide erasure** across every store from one request stays out (ADR-017's per-category
+  boundary). **Per-tenant organizational knowledge** remains the open ADR-016 follow-up.
+
+
+
+## ES-071 (Milestone H, opener)
+
+- **Milestone H (governance & release ops) opened**; ES-071 is its governance anchor. This is the
+  first milestone whose subject is the **project** rather than the product: the platform is
+  complete and hardened, but the repository could not describe its own state. Forty of forty-two
+  documents sat in `status: Draft` while the architecture they specify was live; two had been
+  promoted to `Accepted` during ES-069/070 by an unwritten rule, so the field carried no
+  information at all.
+- **Governance first, one more time (RFC-006 → ADR-020).** The change amends ADR-014 (governance
+  gains a third lifecycle — proposals, decisions, and now documents) and adds an enforced
+  constraint, so it is above the ADR-014 threshold on two counts. Sixth exercised RFC.
+- **The promotion rule is about the document's honesty, not the platform's completeness.** A
+  document is `Accepted` when every normative statement it makes is realized **or explicitly
+  bounded in the document itself**. That makes promotion a decision a reviewer can actually
+  apply; "the documentation is complete" would be unfalsifiable and would make the vocabulary
+  worthless on its first use.
+- **The gap register became public.** The tracker's *Open Documentation Gaps* and the backlog's
+  deferrals lived in files that are gitignored (`implementation/`) or declared not to be project
+  documentation (`workdocs/`), so the public corpus read as a complete specification of an
+  architecture that in several places was deliberately undecided. Thirty-three documents gained a
+  **Known Gaps (Release 1.0)** section stating the gap, what the platform does instead, and the
+  governance path that would close it. The eight still-open documentation gaps are now written
+  where they belong: Investigation Summary / Investigation-Finding type / **Task service
+  ownership** / canonical event source → domain-model; evidence detach + report lifecycle →
+  investigation-service; timeline event source → investigation-workspace; investigation-scoped
+  entity listing → api-design; server-state category → ui-state-management. **This tracker's
+  "Open Documentation Gaps" section is superseded by those statements** and is kept only as
+  history.
+- **Two documents deliberately stayed `Draft`, and that is the proof the rule is not a rubber
+  stamp.** `release-management.md` is missing normative content rather than deferring it (release
+  identity, compatibility policy, promotion path — ES-072 writes them). `threat-model.md`
+  predates multi-tenancy (ADR-016), erasure (ADR-017) and granted capabilities (ADR-019): a
+  threat model that silently omits three delivered attack surfaces would be the worst possible
+  `Accepted`.
+- **AC-16 generalizes AC-15 rather than inventing a new mechanism.** Committed artifact + a test
+  that fails when it drifts, applied to the remaining *derivable* governance properties. Nothing
+  judgemental is checked: prose quality, completeness and accuracy stay review responsibilities
+  (ADR-020 §5), because a constraint that fires on taste stops being trusted.
+- **The drift was real, not hypothetical** — which is why the constraint exists:
+  `database-architecture.md` had been at front-matter 1.2.0 since 2026-07-23 while its own history
+  reached 1.4.0, `graph-service.md` 1.1.0 against 1.2.0, `api-design.md` and the roadmap had
+  version rows out of order, `system-overview.md` had no version history at all, the ADR README
+  had no front matter while governing status for everyone else, the RFC directory had **no
+  index** while the ADR directory did, and `LOG_LEVEL` / `OUTBOX_PROJECTOR_ENABLED` /
+  `OUTBOX_POLL_INTERVAL_SECONDS` were read by the platform but absent from `.env.example`. All
+  fixed here; the suite would have caught every one of them at the moment it was introduced.
+- **AC-11/12/13 keep their *Declared* status, with the reason written down.** AC-11 needs a
+  notion of "business logic" distinguishable from request handling, AC-12 needs Redis to be bound
+  before its non-authority can be observed (ADR-011 keeps it demand-driven), AC-13 needs frontend
+  mutation-ownership analysis. A weak automated approximation would be worse than the honest
+  declaration, because a vacuously passing constraint is indistinguishable from one that holds.
+- **Tests (+7 backend: 689 default)**: front-matter validity and allowed status; front matter
+  agreeing with the document's own version history (including ascending row order); decision and
+  proposal front-matter status vocabulary; index completeness **in both directions** for ADRs and
+  RFCs; no dangling `ADR-0NN`/`RFC-0NN` reference anywhere in `docs/`; every constraint the
+  catalogue records as *Enforced* naming a path that exists; every settings field documented in
+  `.env.example` (one direction only — secrets are resolved through `SecretProvider`, never
+  through settings, so the example legitimately carries names no settings class declares).
+  **Negative control run**: reintroducing the `database-architecture.md` front-matter drift failed
+  the version-history test, and restoring it turned the suite green again.
+- **Verification**: `ruff` clean; `mypy app` strict clean (200 files); backend default **689
+  passed** / 38 deselected (+7). Frontend untouched (no frontend file changed), `openapi.json`
+  unchanged (no REST surface touched — AC-15 unaffected). Docs: **RFC-006 + ADR-020** (+ both
+  indexes; the RFC index is new), architecture-testing v1.4.0 (**AC-16 enforced**), and a
+  corpus-wide lifecycle pass — **41 documents restated, 35 carrying Known Gaps sections**, and
+  exactly 2 kept `Draft` with a stated reason (plus the RFC template, which is a form, not a
+  document).
+- **TD / deferred**: **a stale `Accepted` is undetectable** — AC-16 verifies consistency, not
+  correctness, so a document whose content the platform has outgrown still passes; only the
+  version-history obligation makes such a change visible. **No link checking** (internal or
+  external) and no check that a Known Gaps section stays synchronized with the backlog it was
+  derived from. **`docs/api/openapi.json` freshness remains AC-15's** job, deliberately not
+  merged into AC-16. Milestone H continues with **ES-072** (release identity, compatibility
+  policy, license — the owner's decision — disclosure policy, governed promotion) and **ES-073**
+  (readiness gate, release rehearsal, close). Jira SEN Milestone H and commits are the owner's
+  step.

@@ -1,9 +1,9 @@
 ---
 title: Configuration Management
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-28
+last_updated: 2026-07-26
 ---
 
 # Configuration Management
@@ -580,8 +580,19 @@ Configuration Management should continue to evolve together with the platform wh
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Configuration values are validated at startup; configuration *sources* are not pluggable.** Values come from the process environment (with an optional local file in development); a configuration service or remote source is unmodelled.
+- **Secret material is governed separately** (secrets-management.md), where the concrete vault adapter and rotation lifecycle remain open.
+- **The frontend's runtime configuration is minimal and unvalidated** beyond its base-URL fallback.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial Configuration Management specification created |
+| 1.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): source pluggability, the secrets boundary and frontend configuration validation stated as open |

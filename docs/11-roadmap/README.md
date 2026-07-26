@@ -1,9 +1,9 @@
 ---
 title: Development Roadmap
-version: 1.8.0
-status: Draft
+version: 1.10.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-24
+last_updated: 2026-07-26
 ---
 
 # Development Roadmap
@@ -369,7 +369,7 @@ The roadmap carries the public summary of delivery reality, so the repository ca
 
 | Capability Slice | State |
 |---|---|
-| Architecture documentation & ADR governance (ADR-001…014) | Delivered |
+| Architecture documentation & ADR governance (ADR-001…020, RFC-001…006) | Delivered (the corpus carries a document lifecycle — ADR-020: a defined status per document, known gaps stated in the document that owns them, and governance freshness enforced by constraint AC-16) |
 | Backend skeleton: domain model, services, API boundary, auth/audit seams (deny-by-default) | Delivered (in-memory verified) |
 | AI composition: agents, RAG pipeline, Investigation Loop, Retrieval Flow, Investigation Trace | Delivered (in-memory verified) |
 | Frontend: workspace/dashboard over the single communication boundary | Delivered (live slice) |
@@ -385,8 +385,9 @@ The roadmap carries the public summary of delivery reality, so the repository ca
 | Threat intelligence integration: external knowledge providers (bundled MITRE ATT&CK catalog + live NVD CVE) behind the provider-neutral port, EXTERNAL retrieval strategy, Threat Intelligence Agent enriching the run (trace-visible) | Delivered (live slice) |
 | Evidence ingestion: content-addressed payload store (ADR-015/RFC-001), Investigation-Service-mediated upload/verified download, workspace file upload/download surface | Delivered (live slice; filesystem adapter dev-grade, S3-compatible store and format parsing/normalization deferred) |
 | Multi-tenancy & production identity: JWT authenticator (ES-062, owner==subject, WWW-Authenticate) + tenant scope (ADR-016/RFC-002, tenant-isolated authorization) | Delivered (live slice; HS256/shared-secret — asymmetric JWKS, refresh rotation, per-tenant shared knowledge and a managed Tenant entity deferred) |
-| Data end-of-life: erasure lifecycle + tombstoning (RFC-003/ADR-017) — investigation-family tombstoning cascade + DELETE surface (ES-064), secondary-store erasure propagation (payload byte erasure, embedding point deletion) + person-linked Memory/Graph erasure (ES-065), workspace erasure surface + tombstone rendering (ES-066) | Delivered (live slice; automated retention sweep, production crypto-shred payload adapter, and a REST surface for shared-knowledge erasure deferred) |
-| Durable audit sink | Deferred |
+| Data end-of-life: erasure lifecycle + tombstoning (RFC-003/ADR-017) — investigation-family tombstoning cascade + DELETE surface (ES-064), secondary-store erasure propagation (payload byte erasure, embedding point deletion) + person-linked Memory/Graph erasure (ES-065), workspace erasure surface + tombstone rendering (ES-066) | Delivered (live slice) |
+| Production hardening — resilience at both failure edges (provider breakers/retry/fallback, projector retry/dead-letter, ES-067); edge & deployment hardening (per-identity rate limiting, cache posture, TLS edge, image scan/SBOM/provenance/signature, versioned registry, ES-068); verifiable operation (hash-chained durable audit sink RFC-004/ADR-018, AC-14 mechanically enforced, readiness gating, secret startup fail-fast, ES-069); erasure operationalization (retention sweep, crypto-shredding payload store, capability-gated shared-knowledge erasure RFC-005/ADR-019) + the platform operational surface (ES-070) | Delivered (live slice; multi-instance scale-out — projector leader election, shared rate-limit state, sweep leader election — deliberately post-release) |
+| Durable audit sink | Delivered (live slice; append-only hash-chained audit log with retention expiry — signing/notarization and an audit query surface deferred) |
 
 This table is a mirror of the maintainer's implementation record and is updated whenever a slice's state changes; detailed engineering history remains in the maintainer's tracker.
 
@@ -604,3 +605,5 @@ The Development Roadmap should continue to evolve together with SentinelAI while
 | 1.6.0 | 2026-07-17 | Delivery Record updated: Evidence ingestion delivered (live slice) — content-addressed evidence payload store (ADR-015/RFC-001, ES-060) and the workspace upload/verified-download surface (ES-061); Milestone D closed |
 | 1.7.0 | 2026-07-17 | Delivery Record updated: Multi-tenancy & production identity delivered (live slice) — JWT authenticator + owner==subject (ES-062) and investigation tenant scoping (ADR-016/RFC-002, ES-063); Milestone E closed. Production IdP and owner==subject release-gate items met |
 | 1.8.0 | 2026-07-24 | Delivery Record updated: Data end-of-life delivered (live slice) — erasure lifecycle + tombstoning (RFC-003/ADR-017): investigation-family tombstoning cascade + DELETE surface (ES-064), secondary-store erasure propagation + person-linked Memory/Graph erasure (ES-065), workspace erasure surface + tombstone rendering (ES-066); Milestone F closed. Automated retention sweep, production crypto-shred adapter and a shared-knowledge erasure REST surface deferred |
+| 1.9.0 | 2026-07-26 | Delivery Record updated: **Production hardening delivered (live slice)** — resilience at both failure edges (ES-067), edge & deployment hardening incl. rate limiting and the signed/scanned versioned image pipeline (ES-068), verifiable operation incl. the hash-chained durable audit sink (RFC-004/ADR-018) and mechanically enforced AC-14 (ES-069), and erasure operationalization — retention sweep, crypto-shredding payload store, capability-gated shared-knowledge erasure (RFC-005/ADR-019) — plus the platform operational surface (ES-070); **Milestone G closed**. The durable audit sink row moves from Deferred to Delivered. Multi-instance scale-out remains deliberately post-release |
+| 1.10.0 | 2026-07-26 | Version-history ordering corrected (the 1.9.0 row preceded 1.8.0) and status Draft → **Accepted** (ADR-020 §2): the normative execution rule (§7 Vertical Slice First) is realized and the Delivery Record is explicitly a mirror of delivery reality, updated whenever a slice's state changes. Delivery Record governance row updated: the corpus now carries the ADR-020 document lifecycle — a defined status per document, known gaps stated publicly in the owning document, and governance freshness enforced by constraint (AC-16, ES-071) |

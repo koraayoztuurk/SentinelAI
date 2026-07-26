@@ -3,9 +3,14 @@
 The outbox lives in the authoritative store (PostgreSQL) so a Memory Item write
 and its derivation intent commit in the same local transaction (ADR-012).
 ``seq`` is a server-generated identity: it is both the primary key and the
-append-order the projector scans in. ``created_at``/``processed_at`` use the
-database clock (an infrastructure concern — the no-clock rule constrains the
-domain and services, not adapters).
+append-order the projector scans in. ``created_at``/``processed_at``/
+``next_attempt_at`` use the database clock (an infrastructure concern — the
+no-clock rule constrains the domain and services, not adapters).
+
+``attempts``/``last_error``/``next_attempt_at`` carry the retry schedule
+(ES-067): a pending record whose ``next_attempt_at`` lies in the future is
+backing off, and ``status='dead_letter'`` is the terminal state once the
+budget is spent.
 """
 
 from datetime import datetime
@@ -37,5 +42,8 @@ class MemoryOutboxRow(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     processed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    next_attempt_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

@@ -42,6 +42,21 @@ class Settings(BaseSettings):
     # default; tests disable it and drive the projector directly.
     outbox_projector_enabled: bool = True
     outbox_poll_interval_seconds: float = 2.0
+    # Per-record retry policy for the embedding projection (ES-067, closing the
+    # ES-050 "failed records are never retried" deferral). Patient rather than
+    # aggressive: the projection is background work, so a slow recovery only
+    # delays an embedding, while a tight retry loop burns provider quota.
+    projection_max_attempts: int = 5
+    projection_backoff_base_seconds: float = 5.0
+    projection_backoff_max_seconds: float = 300.0
+    # Retention enforcement (ES-070, data-lifecycle §3). The *duration* is
+    # deployment policy — this is the knob that expresses it, and it is
+    # **disabled by default** because no default retention period is
+    # architecturally correct: erasing an analyst's investigations because
+    # nobody chose a number would be the worst kind of helpful.
+    retention_investigation_days: int = 0
+    retention_sweep_interval_seconds: float = 3600.0
+    retention_sweep_batch_size: int = 50
 
     @property
     def environment(self) -> Environment:

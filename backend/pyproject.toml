@@ -22,6 +22,10 @@ dependencies = [
     # Direct HTTP client of the Gemini LLM adapter (ES-043); already present
     # transitively via qdrant-client, declared because we import it.
     "httpx>=0.27",
+    # AES-GCM for the crypto-shredding payload store (ES-070, ADR-017 §6).
+    # Hand-rolling authenticated encryption for a security platform's evidence
+    # is not a trade worth making to avoid a dependency.
+    "cryptography>=42",
 ]
 
 [project.optional-dependencies]

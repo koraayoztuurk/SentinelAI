@@ -1,9 +1,9 @@
 ---
 title: Security Architecture
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-27
+last_updated: 2026-07-26
 ---
 
 # Security Architecture
@@ -607,8 +607,20 @@ The Security Architecture serves as the foundation for the Authentication & Auth
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Traffic protection is rate limiting, not abuse detection.** Limits are per identity and per operation and their state is per instance; behavioural abuse detection and a shared limiter store are open (the latter pairs with multi-instance deployment).
+- **Transport security belongs to the deployment edge.** TLS termination, security headers and anonymous flood protection are realized by the edge configuration, not by the application; a deployment that omits the edge loses them.
+- **Vulnerability disclosure has no published policy.** The image pipeline scans and signs artifacts, but the project states no way to report a vulnerability in the platform itself — a release-governance obligation rather than a technical one.
+- **The identity boundary's production depth is bounded** by the open items in authentication-authorization.md (asymmetric verification, session continuity, capability administration).
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Security Architecture specification created |
+| 1.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): abuse detection, the edge-owned transport boundary, the missing disclosure policy and the bounded identity depth stated as open |

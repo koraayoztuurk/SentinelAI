@@ -8,6 +8,14 @@ Idempotence (ADR-012): the Qdrant point id is deterministic — ``UUID5`` of the
 Memory Item id — so re-projecting the same Memory Item **upserts the same
 single point** (the latest embedding replaces any prior one). Cosine distance,
 a caller-supplied vector dimension; the collection is created only if absent.
+
+Error containment (ES-067): **every** operation maps driver-level failures to
+the stable ``memory.vector_store_unavailable`` contract — the write path used to
+leak raw driver exceptions (e.g. a dimension-mismatch 400), contained only by
+the background loop's broad catch, so a failed projection could not be
+classified. ``ensure_collection`` additionally refuses to use a collection built
+for a different vector size (``memory.vector_dimension_mismatch``) rather than
+letting every upsert fail one by one.
 """
 
 import uuid
@@ -17,7 +25,10 @@ import httpx
 from qdrant_client import AsyncQdrantClient, models
 from qdrant_client.http.exceptions import ApiException
 
-from app.application.memory.errors import MemoryVectorStoreUnavailableError
+from app.application.memory.errors import (
+    MemoryVectorDimensionMismatchError,
+    MemoryVectorStoreUnavailableError,
+)
 from app.application.memory.vector_store import MemoryVectorMatch
 
 # Stable namespace so a Memory Item always maps to the same Qdrant point id.
@@ -31,20 +42,67 @@ def _point_id(memory_id: str) -> str:
 
 
 class QdrantMemoryVectorStore:
-    """``MemoryVectorStore`` adapter over Qdrant."""
+    """``MemoryVectorStore`` adapter over Qdrant.
 
-    def __init__(self, client: AsyncQdrantClient) -> None:
+    ``collection`` is overridable so the live suite can work in its own
+    collection (ES-067). Before that, live tests shared ``memory_embeddings``
+    with the running application and left it at their 3-dimensional test size,
+    which then broke the application's 768-dimensional writes — the ES-053
+    finding. The application always uses the default.
+    """
+
+    def __init__(
+        self, client: AsyncQdrantClient, collection: str = COLLECTION_NAME
+    ) -> None:
         self._client = client
+        self._collection = collection
 
     async def ensure_collection(self, dimensions: int) -> None:
-        if await self._client.collection_exists(COLLECTION_NAME):
-            return
-        await self._client.create_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config=models.VectorParams(
-                size=dimensions, distance=models.Distance.COSINE
-            ),
-        )
+        """Create the collection, or verify an existing one still fits (ES-067).
+
+        A collection created for a different vector size cannot hold this
+        embedder's vectors. Refusing here turns that into one explicit,
+        actionable failure instead of an endless stream of per-record write
+        errors.
+        """
+
+        try:
+            if await self._client.collection_exists(self._collection):
+                self._require_dimensions(
+                    await self._existing_dimensions(), dimensions
+                )
+                return
+            await self._client.create_collection(
+                collection_name=self._collection,
+                vectors_config=models.VectorParams(
+                    size=dimensions, distance=models.Distance.COSINE
+                ),
+            )
+        except (ApiException, httpx.HTTPError, OSError) as exc:
+            raise MemoryVectorStoreUnavailableError(
+                "The memory vector store is unreachable."
+            ) from exc
+
+    async def _existing_dimensions(self) -> int | None:
+        """The configured vector size of the existing collection, if readable.
+
+        Returns ``None`` when the shape is not the single unnamed vector this
+        adapter creates — an unrecognized configuration is not evidence of a
+        mismatch, so it must not block startup.
+        """
+
+        info = await self._client.get_collection(self._collection)
+        vectors = info.config.params.vectors
+        if isinstance(vectors, models.VectorParams):
+            return int(vectors.size)
+        return None
+
+    def _require_dimensions(self, existing: int | None, expected: int) -> None:
+        if existing is not None and existing != expected:
+            raise MemoryVectorDimensionMismatchError(
+                f"Collection '{self._collection}' stores {existing}-dimensional "
+                f"vectors but the configured embedder produces {expected}."
+            )
 
     async def upsert(
         self,
@@ -52,16 +110,24 @@ class QdrantMemoryVectorStore:
         vector: tuple[float, ...],
         payload: Mapping[str, object],
     ) -> None:
-        await self._client.upsert(
-            collection_name=COLLECTION_NAME,
-            points=[
-                models.PointStruct(
-                    id=_point_id(memory_id),
-                    vector=list(vector),
-                    payload=dict(payload),
-                )
-            ],
-        )
+        try:
+            await self._client.upsert(
+                collection_name=self._collection,
+                points=[
+                    models.PointStruct(
+                        id=_point_id(memory_id),
+                        vector=list(vector),
+                        payload=dict(payload),
+                    )
+                ],
+            )
+        except (ApiException, httpx.HTTPError, OSError) as exc:
+            # ES-053 finding: the write path used to leak raw driver errors
+            # (a dimension-mismatch 400 among them) into the projector's broad
+            # catch. Mapping them keeps failures classifiable and retriable.
+            raise MemoryVectorStoreUnavailableError(
+                "The memory vector store rejected the embedding write."
+            ) from exc
 
     async def delete(self, memory_id: str) -> None:
         """Delete the Memory Item's single point (ES-065, erasure projection).
@@ -74,10 +140,10 @@ class QdrantMemoryVectorStore:
         """
 
         try:
-            if not await self._client.collection_exists(COLLECTION_NAME):
+            if not await self._client.collection_exists(self._collection):
                 return
             await self._client.delete(
-                collection_name=COLLECTION_NAME,
+                collection_name=self._collection,
                 points_selector=models.PointIdsList(
                     points=[_point_id(memory_id)]
                 ),
@@ -101,10 +167,10 @@ class QdrantMemoryVectorStore:
         """
 
         try:
-            if not await self._client.collection_exists(COLLECTION_NAME):
+            if not await self._client.collection_exists(self._collection):
                 return ()
             response = await self._client.query_points(
-                collection_name=COLLECTION_NAME,
+                collection_name=self._collection,
                 query=list(vector),
                 limit=limit,
                 with_payload=True,

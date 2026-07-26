@@ -1,9 +1,9 @@
 ---
 title: SentinelAI API Design
-version: 1.3.0
-status: Draft
+version: 1.8.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-04
+last_updated: 2026-07-26
 ---
 
 # SentinelAI API Design
@@ -272,11 +272,24 @@ Represents investigation findings.
 
 Represents organizational knowledge.
 
+**Erasure** (data-lifecycle.md §2, ADR-017/ADR-019): `DELETE /api/v1/memory/{id}`
+is the person-linked right-to-be-forgotten path — every version is tombstoned
+and the derived embedding is erased through the outbox projection. Because it
+destroys *organizational* knowledge rather than one investigation's data, it
+requires an explicitly granted capability (§6c), unlike retrieval and promotion
+which stay open to any authenticated identity. Idempotent.
+
 ---
 
 ## Graph Resource
 
 Represents graph-based investigation data.
+
+**Erasure**: `DELETE /api/v1/graph/entities/{id}` redacts a person-linked
+entity's identifying data, keeping the node so incident relationships still
+resolve to an explicit erased node (§8a). Capability-gated like Memory erasure;
+which entities are person-linked is named by the caller, never inferred from
+data content.
 
 ---
 
@@ -292,11 +305,23 @@ The formerly documented transitional Planner Action Resource (`POST /api/v1/plan
 
 ---
 
+## Platform Status Resource
+
+Represents the platform's own operational posture (`GET /api/v1/platform/status`): store readiness, provider and background-projection health, the configured data-lifecycle policy, the audit posture, and the capabilities granted to the requesting identity.
+
+It is the one resource that maps to **no backend service**, because it describes no business data — it is the platform reporting on itself. It is authenticated but not privileged: an identity permitted to use the platform may see whether the platform it is using is healthy.
+
+Distinct from the operational health and metrics endpoints, which answer an orchestrator and a metrics collector on the internal network and are not part of the business API. The same underlying probes back both, so the two never disagree about whether the platform is ready.
+
+---
+
 ## Resource Ownership
 
 Each API resource should map to exactly one backend service.
 
 The API should never combine ownership across multiple services.
+
+The Platform Status Resource is the documented exception: it reports the platform's operational condition rather than any service's data, so it owns no business state and delegates to no service.
 
 Cross-service coordination is the responsibility of the Planner Agent's decision loop, executed one action at a time through the Planner Service (ADR-010).
 
@@ -522,6 +547,18 @@ The API may apply request limits to protect backend services.
 
 Rate limiting should remain configurable.
 
+Limits are evaluated per authenticated identity and per operation, after identity is established and before the operation is authorized. An anonymous request is rejected as unauthenticated rather than counted, and a limited identity is rejected before any backend service is invoked.
+
+Operations whose cost is bounded but large — the Investigation Run Resource, which drives the Investigation Loop — carry their own limit, independent of the default limit applied to the remaining operations.
+
+An over-limit request returns the standard error response with a stable error category and an indication of how long the client should wait before retrying.
+
+Rate limiting is a protection mechanism rather than a business rule. It never changes what an operation means, only whether the platform accepts it at this moment. The counters it maintains are protection state, not request state: no request's result depends on them, so Stateless Requests is preserved.
+
+Limits are enforced per API instance. A deployment running multiple instances divides its effective budget across them until the limit state is shared.
+
+Protection against anonymous request floods belongs to the deployment edge rather than to the API: the API protects backend services from authenticated callers, the edge protects the API from unauthenticated traffic.
+
 ---
 
 ## Response Caching
@@ -537,6 +574,15 @@ Response caching is an implementation optimization.
 Caching should never alter API semantics, consistency guarantees or ownership rules defined by the backend architecture.
 
 Clients should not depend on cached behavior.
+
+Cacheability is determined by ownership and lifecycle rather than by the shape of a response. Two platform rules together remove the business API from the cacheable set:
+
+- responses are scoped to the requesting identity and its tenant, so a shared cached copy could be served across an ownership boundary
+- investigation-scoped data has an end of life: erasure may redact a resource at any time, and a stored copy would outlive its own erasure
+
+The business API therefore declares its responses non-storable, and the platform's cacheable surface is the immutable presentation assets served by the deployment edge. Operational endpoints are non-storable for a different reason: a cached health answer is indistinguishable from a stale one.
+
+Admitting a cacheable API surface requires establishing that neither rule applies to it.
 
 ---
 
@@ -605,6 +651,19 @@ However, the architectural responsibilities defined in this document should rema
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **No pagination on collection endpoints.** Every list surface returns its full investigation-scoped result set. Pagination is a platform-wide change introduced in one coordinated step rather than endpoint by endpoint.
+- **The run surface is synchronous with a small cycle budget.** An asynchronous, job-based run surface is a state-ownership question above the ADR-014 threshold and requires an RFC before implementation.
+- **There is no platform-level investigation list endpoint.** Reading is investigation-scoped by identifier; the workspace creates and navigates, so returning to an earlier investigation needs its URL.
+- **There is no investigation-scoped entity listing.** The graph surface is entity-seeded (a neighbourhood from a named entity); which entities belong to an investigation is answered through the investigation's own artifacts today. The endpoint's ownership and shape are undecided.
+- **Validation errors report the failure, not the field.** Per-field error detail is deferred; the error envelope carries the code and message contract only.
+- **The Planner Action Resource is transitional** and carries no compatibility commitment — external clients driving raw planner actions are unsupported.
+
+---
+
 # Version History
 
 | Version | Date | Description |
@@ -615,3 +674,6 @@ However, the architectural responsibilities defined in this document should rema
 | 1.3.0 | 2026-07-04 | Investigation Run Resource added (investigation-level Investigation Loop surface, ADR-010/ADR-013); the transitional Planner Action Resource removed as its documented supersession (ES-044, slice decision V-2) |
 | 1.4.0 | 2026-07-17 | Evidence payload sub-resource defined (raw byte streams, size-bounded, Investigation-Service-mediated; envelope scoped to structured JSON resources) — ADR-015/RFC-001 |
 | 1.5.0 | 2026-07-23 | Investigation erasure surface defined (`DELETE /api/v1/investigations/{id}`): tombstoning cascade, explicit erased-state reads (§8a), owner+tenant scoped, idempotent — data-lifecycle.md/ADR-017 (RFC-003) |
+| 1.6.0 | 2026-07-26 | Traffic protection and cacheability made explicit (§13): rate limits are evaluated per identity and per operation between authentication and authorization, the run surface carries its own limit, an over-limit request returns the standard error response with a retry indication, and the counters are protection state rather than request state (Stateless Requests preserved); anonymous flood protection assigned to the deployment edge. Cacheability derived from ownership scope (ADR-016) and the erasure lifecycle (ADR-017): the business API and the operational endpoints are non-storable, the cacheable surface is the immutable presentation assets — realized by ES-068 |
+| 1.7.0 | 2026-07-26 | Shared-knowledge **erasure** surfaces defined (§8: `DELETE /api/v1/memory/{id}`, `DELETE /api/v1/graph/entities/{id}`) — the person-linked right-to-be-forgotten path, gated by a granted capability (§6c, RFC-005/ADR-019) because destroying organizational knowledge is not governed by the promotion boundary that makes reading it open. **Platform Status Resource** added (`GET /api/v1/platform/status`): the platform reporting its own operational posture — the documented exception to Resource Ownership, since it owns no business state and delegates to no service; distinct from the operational health/metrics endpoints, and backed by the same readiness probes so the two cannot disagree. Realized by ES-070 |
+| 1.8.0 | 2026-07-26 | Version-history ordering corrected (the 1.7.0 row preceded 1.6.0), status Draft → **Accepted** (ADR-020 §2), and a Known Gaps section added (§3) stating the open API surface questions — pagination, the asynchronous run surface, the missing investigation list and investigation-scoped entity listing, and validation detail |

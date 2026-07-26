@@ -35,43 +35,80 @@ async def _probe(coro: Awaitable[Any]) -> str:
     return "ok"
 
 
-@router.get("/health/ready", summary="Readiness check")
-async def readiness(request: Request, response: Response) -> dict[str, str]:
-    """Report whether the backend can serve business traffic.
+# Which stores gate readiness (platform-observability §4, ES-069). The rule is
+# ownership, not preference: a store holding data the platform is
+# **authoritative** for is gating, because the unit cannot fulfil its business
+# responsibility without it. PostgreSQL owns the Investigation family, Memory
+# and audit (ADR-003/ADR-018); Neo4j owns the Knowledge Graph since ES-048 —
+# graph writes have nowhere else to go, so an unreachable graph store is a
+# capability the unit cannot provide, not a degradation it can absorb.
+#
+# Qdrant is **derived** (ADR-011/ADR-012): its embeddings are reproducible from
+# PostgreSQL, and semantic retrieval already degrades to a contained failure. It
+# is probed and reported truthfully but never gates — gating on a derived store
+# would convert a partial capability loss into a total outage.
+_GATING_STORES = ("postgres", "neo4j")
+_DEGRADABLE_STORES = ("qdrant",)
 
-    Readiness reflects startup completion (the persistence registry built on
-    ``app.state`` during the lifespan) and the reachability of the bound stores.
-    **PostgreSQL is the authoritative core**: without it no business flow works,
-    so it **gates** overall readiness. Neo4j (graph, ES-048) and Qdrant (derived
-    semantic memory, ES-050) are **probed and reported truthfully** but do not
-    gate readiness — graph actions and retrieval degrade to contained failures
-    by design, so a blip in either must not take the whole platform out of
-    rotation. Distinct from liveness (``/health``), which is store-independent.
+
+async def probe_stores(request: Request) -> dict[str, object]:
+    """Probe every bound store and report readiness (ES-069/ES-070).
+
+    Shared by the readiness probe and the platform status surface so the two
+    can never disagree about whether the platform is ready — one of them
+    telling an operator something different from the other is worse than
+    either being wrong alone.
     """
 
     registry = getattr(request.app.state, "persistence", None)
     if registry is None:
-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {
             "status": "not_ready",
             "postgres": "not_initialized",
             "neo4j": "not_initialized",
             "qdrant": "not_initialized",
+            "gating": list(_GATING_STORES),
         }
 
-    postgres = await _probe(registry.ping_postgres())
-    neo4j = await _probe(registry.ping_neo4j())
-    qdrant = await _probe(registry.ping_qdrant())
-    body = {
+    body: dict[str, object] = {
         "status": "ready",
-        "postgres": postgres,
-        "neo4j": neo4j,
-        "qdrant": qdrant,
+        "postgres": await _probe(registry.ping_postgres()),
+        "neo4j": await _probe(registry.ping_neo4j()),
+        "qdrant": await _probe(registry.ping_qdrant()),
+        "gating": list(_GATING_STORES),
     }
-    if postgres != "ok":
+    if any(body[store] != "ok" for store in _GATING_STORES):
         body["status"] = "not_ready"
-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    elif any(body[store] != "ok" for store in _DEGRADABLE_STORES):
+        # Reported, never gating: an operator must be able to see a degraded
+        # dependency without the platform having to fail to disclose it.
+        body["status"] = "degraded"
     return body
+
+
+@router.get("/health/ready", summary="Readiness check")
+async def readiness(request: Request, response: Response) -> dict[str, str]:
+    """Report whether the backend can serve business traffic.
+
+    Readiness reflects startup completion and the reachability of the bound
+    stores. Every store is probed and reported truthfully. A store holding data
+    the platform is authoritative for **gates** the verdict: unreachable means
+    ``not_ready``. A store holding a derived representation does not gate;
+    unreachable means ``degraded`` — reported, still serving. Distinct from
+    liveness (``/health``), which is store-independent: an unreachable store is
+    not a reason to restart a healthy process.
+    """
+
+    probed = await probe_stores(request)
+    if probed["status"] == "not_ready":
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    # The probe surface carries the gating list for the platform status
+    # endpoint; the orchestrator's probe answers with store states only.
+    return {
+        key: value
+        for key, value in probed.items()
+        if key != "gating" and isinstance(value, str)
+    }
 
 
 @router.get("/metrics", summary="Operational metrics")

@@ -13,9 +13,14 @@ from qdrant_client import AsyncQdrantClient
 
 from app.config.database import QdrantSettings
 from app.infrastructure.persistence.qdrant.client import create_client
-from app.infrastructure.persistence.qdrant.memory_vector_store import (
-    COLLECTION_NAME,
-)
+
+# Test-scoped collection (ES-067, closing the ES-053 finding): the live suite
+# works at 3 dimensions while the application uses 768. Sharing one collection
+# meant whichever ran last dictated the vector size and broke the other — the
+# seed script had to recreate the collection to repair it. Separate names
+# remove the collision at its source; the dimension guard in the adapter is the
+# second line of defence for a genuine misconfiguration.
+TEST_COLLECTION_NAME = "memory_embeddings_test"
 
 
 def live_qdrant_client() -> AsyncQdrantClient:
@@ -25,7 +30,7 @@ def live_qdrant_client() -> AsyncQdrantClient:
 
 
 async def clear_collection(client: AsyncQdrantClient) -> None:
-    """Drop the memory-embeddings collection so a test starts clean."""
+    """Drop the test memory-embeddings collection so a test starts clean."""
 
     with contextlib.suppress(Exception):
-        await client.delete_collection(COLLECTION_NAME)
+        await client.delete_collection(TEST_COLLECTION_NAME)

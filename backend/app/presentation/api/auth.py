@@ -52,11 +52,19 @@ class AuthenticatedIdentity:
     distinguishes human, system and external identities; ``tenant`` is the
     identity's organization scope (ADR-016), defaulting to the single default
     tenant when the credential carries none.
+
+    ``capabilities`` are the authorization facts the credential asserts
+    (§6c, ADR-019): opaque strings granted by the identity provider and
+    evaluated by the policy. The default is empty — and therefore closed: a
+    privileged operation is unavailable unless something explicitly granted
+    it, so every credential issued before ADR-019 keeps exactly the access it
+    had.
     """
 
     subject: str
     kind: IdentityKind
     tenant: str = DEFAULT_TENANT
+    capabilities: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
         if not self.subject.strip():
@@ -101,8 +109,15 @@ class SharedTokenAuthenticator:
     messages never carry credential material.
     """
 
-    def __init__(self, secrets: SecretProvider) -> None:
+    def __init__(
+        self,
+        secrets: SecretProvider,
+        capabilities: frozenset[str] = frozenset(),
+    ) -> None:
         self._secrets = secrets
+        # No identity provider to assert them, so they are configuration
+        # (ADR-019 §6) — empty by default, like every other closed surface.
+        self._capabilities = capabilities
 
     async def authenticate(self, request: Request) -> AuthenticatedIdentity:
         header = request.headers.get("Authorization", "")
@@ -121,7 +136,9 @@ class SharedTokenAuthenticator:
         if not hmac.compare_digest(token.encode(), expected.encode()):
             raise AuthenticationError("Invalid credential.")
         return AuthenticatedIdentity(
-            subject=subject.strip(), kind=IdentityKind.HUMAN
+            subject=subject.strip(),
+            kind=IdentityKind.HUMAN,
+            capabilities=self._capabilities,
         )
 
 

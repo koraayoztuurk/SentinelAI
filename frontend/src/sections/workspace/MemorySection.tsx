@@ -6,7 +6,10 @@
 // items come from the server-state layer (latest version per item) and
 // refresh with the investigation family after a run.
 
+import { useState } from "react";
+import { useEraseMemoryItem } from "../../state/useEraseMemoryItem";
 import { useInvestigationMemory } from "../../state/useInvestigationMemory";
+import { usePlatformStatus } from "../../state/usePlatformStatus";
 import { Button } from "../../ui/Button";
 import { WorkspaceRegion } from "./WorkspaceRegion";
 
@@ -14,14 +17,28 @@ export interface MemorySectionProps {
   readonly investigationId: string;
 }
 
+// The capability that authorizes destroying organizational knowledge
+// (ADR-019). Shared knowledge is readable by anyone authenticated and
+// erasable only by someone granted this.
+const ERASE_KNOWLEDGE_CAPABILITY = "knowledge:erase";
+
 const STATUS_STYLES: Record<string, string> = {
   candidate: "border-info/50 text-info",
   verified: "border-ok/50 text-ok",
   deprecated: "border-line-strong text-faint",
+  erased: "border-danger/50 text-danger",
 };
 
 export function MemorySection({ investigationId }: MemorySectionProps) {
   const memory = useInvestigationMemory(investigationId);
+  const platform = usePlatformStatus();
+  const erasure = useEraseMemoryItem(investigationId);
+  const [pendingErase, setPendingErase] = useState<string | null>(null);
+  // The control is offered only to an identity that may actually use it
+  // (ADR-019). This is presentation courtesy, not enforcement — the backend
+  // refuses regardless, and must, since a client cannot be trusted.
+  const mayErase =
+    platform.status?.capabilities.includes(ERASE_KNOWLEDGE_CAPABILITY) ?? false;
 
   return (
     <WorkspaceRegion title="Memory">
@@ -66,12 +83,53 @@ export function MemorySection({ investigationId }: MemorySectionProps) {
                 </span>
               </div>
               {item.content !== "" && <p className="mt-1">{item.content}</p>}
-              <p className="mono-label mt-1 tabular-nums text-faint">
-                v{item.version} · confidence {Math.round(item.confidence * 100)}%
-              </p>
+              <div className="mt-1 flex items-end justify-between gap-2">
+                <p className="mono-label tabular-nums text-faint">
+                  v{item.version} · confidence{" "}
+                  {Math.round(item.confidence * 100)}%
+                </p>
+                {mayErase && item.status !== "erased" && (
+                  pendingErase === item.id ? (
+                    <span className="flex items-center gap-2">
+                      <span className="mono-label text-danger">
+                        Erase permanently?
+                      </span>
+                      <Button
+                        className="btn btn-primary bg-danger/80 text-xs hover:bg-danger"
+                        onClick={() => {
+                          erasure.erase(item.id);
+                          setPendingErase(null);
+                        }}
+                        disabled={erasure.erasingId === item.id}
+                      >
+                        Confirm
+                      </Button>
+                      <Button
+                        className="btn btn-ghost text-xs"
+                        onClick={() => setPendingErase(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </span>
+                  ) : (
+                    <Button
+                      className="btn btn-ghost text-xs text-danger"
+                      onClick={() => setPendingErase(item.id)}
+                    >
+                      Erase
+                    </Button>
+                  )
+                )}
+              </div>
             </li>
           ))}
         </ul>
+      )}
+
+      {erasure.error && (
+        <p role="alert" className="mt-2 text-xs text-danger">
+          Could not erase the memory item ({erasure.error.code}).
+        </p>
       )}
     </WorkspaceRegion>
   );

@@ -111,6 +111,32 @@ async def deprecate_memory(
     return build_success(MemoryItemResponse.from_domain(item), context)
 
 
+@memory_router.delete(
+    "/{memory_id}",
+    response_model=ApiResponse[MemoryItemResponse],
+)
+async def erase_memory(
+    memory_id: str,
+    service: MemoryService = Depends(get_memory_service),
+    context: RequestContext = Depends(get_request_context),
+) -> ApiResponse[MemoryItemResponse]:
+    """Erase a Memory Item — the person-linked right-to-be-forgotten path.
+
+    Requires the ``knowledge:erase`` capability (ADR-019): the promotion
+    boundary explains who may *read* organizational knowledge and says nothing
+    about who may end its existence, so destroying it is gated rather than
+    open to any authenticated identity. The authorization seam enforces it
+    before this endpoint runs.
+
+    Distinct from deprecation, which controls relevance rather than existence:
+    every version is tombstoned and the derived embedding is deleted through
+    the outbox projection. Idempotent — re-erasing returns the tombstone.
+    """
+
+    item = await service.erase(MemoryItemId(memory_id))
+    return build_success(MemoryItemResponse.from_domain(item), context)
+
+
 @memory_router.get(
     "/{memory_id}/history",
     response_model=ApiResponse[list[MemoryItemResponse]],

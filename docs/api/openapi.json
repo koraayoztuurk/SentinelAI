@@ -141,6 +141,26 @@
         "title": "ApiResponse[OutcomeResponse]",
         "type": "object"
       },
+      "ApiResponse_PlatformStatusResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PlatformStatusResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResponseStatus",
+            "default": "success"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[PlatformStatusResponse]",
+        "type": "object"
+      },
       "ApiResponse_RelationshipResponse_": {
         "properties": {
           "data": {
@@ -367,6 +387,69 @@
           "meta"
         ],
         "title": "ApiResponse[list[TraceEntryResponse]]",
+        "type": "object"
+      },
+      "AuditPostureResponse": {
+        "description": "Whether the audit record is durable and tamper-evident (ES-069).",
+        "properties": {
+          "durable": {
+            "title": "Durable",
+            "type": "boolean"
+          },
+          "sink": {
+            "title": "Sink",
+            "type": "string"
+          },
+          "write_failures": {
+            "title": "Write Failures",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sink",
+          "durable",
+          "write_failures"
+        ],
+        "title": "AuditPostureResponse",
+        "type": "object"
+      },
+      "DataLifecycleResponse": {
+        "description": "The configured end-of-life posture (ES-070, data-lifecycle \u00a73).\n\nDurations are deployment policy, so the surface reports what *this*\ndeployment chose rather than implying a platform default. A retention of\nzero days means enforcement is off \u2014 reported as such rather than as a\nnumber that looks like a policy.",
+        "properties": {
+          "audit_retention_days": {
+            "title": "Audit Retention Days",
+            "type": "integer"
+          },
+          "investigations_erased": {
+            "title": "Investigations Erased",
+            "type": "integer"
+          },
+          "payload_erasure_strategy": {
+            "title": "Payload Erasure Strategy",
+            "type": "string"
+          },
+          "retention_days": {
+            "title": "Retention Days",
+            "type": "integer"
+          },
+          "retention_enforced": {
+            "title": "Retention Enforced",
+            "type": "boolean"
+          },
+          "retention_failures": {
+            "title": "Retention Failures",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "retention_days",
+          "retention_enforced",
+          "investigations_erased",
+          "retention_failures",
+          "payload_erasure_strategy",
+          "audit_retention_days"
+        ],
+        "title": "DataLifecycleResponse",
         "type": "object"
       },
       "EntityAttributesUpdateRequest": {
@@ -1200,6 +1283,68 @@
         "title": "OutcomeResponse",
         "type": "object"
       },
+      "PlatformStatusResponse": {
+        "description": "The platform's operational posture in one read.",
+        "properties": {
+          "audit": {
+            "$ref": "#/components/schemas/AuditPostureResponse"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "data_lifecycle": {
+            "$ref": "#/components/schemas/DataLifecycleResponse"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "readiness": {
+            "$ref": "#/components/schemas/StoreReadinessResponse"
+          },
+          "resilience": {
+            "$ref": "#/components/schemas/ResilienceResponse"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment",
+          "version",
+          "readiness",
+          "resilience",
+          "data_lifecycle",
+          "audit",
+          "capabilities"
+        ],
+        "title": "PlatformStatusResponse",
+        "type": "object"
+      },
+      "ProviderHealthResponse": {
+        "description": "One AI provider's circuit state (ES-067).",
+        "properties": {
+          "circuit": {
+            "title": "Circuit",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "circuit"
+        ],
+        "title": "ProviderHealthResponse",
+        "type": "object"
+      },
       "RelationshipConfidenceUpdateRequest": {
         "description": "New confidence for an existing relationship.",
         "properties": {
@@ -1353,6 +1498,41 @@
         "title": "ReportResponse",
         "type": "object"
       },
+      "ResilienceResponse": {
+        "description": "Provider and background-projection health (ES-067).",
+        "properties": {
+          "llm_fallbacks": {
+            "title": "Llm Fallbacks",
+            "type": "integer"
+          },
+          "payload_erasures_deferred": {
+            "title": "Payload Erasures Deferred",
+            "type": "integer"
+          },
+          "projection_dead_letters": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Projection Dead Letters",
+            "type": "object"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderHealthResponse"
+            },
+            "title": "Providers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "providers",
+          "llm_fallbacks",
+          "projection_dead_letters",
+          "payload_erasures_deferred"
+        ],
+        "title": "ResilienceResponse",
+        "type": "object"
+      },
       "ResponseMeta": {
         "description": "Response metadata common to success and error responses.",
         "properties": {
@@ -1472,6 +1652,43 @@
           "actions"
         ],
         "title": "RunResponse",
+        "type": "object"
+      },
+      "StoreReadinessResponse": {
+        "description": "Reachability of each bound store, and whether it gates readiness.",
+        "properties": {
+          "gating": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Gating",
+            "type": "array"
+          },
+          "neo4j": {
+            "title": "Neo4J",
+            "type": "string"
+          },
+          "postgres": {
+            "title": "Postgres",
+            "type": "string"
+          },
+          "qdrant": {
+            "title": "Qdrant",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "postgres",
+          "neo4j",
+          "qdrant",
+          "gating"
+        ],
+        "title": "StoreReadinessResponse",
         "type": "object"
       },
       "TraceEntryResponse": {
@@ -1609,6 +1826,47 @@
       }
     },
     "/api/v1/graph/entities/{entity_id}": {
+      "delete": {
+        "description": "Erase a person-linked entity \u2014 the right-to-be-forgotten path.\n\nRequires the ``knowledge:erase`` capability (ADR-019), enforced by the\nauthorization seam before this endpoint runs.\n\n*Which* entities are person-linked is never inferred from data content:\nthe caller names the entity. The node keeps its identifier so incident\nrelationships still resolve to an explicit erased node. Idempotent.",
+        "operationId": "erase_entity_api_v1_graph_entities__entity_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_EntityResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Erase Entity",
+        "tags": [
+          "graph"
+        ]
+      },
       "get": {
         "operationId": "get_entity_api_v1_graph_entities__entity_id__get",
         "parameters": [
@@ -2866,6 +3124,47 @@
       }
     },
     "/api/v1/memory/{memory_id}": {
+      "delete": {
+        "description": "Erase a Memory Item \u2014 the person-linked right-to-be-forgotten path.\n\nRequires the ``knowledge:erase`` capability (ADR-019): the promotion\nboundary explains who may *read* organizational knowledge and says nothing\nabout who may end its existence, so destroying it is gated rather than\nopen to any authenticated identity. The authorization seam enforces it\nbefore this endpoint runs.\n\nDistinct from deprecation, which controls relevance rather than existence:\nevery version is tombstoned and the derived embedding is deleted through\nthe outbox projection. Idempotent \u2014 re-erasing returns the tombstone.",
+        "operationId": "erase_memory_api_v1_memory__memory_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MemoryItemResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Erase Memory",
+        "tags": [
+          "memory"
+        ]
+      },
       "get": {
         "operationId": "get_memory_api_v1_memory__memory_id__get",
         "parameters": [
@@ -3041,6 +3340,28 @@
         ]
       }
     },
+    "/api/v1/platform/status": {
+      "get": {
+        "description": "Report the platform's operational posture.\n\nStore readiness is probed live; resilience and lifecycle counters come from\nthe in-process observability registry, so the numbers describe **this\ninstance** \u2014 the same scope the metrics endpoint reports, and the honest\none until the platform runs as a cluster.",
+        "operationId": "platform_status_api_v1_platform_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PlatformStatusResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Platform Status",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "description": "Return the application's liveness status and identity.",
@@ -3065,7 +3386,7 @@
     },
     "/health/ready": {
       "get": {
-        "description": "Report whether the backend can serve business traffic.\n\nReadiness reflects startup completion (the persistence registry built on\n``app.state`` during the lifespan) and the reachability of the bound stores.\n**PostgreSQL is the authoritative core**: without it no business flow works,\nso it **gates** overall readiness. Neo4j (graph, ES-048) and Qdrant (derived\nsemantic memory, ES-050) are **probed and reported truthfully** but do not\ngate readiness \u2014 graph actions and retrieval degrade to contained failures\nby design, so a blip in either must not take the whole platform out of\nrotation. Distinct from liveness (``/health``), which is store-independent.",
+        "description": "Report whether the backend can serve business traffic.\n\nReadiness reflects startup completion and the reachability of the bound\nstores. Every store is probed and reported truthfully. A store holding data\nthe platform is authoritative for **gates** the verdict: unreachable means\n``not_ready``. A store holding a derived representation does not gate;\nunreachable means ``degraded`` \u2014 reported, still serving. Distinct from\nliveness (``/health``), which is store-independent: an unreachable store is\nnot a reason to restart a healthy process.",
         "operationId": "readiness_health_ready_get",
         "responses": {
           "200": {

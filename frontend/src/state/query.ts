@@ -15,6 +15,7 @@ import { loadEntityNeighborhood } from "../communication/graph";
 import { loadInvestigationTrace } from "../communication/trace";
 import { loadInvestigationMemory } from "../communication/memory";
 import { loadInvestigationOutcome } from "../communication/outcome";
+import { loadPlatformStatus } from "../communication/platform";
 
 export function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -38,6 +39,7 @@ export const queryKeys = {
   trace: (id: string) => ["trace", id] as const,
   memory: (id: string) => ["memory", id] as const,
   outcome: (id: string) => ["outcome", id] as const,
+  platformStatus: () => ["platform", "status"] as const,
 };
 
 // Query option builders — the only place per-query options live. Hooks consume
@@ -75,6 +77,16 @@ export function outcomeQuery(id: string) {
   return queryOptions({
     queryKey: queryKeys.outcome(id),
     queryFn: ({ signal }) => loadInvestigationOutcome(id, signal),
+  });
+}
+
+export function platformStatusQuery() {
+  return queryOptions({
+    queryKey: queryKeys.platformStatus(),
+    queryFn: ({ signal }) => loadPlatformStatus(signal),
+    // Operational posture ages faster than business data: a breaker that
+    // opened two minutes ago is not news an operator wants held back.
+    staleTime: 5_000,
   });
 }
 
@@ -117,6 +129,10 @@ export function invalidateMemory(client: QueryClient, id: string): Promise<void>
 
 export function invalidateOutcome(client: QueryClient, id: string): Promise<void> {
   return client.invalidateQueries({ queryKey: queryKeys.outcome(id) });
+}
+
+export function invalidatePlatformStatus(client: QueryClient): Promise<void> {
+  return client.invalidateQueries({ queryKey: queryKeys.platformStatus() });
 }
 
 // A run and an evidence attachment change investigation-scoped server state

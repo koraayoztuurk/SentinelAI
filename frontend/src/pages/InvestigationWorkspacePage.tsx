@@ -22,6 +22,7 @@ import { FindingsSection } from "../sections/workspace/FindingsSection";
 import { TimelineSection } from "../sections/workspace/TimelineSection";
 import { GraphSection } from "../sections/workspace/GraphSection";
 import { MemorySection } from "../sections/workspace/MemorySection";
+import { PlatformSection } from "../sections/workspace/PlatformSection";
 import type { WorkspaceViewModel } from "../communication/workspace";
 
 function WorkspaceSkeleton() {
@@ -66,6 +67,9 @@ function WorkspaceContent({
           <AiInsightsSection investigationId={investigationId} />
           <MemorySection investigationId={investigationId} />
         </div>
+        {/* The operational posture of the platform itself (ES-070): last,
+            because it is about the tool rather than the investigation. */}
+        <PlatformSection />
       </div>
     </WorkspaceProvider>
   );

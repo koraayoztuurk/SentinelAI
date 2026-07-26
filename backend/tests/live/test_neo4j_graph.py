@@ -29,6 +29,7 @@ from app.infrastructure.persistence.neo4j.schema import (
 from app.main import create_app
 from app.presentation.api.authorization import require_authorization
 from tests.live.neo4j_support import live_driver, prepare_graph
+from tests.support.auth import override_identity
 from tests.support.builders import (
     build_entity,
     build_relationship,
@@ -227,6 +228,9 @@ def test_graph_api_is_live_against_neo4j() -> None:
 
     app = create_app()
     app.dependency_overrides[require_authorization] = lambda: None
+    # The rate-limit seam chains authentication independently of the
+    # authorization seam (ES-068), so a stubbed identity is required too.
+    override_identity(app)
     with TestClient(app) as client:
         created = client.post(
             "/api/v1/graph/entities",

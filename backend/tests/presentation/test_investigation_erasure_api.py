@@ -171,18 +171,22 @@ def test_erasure_is_audited() -> None:
         )
         assert erased.status_code == 200
 
-        # Erasure rides the operation-audit boundary (§5, ADR-017 §7): a
-        # succeeded operation event names who erased what.
+        # Erasure is recorded as an erasure, not as an anonymous operation
+        # (ES-069 closes the ES-064 deferral): data-lifecycle.md §5 requires
+        # the record of *who erased what* to outlive the erased data, which it
+        # cannot do if the action category does not say "erased".
         erase_events = [
             event
             for event in recorder.events
-            if event.action.value == "operation.performed"
-            and event.operation is not None
-            and event.operation.startswith("DELETE ")
-            and investigation_id in event.operation
+            if event.action.value == "investigation.erased"
         ]
         assert erase_events, "the erasure was not audited"
         assert all(event.subject == "alice" for event in erase_events)
         assert all(
             event.outcome.value == "succeeded" for event in erase_events
+        )
+        # The affected resource is the identifier itself, not only a string
+        # inside the operation label — and it is an identifier, never content.
+        assert all(
+            event.resource == investigation_id for event in erase_events
         )

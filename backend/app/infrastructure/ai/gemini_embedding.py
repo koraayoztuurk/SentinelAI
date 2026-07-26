@@ -8,9 +8,14 @@ shape, explicit error mapping). Mirrors the LLM adapter
 
 Contract realization (ADR-013):
 
-- **Bounded execution time** — every call runs under ``asyncio.timeout`` with
-  the configured bound; exceeding it raises
+- **Bounded execution time** — every attempt runs under ``asyncio.timeout``
+  with the configured bound; exceeding it raises
   :class:`~app.ai.errors.EmbeddingProviderError`, never hangs.
+- **Resilience (ES-067)** — the call goes through
+  :class:`~app.infrastructure.ai.resilience.ResilientHttpCaller`: bounded retry
+  with backoff for transient failures behind a process-wide circuit breaker
+  (ADR-013 §4). The embedding edge is the one most exposed to free-tier
+  rate limits, since the projector embeds one Memory Item per record.
 - **Total error mapping** — transport failures, non-success HTTP statuses
   (Gemini quota/rate-limit included), malformed payloads and empty/missing
   vectors all map to ``EmbeddingProviderError`` with a bounded, key-free
@@ -21,14 +26,22 @@ Contract realization (ADR-013):
   at construction — an explicit configuration failure.
 """
 
-import asyncio
 import logging
 
 import httpx
 
 from app.ai.errors import EmbeddingProviderError
 from app.application.secrets import SecretName, SecretProvider
-from app.config.ai import GeminiEmbeddingSettings
+from app.config.ai import (
+    AIResilienceSettings,
+    GeminiEmbeddingSettings,
+    get_ai_resilience_settings,
+)
+from app.infrastructure.ai.resilience import (
+    ProviderCallError,
+    ResilientHttpCaller,
+    breaker_for,
+)
 from app.shared.secret import Secret
 
 logger = logging.getLogger(__name__)
@@ -38,6 +51,9 @@ GOOGLE_API_KEY = SecretName("GOOGLE_API_KEY")
 _BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 # Bound on provider-supplied text quoted into error messages.
 _ERROR_DETAIL_LIMIT = 200
+# Breaker registry key: the embedding edge has its own health signal, separate
+# from the Gemini LLM edge (they are different endpoints and quotas).
+PROVIDER_NAME = "gemini-embedding"
 
 
 class GeminiEmbeddingProvider:
@@ -48,6 +64,7 @@ class GeminiEmbeddingProvider:
         settings: GeminiEmbeddingSettings,
         secrets: SecretProvider,
         transport: httpx.AsyncBaseTransport | None = None,
+        resilience: AIResilienceSettings | None = None,
     ) -> None:
         self._settings = settings
         # Resolved eagerly: a missing key is a configuration error at
@@ -56,22 +73,23 @@ class GeminiEmbeddingProvider:
         # Injectable transport keeps the contract tests deterministic
         # (httpx.MockTransport); None means the real network.
         self._transport = transport
+        policy = resilience or get_ai_resilience_settings()
+        self._caller = ResilientHttpCaller(
+            PROVIDER_NAME,
+            settings.timeout_seconds,
+            policy,
+            breaker_for(PROVIDER_NAME, policy),
+        )
 
     async def embed(self, text: str) -> tuple[float, ...]:
         """Return the embedding vector for the text within the time bound."""
 
         try:
-            async with asyncio.timeout(self._settings.timeout_seconds):
-                response = await self._post(text)
-        except TimeoutError as exc:
-            raise EmbeddingProviderError(
-                f"Gemini embedding call exceeded the "
-                f"{self._settings.timeout_seconds}s execution bound."
-            ) from exc
-        except httpx.HTTPError as exc:
-            raise EmbeddingProviderError(
-                f"Gemini embedding transport failure: {type(exc).__name__}."
-            ) from exc
+            response = await self._caller.run(lambda: self._post(text))
+        except ProviderCallError as exc:
+            # Timeout, transport failure or an open circuit — all already
+            # bounded and key-free (ES-067).
+            raise EmbeddingProviderError(exc.detail) from exc
 
         if response.status_code != 200:
             raise EmbeddingProviderError(

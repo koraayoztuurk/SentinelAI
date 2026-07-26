@@ -1,9 +1,9 @@
 ---
 title: Platform Observability
-version: 1.0.0
-status: Draft
+version: 1.2.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-28
+last_updated: 2026-07-26
 ---
 
 # Platform Observability
@@ -158,6 +158,23 @@ Platform health should reflect:
 - environment consistency
 
 Platform health should describe operational behavior rather than prescribe operational actions.
+
+---
+
+## Liveness and Readiness
+
+Platform health answers two distinct operational questions, and conflating them degrades both.
+
+**Liveness** asks whether the deployment unit is running and able to answer at all. It is independent of every dependency: a store outage is not a reason to restart a healthy process.
+
+**Readiness** asks whether the deployment unit can serve its business responsibility *now*. It is therefore dependency-aware, and the architecture distinguishes two kinds of dependency:
+
+- A dependency is **gating** when the deployment unit cannot fulfil its business responsibility without it. An unavailable gating dependency makes the unit not ready, and it should be removed from service rather than allowed to fail requests.
+- A dependency is **degradable** when its absence reduces capability without preventing the unit's business responsibility. A degradable dependency is **probed and reported truthfully** but does not gate readiness: gating on it would convert a partial capability loss into a total outage.
+
+Whether a dependency gates follows from **who owns the data it holds**. A store holding data the platform is authoritative for is gating; a store holding a derived representation, whose absence the owning capability already degrades around, is not.
+
+Readiness reporting should remain **truthful about every dependency regardless of whether it gates** — an operator must be able to see a degraded dependency without the platform having to fail in order to disclose it.
 
 ---
 
@@ -551,8 +568,22 @@ Platform Observability should continue to evolve together with the platform whil
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Metrics are exposed, not collected.** The platform serves its own counters and gauges; no scraper, time-series store, dashboard or alerting exists, and there are no histograms or per-endpoint labels (a deliberate cardinality bound).
+- **Logs are written to standard output only.** Shipping, aggregation, retention and a structured-log schema contract are unspecified.
+- **Tracing is correlation-id threading**, not distributed tracing: there are no spans and no cross-process trace propagation.
+- **Client-side observability is an error boundary.** Frontend errors are contained and rendered; nothing is reported back to the platform.
+- **All counters are per instance**, consistent with the single-instance deployment posture (deployment-architecture.md).
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial Platform Observability specification created |
+| 1.1.0 | 2026-07-26 | Liveness/readiness distinction specified (§4): liveness is dependency-independent, readiness is dependency-aware, and a dependency **gates** readiness when the unit cannot fulfil its business responsibility without it while a **degradable** dependency is reported truthfully but never gates — gating on one would turn a partial capability loss into a total outage. Whether a dependency gates follows from data ownership: authoritative stores gate, derived representations do not. Resolves the documented readiness deviation; realized by ES-069 |
+| 1.2.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the absent collection stack, log shipping, distributed tracing, client observability and the per-instance scope of every counter stated as open |

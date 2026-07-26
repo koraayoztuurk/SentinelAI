@@ -1,10 +1,10 @@
 ---
 
 title: SentinelAI Project Charter
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Project Charter
@@ -573,3 +573,4 @@ Even experimental components should follow engineering best practices.
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Project Charter created |
+| 1.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2): the charter's scope, objectives and non-goals describe the platform as delivered through Milestone G |

@@ -9,6 +9,7 @@ the concrete ``OwnerScopedAuthorizer`` policy (ES-046) and the
 
 from app.application.authorization.authorizer import (
     DEFAULT_TENANT,
+    ERASE_SHARED_KNOWLEDGE,
     AuthorizationRequest,
     Authorizer,
     DenyAllAuthorizer,
@@ -22,6 +23,7 @@ __all__ = [
     "AuthorizationRequest",
     "OperationContext",
     "DEFAULT_TENANT",
+    "ERASE_SHARED_KNOWLEDGE",
     "DenyAllAuthorizer",
     "OwnerScopedAuthorizer",
     "AuthorizationError",

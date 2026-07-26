@@ -60,6 +60,21 @@ def _b64url_decode(segment: str) -> bytes:
     return base64.urlsafe_b64decode(segment + padding)
 
 
+def _as_sequence(claim: object) -> tuple[object, ...]:
+    """Normalize a claim that may be a list, a single value or absent.
+
+    Identity providers differ on whether a one-element grant is a list or a
+    bare string; both are read the same way rather than one being silently
+    ignored.
+    """
+
+    if isinstance(claim, list):
+        return tuple(claim)
+    if isinstance(claim, str):
+        return (claim,)
+    return ()
+
+
 class JwtAuthenticator:
     """``Authenticator`` adapter verifying HS256-signed bearer JWTs."""
 
@@ -202,12 +217,26 @@ class JwtAuthenticator:
             if isinstance(tenant_claim, str) and tenant_claim.strip()
             else DEFAULT_TENANT
         )
+        # Capabilities are authorization facts the identity provider asserts
+        # (§6c, ADR-019). A claim-less token yields an empty set, so tokens
+        # issued before this decision keep exactly the access they had; a
+        # malformed claim grants nothing rather than failing the request,
+        # since a missing capability is a denial, not a broken credential.
+        capabilities = frozenset(
+            item.strip()
+            for item in _as_sequence(claims.get("capabilities"))
+            if isinstance(item, str) and item.strip()
+        )
         logger.info(
-            "jwt verified subject=%s kind=%s tenant=%s",
+            "jwt verified subject=%s kind=%s tenant=%s capabilities=%d",
             subject.strip(),
             kind.value,
             tenant,
+            len(capabilities),
         )
         return AuthenticatedIdentity(
-            subject=subject.strip(), kind=kind, tenant=tenant
+            subject=subject.strip(),
+            kind=kind,
+            tenant=tenant,
+            capabilities=capabilities,
         )

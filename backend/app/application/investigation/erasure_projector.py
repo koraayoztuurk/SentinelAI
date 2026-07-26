@@ -22,9 +22,19 @@ Guarantees (ADR-012, reused for end-of-life):
   tombstone is never touched.
 - **No layer violation** — depends only on application ports (evidence
   repository, payload store); the concrete adapters are injected.
+
+**No dead-letter here, deliberately (ES-067).** The embedding projector retires
+a hopeless record into a dead-letter state, because a missing embedding is a
+degraded search experience. An unerased payload is different in kind: the
+platform has been told to destroy personal data (data-lifecycle §3, ADR-017),
+and "we gave up" is not an available outcome. So this projection retries
+indefinitely — the ES-065 behavior, kept on purpose — and the cycle *reports*
+what it could not erase so a stuck erasure becomes operationally visible
+(data-lifecycle §5 keeps erasure auditable) instead of quietly terminal.
 """
 
 import logging
+from dataclasses import dataclass
 
 from app.application.investigation.errors import (
     EvidencePayloadStoreUnavailableError,
@@ -33,6 +43,19 @@ from app.application.investigation.payload_store import EvidencePayloadStore
 from app.application.investigation.repositories import EvidenceRepository
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class ErasureProjectionOutcome:
+    """What one erasure cycle did (operational visibility, ES-067).
+
+    ``deferred`` counts payloads still owed after this cycle — a number that
+    stays above zero across cycles means erasure is stuck and needs an
+    operator, which is exactly what must never be silent.
+    """
+
+    erased: int = 0
+    deferred: int = 0
 
 
 class EvidencePayloadErasureProjector:
@@ -44,17 +67,18 @@ class EvidencePayloadErasureProjector:
         self._evidence = evidence
         self._payloads = payloads
 
-    async def project_pending(self, limit: int = 100) -> int:
-        """Erase all pending payloads once; return how many were completed."""
+    async def project_pending(self, limit: int = 100) -> ErasureProjectionOutcome:
+        """Erase all pending payloads once; report erased and still-owed counts."""
 
         pending = await self._evidence.list_pending_payload_erasures(limit)
-        erased = 0
+        erased = deferred = 0
         for item in pending:
             address = item.integrity.value
             try:
                 await self._payloads.erase(address)
             except EvidencePayloadStoreUnavailableError:
                 # The address stays in place: still pending, retried next cycle.
+                deferred += 1
                 logger.warning(
                     "payload erasure deferred evidence_id=%s", item.id.value
                 )
@@ -64,4 +88,4 @@ class EvidencePayloadErasureProjector:
             logger.info(
                 "payload erased for tombstone evidence_id=%s", item.id.value
             )
-        return erased
+        return ErasureProjectionOutcome(erased, deferred)

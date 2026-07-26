@@ -1,18 +1,129 @@
-# Production overlay (ES-030) — the Operational-stage deployment configuration
-# (release-management §5), layered on the base compose.
+# Production overlay (ES-030, hardened by ES-068) — the Operational-stage
+# deployment configuration (release-management §5), layered on the base compose.
 #
-# It selects the production environment and adds restart policies. In production the
-# backend requires real secrets: with APP_ENV=production, the ES-029 configuration
-# validation fails fast if the `change_me` placeholders are still in place. Run with
-# a real `.env` and the data tier:
+# It selects the production environment, runs the *published* versioned images
+# rather than a local build, hardens both containers (least privilege, bounded
+# resources, bounded logs) and swaps the dev nginx server block for the
+# TLS-terminating edge. In production the backend requires real secrets: with
+# APP_ENV=production, the ES-029 configuration validation fails fast if the
+# `change_me` placeholders are still in place. Run with a real `.env` and the
+# data tier:
 #
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile data up -d
+#
+# Prerequisites: a certificate/key pair at infrastructure/tls/{fullchain,privkey}.pem,
+# the image versions to run, and Docker Compose >= 2.24 for the `!override` /
+# `!reset` merge tags used below — see infrastructure/README.md.
 
 services:
   backend:
+    # A deployment runs the artifact CI built, scanned and signed (ES-068), not
+    # whatever the deploying host happens to compile. Pin a version tag; the
+    # `latest` default exists so the overlay is runnable, not because a
+    # production deployment should float.
+    image: ${BACKEND_IMAGE:-ghcr.io/koraayoztuurk/sentinelai-backend:latest}
+    pull_policy: always
     environment:
       APP_ENV: production
+      # The request edge protects the backend in deployments, not in dev
+      # (api-design §13, ES-068). Budgets keep their defaults unless the
+      # deployment overrides RATE_LIMIT_* explicitly.
+      RATE_LIMIT_ENABLED: "true"
     restart: unless-stopped
+    # Least privilege: no privilege escalation, no Linux capabilities, and an
+    # immutable root filesystem. The application writes only to the evidence
+    # payload volume (ADR-015) and to /tmp.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1g
+        reservations:
+          memory: 256m
+    # A container that cannot rotate its logs fills the host disk — an
+    # availability incident with no application cause.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/koraayoztuurk/sentinelai-frontend:latest}
+    pull_policy: always
     restart: unless-stopped
+    # `!override` rather than a plain list: compose *appends* sequences when
+    # merging overlays, so without it the base file's dev mapping (8080 → 80)
+    # would stay published alongside the edge ports.
+    ports: !override
+      - "80:80"
+      - "443:443"
+    volumes:
+      # The production edge: TLS termination, security headers, transport-level
+      # flood protection, per-surface timeouts (ES-068).
+      - ./infrastructure/nginx/edge.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infrastructure/tls:/etc/nginx/tls:ro
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # The stores publish loopback ports in the base compose so the opt-in live
+  # suites can reach them from the developer's host. A production deployment has
+  # no such caller: the tier is reachable on the compose network only.
+  postgres:
+    restart: unless-stopped
+    ports: !reset null
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  neo4j:
+    restart: unless-stopped
+    ports: !reset null
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  qdrant:
+    restart: unless-stopped
+    ports: !reset null
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

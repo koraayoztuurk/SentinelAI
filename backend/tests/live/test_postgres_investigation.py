@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from alembic import command
 from app.application.investigation import (
+    ErasureProjectionOutcome,
     EvidencePayloadErasureProjector,
     InvestigationService,
     payload_address,
@@ -572,7 +573,7 @@ async def _payload_erasure_scenario() -> None:
                 projector = EvidencePayloadErasureProjector(
                     PostgresEvidenceRepository(session), payloads
                 )
-                assert await projector.project_pending() == 0
+                assert await projector.project_pending() == ErasureProjectionOutcome()
             assert await payloads.exists(address)
 
             async with session_scope(factory) as session:
@@ -597,7 +598,9 @@ async def _payload_erasure_scenario() -> None:
                 projector = EvidencePayloadErasureProjector(
                     PostgresEvidenceRepository(session), payloads
                 )
-                assert await projector.project_pending() == 1
+                assert await projector.project_pending() == ErasureProjectionOutcome(
+                    erased=1, deferred=0
+                )
 
             # Bytes physically gone; the address is redacted, so the projection
             # converges and the record no longer points at erased bytes.

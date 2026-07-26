@@ -18,7 +18,7 @@ configuration artifacts.
 from enum import Enum
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,6 +35,12 @@ class LLMSelectionSettings(BaseSettings):
     ``LLM_PROVIDER=gemini|nvidia`` — an unknown value is rejected by the
     closed enum. Embedding stays on the Gemini adapter regardless (the
     Qdrant collection's vector dimension is bound to it, ES-050).
+
+    ``LLM_FALLBACK_PROVIDER`` (ES-067) optionally names a second adapter that
+    serves the call when the primary fails or its circuit is open. Unset — the
+    default — keeps single-provider behavior exactly as before; naming the
+    primary again is rejected (a fallback to the failing provider is no
+    fallback).
     """
 
     model_config = SettingsConfigDict(
@@ -46,6 +52,48 @@ class LLMSelectionSettings(BaseSettings):
     )
 
     provider: LLMProviderChoice = LLMProviderChoice.GEMINI
+    fallback_provider: LLMProviderChoice | None = None
+
+    @model_validator(mode="after")
+    def _distinct_fallback(self) -> "LLMSelectionSettings":
+        if self.fallback_provider is self.provider:
+            raise ValueError(
+                "LLM_FALLBACK_PROVIDER must differ from LLM_PROVIDER."
+            )
+        return self
+
+
+class AIResilienceSettings(BaseSettings):
+    """Provider-edge resilience policy (ES-067, ADR-013 §4).
+
+    One shared policy for every concrete AI adapter: the retry budget, its
+    backoff schedule and the circuit-breaker thresholds. ADR-013 keeps these
+    values out of the architecture — the *existence* of the bound is the
+    contract, the numbers are configuration.
+
+    The default attempt count is deliberately small. A retry multiplies a
+    call's worst-case wall-clock time by the attempt count, and an
+    investigation run makes several sequential LLM calls (the NVIDIA adapter's
+    bound alone is 180s), so one retry absorbs a transient blip without
+    doubling the run's latency budget. Raising it is a deployment decision.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="AI_RESILIENCE_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # Total attempts per call, retries included (1 disables retrying).
+    max_attempts: int = 2
+    backoff_base_seconds: float = 0.5
+    backoff_max_seconds: float = 8.0
+    # Consecutive transient failures that open a provider's circuit.
+    breaker_failure_threshold: int = 5
+    # How long an open circuit refuses calls before admitting one probe.
+    breaker_reset_seconds: float = 30.0
 
 
 class GeminiSettings(BaseSettings):
@@ -203,6 +251,13 @@ def get_llm_selection() -> LLMSelectionSettings:
     """Return the cached LLM provider selection."""
 
     return LLMSelectionSettings()
+
+
+@lru_cache
+def get_ai_resilience_settings() -> AIResilienceSettings:
+    """Return the cached provider-edge resilience policy (ES-067)."""
+
+    return AIResilienceSettings()
 
 
 @lru_cache

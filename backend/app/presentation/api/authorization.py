@@ -60,6 +60,7 @@ async def require_authorization(
         identity_kind=identity.kind.value,
         correlation_id=current_context(request).correlation_id,
         tenant=identity.tenant,
+        capabilities=identity.capabilities,
     )
     request.state.operation_context = context
     investigation_id = request.path_params.get("investigation_id")

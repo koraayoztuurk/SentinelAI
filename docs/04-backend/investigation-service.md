@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Investigation Service
-version: 1.2.0
-status: Draft
+version: 1.3.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Investigation Service
@@ -569,6 +569,18 @@ However, the investigation responsibilities defined in this document should rema
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Evidence detach has no semantics.** Evidence is attached and never detached; whether detaching means removal, unlinking or supersession — and what happens to findings derived from it — is undecided. It changes domain semantics and is therefore above the ADR-014 threshold.
+- **Report lifecycle and archival are undefined.** Report exists in the domain model; its states, transitions and archival rules are not specified, and the platform produces the synthesized Outcome rather than a Report artifact.
+- **Evidence ingestion stops at attachment.** Payload bytes are stored and retrievable (ADR-015); parsing, normalization and format-specific extraction are a future capability needing its own decision.
+- **Task operations are absent** because Task has no owning service (domain-model.md).
+- **Validation runs once, before synthesis** — per-cycle validation is deferred and is revisited with the asynchronous run surface.
+
+---
+
 # Version History
 
 | Version | Date | Description |
@@ -576,3 +588,4 @@ However, the investigation responsibilities defined in this document should rema
 | 1.0.0 | 2026-06-26 | Initial Investigation Service specification created |
 | 1.1.0 | 2026-07-03 | Lifecycle completed: Suspended transitions defined (Active ↔ Suspended, Suspended → Archived), reopen defined (Completed → Active), "close" clarified as completing (no separate Closed state) |
 | 1.2.0 | 2026-07-03 | Outcome operations (create/retrieve, 0..1 per investigation) and Trace operations (append-only explainability journal) added; evidence ingestion boundary defined (attachment owned here, ingestion/normalization a future capability requiring its own decision) |
+| 1.3.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): evidence detach, report lifecycle/archival, ingestion depth, the absent Task operations and single-pass validation stated as open |

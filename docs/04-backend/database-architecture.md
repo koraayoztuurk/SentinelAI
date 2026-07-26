@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Database Architecture
-version: 1.2.0
-status: Draft
+version: 1.5.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Database Architecture
@@ -750,6 +750,18 @@ However, supporting technologies should never become authoritative sources of bu
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **No S3-compatible payload backend yet.** The production strategy is crypto-shredding (§8b), realized by composing two payload stores; the byte tier is the filesystem adapter today and an object-store adapter slots in behind the same port without a strategy change.
+- **Payload encryption keys are never rotated.** A key lives as long as the payload it protects; re-encryption is unmodelled.
+- **Content-addressed storage makes the erasure unit the address.** Two evidence items with byte-identical payloads share one object and therefore one fate. Per-item erasure would need a non-content-derived object identity — an ADR-015 decision, not an oversight.
+- **Redis is deployed and unbound** (ADR-011 demand-driven): no cache consumer has been justified, so no cached data exists.
+- **Backup and restore have no architecture**, and their interaction with erasure (a restored backup can resurrect erased data) is therefore undefined — data-lifecycle.md §6 records it as a deployment obligation awaiting its own decision.
+
+---
+
 # Version History
 
 | Version | Date | Description |
@@ -759,3 +771,4 @@ However, supporting technologies should never become authoritative sources of bu
 | 1.2.0 | 2026-07-03 | Synchronization mechanism fixed as transactional outbox + idempotent projection (ADR-012, AC-14 no-dual-write); Evidence Payload Storage defined (§8b): content-addressed object store as the designated payload home, inline content as accepted interim state |
 | 1.3.0 | 2026-07-17 | Evidence payload store admitted (§8b realized): ADR-015/RFC-001 — content-addressed store as primary storage for raw payload bytes, application-owned addressing, Investigation-Service-mediated access |
 | 1.4.0 | 2026-07-23 | End-of-life realization notes (RFC-003/ADR-017, Milestone F): §8a cross-store references realized by tombstoning at erasure; §8b payload end-of-life strategy (crypto-shredding for the production object store, physical deletion for the dev filesystem adapter; erase via the ADR-012 outbox projection) |
+| 1.5.0 | 2026-07-26 | Front matter corrected to match the document's own history (it had remained at 1.2.0 since 2026-07-23 while the history reached 1.4.0 — the drift AC-16 now prevents), status Draft → **Accepted** (ADR-020 §2), and a Known Gaps section added (§3) covering the payload backend, key rotation, the content-address erasure unit, the unbound cache tier and the missing backup architecture |

@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Memory Service
-version: 1.1.0
-status: Draft
+version: 1.4.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Memory Service
@@ -272,6 +272,18 @@ Embedding failures should never corrupt Memory Items.
 
 ---
 
+## Embedding Failure Handling
+
+Embedding production is asynchronous and may fail transiently — an unavailable provider, an exhausted quota, an unreachable vector store.
+
+A failed derivation should be **retried within a bounded budget**, spaced by an increasing delay so that repeated failure does not become repeated load. Retrying is safe because projection is idempotent (ADR-012): the derived point is keyed by Memory Item identity, so re-deriving replaces rather than duplicates.
+
+A derivation that exhausts its budget should reach a **terminal, observable state** rather than being retried forever or discarded silently. The distinction matters operationally: the authoritative Memory Item is intact and unaffected, but it has no derived representation, so it is absent from semantic retrieval until an operator acts. Absence of an embedding must therefore be visible, never inferred.
+
+Retry budgets and delays are deployment configuration; the existence of a bound and of a terminal observable state is the architectural requirement.
+
+---
+
 # 9. Retrieval Strategy
 
 The Memory Service supports multiple retrieval mechanisms.
@@ -536,6 +548,16 @@ However, the service responsibilities defined in this document should remain sta
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Embedding regeneration and versioning are unmodelled** — see memory-architecture.md; the derived vector store is rebuildable, which is what makes the gap survivable.
+- **Embedding production is single-item**; no batch path exists.
+- **Shared knowledge carries no tenant.** Promoted organizational knowledge is cross-tenant by construction (ADR-016 follow-up), so tenant scoping cannot be applied to it — including at erasure (ADR-019).
+
+---
+
 # Version History
 
 | Version | Date | Description |
@@ -543,3 +565,5 @@ However, the service responsibilities defined in this document should remain sta
 | 1.0.0 | 2026-06-26 | Initial Memory Service specification created |
 | 1.1.0 | 2026-07-03 | Memory creation flow aligned with ADR-012 (transactional outbox; no dual-write on any request path); embedding port ownership fixed in the application layer (AC-04 compatible) |
 | 1.2.0 | 2026-07-23 | Erasure path added (data-lifecycle.md §2, ADR-017): the Memory Service owns the person-linked end-of-life path for Memory Items — erasure redacts the knowledge text of **every** version and marks them terminal `ERASED` (distinct from deprecation, which controls relevance not existence), and records the derived-embedding erasure intent in the same transaction so the projector deletes the vector point (ADR-012 reused for end-of-life). Not cascaded by investigation erasure: Memory is a shared knowledge layer (§6a) |
+| 1.3.0 | 2026-07-26 | Embedding Failure Handling added (§8): a failed derivation is retried within a bounded budget with increasing delay (safe because projection is idempotent, ADR-012) and reaches a terminal **observable** state when the budget is spent — the Memory Item stays intact but is absent from semantic retrieval, so that absence must be visible rather than inferred. Budgets/delays are deployment configuration; the bound and the observable terminal state are architectural |
+| 1.4.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): embedding lifecycle, batch production and the untenanted shared-knowledge layer stated as open |

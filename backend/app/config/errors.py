@@ -43,3 +43,23 @@ class InsecureSecretError(ConfigurationError):
             f"Configuration '{setting_name}' must be set to a non-default value "
             f"outside development environments."
         )
+
+
+class MissingSecretError(ConfigurationError):
+    """Raised when a capability the deployment declares has no secret (ES-069).
+
+    An absent secret is a **configuration** failure, not a runtime one
+    (secrets-management §6): outside development a deployment that cannot
+    perform the capabilities it is configured for does not enter service. The
+    error names the missing secrets' identities, never any value.
+    """
+
+    code = "config.missing_secret"
+
+    def __init__(self, secret_names: tuple[str, ...]) -> None:
+        self.secret_names = secret_names
+        listed = ", ".join(secret_names)
+        super().__init__(
+            f"Required secrets are not available: {listed}. The configured "
+            f"capabilities cannot be provided outside development environments."
+        )

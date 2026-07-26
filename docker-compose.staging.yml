@@ -1,0 +1,94 @@
+# Staging overlay (ES-068) — the pre-production environment
+# (environment-architecture §5), layered on the base compose.
+#
+# Staging exists to validate a release candidate under production-like
+# conditions, so it keeps the production hardening (TLS edge, least privilege,
+# resource limits, rate limiting) and differs only where its *operational
+# responsibility* differs (environment-architecture: "differences between
+# environments should arise only from their operational responsibilities"):
+#
+#   - APP_ENV=staging — still non-development, so the ES-029 secret validation
+#     applies exactly as in production;
+#   - structured JSON logs at DEBUG, because staging is where a release
+#     candidate is investigated rather than merely operated;
+#   - smaller resource limits, because staging carries no production load.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile data up -d
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/koraayoztuurk/sentinelai-backend:latest}
+    pull_policy: always
+    environment:
+      APP_ENV: staging
+      LOG_LEVEL: DEBUG
+      LOG_FORMAT: json
+      # Traffic protection is validated here before production relies on it.
+      RATE_LIMIT_ENABLED: "true"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/koraayoztuurk/sentinelai-frontend:latest}
+    pull_policy: always
+    restart: unless-stopped
+    # See the production overlay: compose appends sequences, so the base file's
+    # dev mapping must be replaced rather than extended.
+    ports: !override
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/nginx/edge.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infrastructure/tls:/etc/nginx/tls:ro
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+
+  neo4j:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+
+  qdrant:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m

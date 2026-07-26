@@ -1,3 +1,11 @@
+---
+title: Architecture Decision Records
+version: 1.1.0
+status: Accepted
+owner: SentinelAI Team
+last_updated: 2026-07-26
+---
+
 # Architecture Decision Records (ADRs)
 
 ## Purpose
@@ -204,6 +212,12 @@ RFCs should never replace ADRs, and ADRs should never replace the RFC Process.
 | ADR-015 | Evidence Payload Store |
 | ADR-016 | Investigation Tenant Scope |
 | ADR-017 | Data Erasure and Tombstoning |
+| ADR-018 | Audit Lifecycle and Durable Sink |
+| ADR-019 | Shared-Knowledge Erasure Authorization |
+| ADR-020 | Architecture Documentation Lifecycle |
+
+This index is **complete by constraint**: every decision file in this directory
+appears here and every entry here resolves to a file (AC-16, ADR-020 §4).
 
 ---
 
@@ -228,3 +242,12 @@ The RFC Process is the canonical governance mechanism for proposing architectura
 ADRs remain the canonical record of accepted architectural decisions.
 
 Architectural consistency is preferred over short-term implementation convenience.
+
+---
+
+# Version History
+
+| Version | Date | Description |
+|----------|------------|--------------------------------|
+| 1.0.0 | 2026-06-26 | Initial ADR governance README created |
+| 1.1.0 | 2026-07-26 | Front matter and version history introduced (the document governed decision status while declaring none of its own — the drift AC-16 now prevents); ADR-020 indexed and the index declared complete in both directions by constraint |

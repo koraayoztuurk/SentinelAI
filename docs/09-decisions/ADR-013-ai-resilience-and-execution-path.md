@@ -118,7 +118,14 @@ A small amount of generic-typing complexity is accepted in exchange for a single
 
 ## Notes
 
-This ADR resolves audit findings **E-02** and **D-03**. Concrete provider adapters (with real timeouts and circuit breakers) remain deferred integration work (implementation tracker).
+This ADR resolves audit findings **E-02** and **D-03**.
+
+**Realization status.** Concrete provider adapters with real timeouts arrived with the providers themselves (Gemini ES-043/049, NVIDIA ES-054, NVD ES-058). The §4 circuit-breaker — deferred integration work until real providers existed — is realized in **ES-067**: a shared resilience layer at the adapter edge (not in the ports) gives every concrete AI adapter a bounded retry with exponential backoff and jitter for transient failures only, behind a process-wide per-provider circuit breaker. Two consequences of §4 held up in practice and are worth recording:
+
+- The breaker counts **transient** failures only. A 4xx means the provider answered — it is healthy and our request was wrong — so it neither retries nor trips the breaker.
+- Because the breaker must not mask provider health (see Rationale), circuit state, failovers and retry exhaustion are exported as metrics.
+
+ES-067 also adds an optional **cross-provider fallback chain**: when the primary LLM's circuit is open, a configured secondary serves the call. This does not change §3 — an exhausted chain still raises the port's failure type and the loop still degrades to ESCALATED. The chain adds an attempt, never a new failure mode.
 
 ---
 

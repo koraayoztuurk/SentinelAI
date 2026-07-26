@@ -1,9 +1,9 @@
 ---
 title: SentinelAI System Overview
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-26
 ---
 
 # SentinelAI System Overview
@@ -692,3 +692,22 @@ Future architectural documents should refine this model without violating its fu
 System evolution should increase capabilities while preserving architectural clarity.
 
 Every new subsystem introduced into SentinelAI should integrate into this architecture rather than redefining it.
+
+---
+
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Redis is part of the architecture and deliberately unbound at runtime.** ADR-011 governs supporting persistence as demand-driven: no cache consumer has been justified, so no cached data exists. The store is deployed and unused, and no platform behaviour depends on it.
+- **The platform runs as a single application instance.** Horizontal scale-out — projector leader election, retention-sweep coordination, shared rate-limit state — is deliberately post-release; what is delivered is single-instance resilient behaviour, not cluster orchestration.
+- **The AI Runtime is in-process.** Running it as its own deployment unit is compatible with the boundaries described here (ADR-005/ADR-010) but would be a decision of its own, at the ADR-014 threshold.
+
+---
+
+# Version History
+
+| Version | Date | Description |
+|----------|------------|--------------------------------|
+| 1.0.0 | 2026-06-26 | Initial System Overview created |
+| 1.1.0 | 2026-07-26 | Version History introduced (the document had none — the drift AC-16 now prevents) and status Draft → **Accepted** (ADR-020 §2), with a Known Gaps section (§3) recording the unbound cache tier, the single-instance deployment posture and the in-process AI Runtime |

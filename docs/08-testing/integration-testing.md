@@ -1,9 +1,9 @@
 ---
 title: Integration Testing
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-28
+last_updated: 2026-07-26
 ---
 
 # Integration Testing
@@ -563,8 +563,19 @@ Integration Testing should continue to evolve together with the platform while p
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Live-store verification runs against ephemeral containers**, opt-in by marker locally and in dedicated CI jobs; there is no persistent test environment (environment-architecture.md).
+- **Test doubles are not uniform.** Suites written before the shared double set still carry local doubles; migration is opportunistic rather than a coordinated step.
+- **Contract testing between the frontend and the backend is not performed**; the committed contract artifact (AC-15) and hand-written DTOs are the coupling point.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial Integration Testing specification created |
+| 1.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): ephemeral live verification, non-uniform doubles and the absence of contract testing stated as open |

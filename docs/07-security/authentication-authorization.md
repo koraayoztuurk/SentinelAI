@@ -1,9 +1,9 @@
 ---
 title: Authentication and Authorization
-version: 1.1.0
-status: Draft
+version: 1.3.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # Authentication and Authorization
@@ -358,6 +358,25 @@ Organizational Memory and the Knowledge Graph are **deliberately cross-investiga
 - Only **validated** knowledge is promoted into the shared layers (Memory Architecture, Domain Rule 5); promotion is the controlled point where investigation-scoped information becomes organizational.
 - Retrieval from shared layers is therefore legitimate for any investigation; retrieval of another investigation's *unpromoted* data is not.
 
+**Destroying shared knowledge is not governed by the retrieval rule.** The promotion boundary explains why any authenticated identity may *read* organizational knowledge; it says nothing about who may end its existence. Erasing shared knowledge is an end-of-life obligation (Data Lifecycle §2) rather than an analytical activity, and it is therefore gated by an explicit **granted capability** (§6c) rather than by ordinary authenticated access.
+
+Shared knowledge carries no organization scope, so the capability — not a scope match — is the gate. A holder of the capability can erase shared knowledge irrespective of which organization contributed it; scoping organizational knowledge per organization remains an open architectural question (ADR-016).
+
+---
+
+# 6c. Granted Capabilities
+
+Investigation ownership answers "whose data is this?". It does not answer "what is this identity permitted to do?" — a question that arises as soon as an operation is privileged rather than merely scoped.
+
+A verified identity may therefore carry **granted capabilities**: authorization facts asserted by the credential and evaluated by the authorization policy.
+
+- Capabilities are **granted by the identity provider**, not managed by the platform. The platform consumes an authorization fact its identity provider already owns; it defines no roles, no role-to-capability mapping, no capability administration and no capability storage.
+- A credential asserting **no** capabilities yields an empty set. The default is therefore closed: a privileged operation is unavailable unless something explicitly granted it.
+- Capabilities gate **privileged operations**, never ordinary scoped access. Investigation scoping (§6a) and organization scoping (ADR-016) continue to govern access to data; a capability governs authority over an operation.
+- A capability is an **authorization input**, not an identity attribute: it is evaluated by the policy in the Application Domain, exactly like every other authorization decision (§7), and never by the presentation layer.
+
+A richer authorization model (roles, hierarchies, administration) remains a separate architectural decision. Capabilities are the minimum needed to express authority without committing the platform to owning identity management.
+
 ---
 
 # 6b. Operation Context (Identity Propagation)
@@ -585,9 +604,23 @@ Future authentication and authorization capabilities should extend these archite
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Token verification is symmetric (HS256).** A real external identity provider needs asymmetric verification against published keys (RS256/JWKS); the boundary is designed for it (the authenticator is a selectable adapter) but it is not implemented.
+- **There is no session continuity.** An access token expires and the identity is re-authenticated; refresh-token rotation and session lifecycle are unmodelled.
+- **The authorization policy is deny-by-default and vocabulary-bound.** A new resource surface stays refused until the policy learns it — safe, and it means policy depth grows one surface at a time.
+- **Capabilities are consumed, never administered.** The platform reads what a credential asserts (ADR-019); granting, revoking and listing capabilities belong to the identity provider, and the development authenticator's configured set must not reach production.
+- **Shared knowledge is untenanted.** Memory and the Knowledge Graph carry no tenant, so §6a isolation does not extend to them — including at erasure. This is the ADR-016 follow-up, recorded rather than assumed away.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Authentication and Authorization specification created |
 | 1.1.0 | 2026-07-03 | Investigation Access Scoping Model added (§6a: owner-based scoping, extensible to team/org; shared-knowledge boundary at promotion) and Operation Context defined (§6b: explicit identity propagation) — audit findings M-04/E-06 |
+| 1.2.0 | 2026-07-26 | **Granted Capabilities** defined (§6c, RFC-005/ADR-019): an identity may carry authorization facts asserted by its credential and evaluated by the policy; the platform consumes them rather than managing roles, and an empty set is the closed default. §6a extended: the promotion boundary explains who may *read* organizational knowledge and says nothing about who may end its existence — **destroying** shared knowledge is gated by a capability, and the untenanted nature of shared knowledge (ADR-016 follow-up) is recorded as a visible limitation. Realized by ES-070 |
+| 1.3.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): symmetric verification, session continuity, policy depth, capability administration and the untenanted shared layer stated as open |

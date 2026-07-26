@@ -11,6 +11,7 @@ import asyncio
 from datetime import UTC, datetime
 
 from app.application.investigation import (
+    ErasureProjectionOutcome,
     EvidencePayloadErasureProjector,
     InvestigationService,
     payload_address,
@@ -82,7 +83,9 @@ def test_projection_erases_bytes_marks_done_and_converges() -> None:
         # The tombstone still references the bytes: exactly one pending item.
         assert len(await evidence.list_pending_payload_erasures(100)) == 1
 
-        assert await projector.project_pending() == 1
+        assert await projector.project_pending() == ErasureProjectionOutcome(
+            erased=1, deferred=0
+        )
 
         # Bytes gone, address redacted to the erasure marker.
         assert await payloads.get(address) is None
@@ -93,7 +96,7 @@ def test_projection_erases_bytes_marks_done_and_converges() -> None:
 
         # Converged: nothing pending, a second run is a no-op.
         assert await evidence.list_pending_payload_erasures(100) == ()
-        assert await projector.project_pending() == 0
+        assert await projector.project_pending() == ErasureProjectionOutcome()
 
     asyncio.run(scenario())
 
@@ -124,7 +127,7 @@ def test_live_investigation_payloads_are_never_pending() -> None:
         )
 
         projector = EvidencePayloadErasureProjector(evidence, payloads)
-        assert await projector.project_pending() == 0
+        assert await projector.project_pending() == ErasureProjectionOutcome()
         # A live investigation's payload is untouched.
         assert await payloads.get(address) == _CONTENT
 
@@ -138,8 +141,11 @@ def test_store_outage_leaves_the_item_pending() -> None:
         await _erased_investigation_with_payload(payloads, evidence)
         projector = EvidencePayloadErasureProjector(evidence, payloads)
 
-        # Failure is contained: nothing completes, the intent survives.
-        assert await projector.project_pending() == 0
+        # Failure is contained: nothing completes, the intent survives —
+        # and the cycle reports it as still owed (ES-067 visibility).
+        assert await projector.project_pending() == ErasureProjectionOutcome(
+            erased=0, deferred=1
+        )
         assert len(await evidence.list_pending_payload_erasures(100)) == 1
         (item,) = await evidence.list_for_investigation(
             InvestigationId("inv-1")
@@ -158,7 +164,9 @@ def test_projection_is_idempotent_when_bytes_are_already_gone() -> None:
         await payloads.erase(address)
 
         projector = EvidencePayloadErasureProjector(evidence, payloads)
-        assert await projector.project_pending() == 1
+        assert await projector.project_pending() == ErasureProjectionOutcome(
+            erased=1, deferred=0
+        )
         assert await evidence.list_pending_payload_erasures(100) == ()
 
     asyncio.run(scenario())

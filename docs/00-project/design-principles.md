@@ -1,10 +1,10 @@
 ---
 
 title: SentinelAI Design Principles
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-26
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Design Principles
@@ -2570,3 +2570,4 @@ These principles form the foundation upon which every future architectural decis
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Design Principles document created |
+| 1.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2): every principle stated here is realized in the delivered platform and mirrored by the constraint catalogue; no normative statement remains unrealized |

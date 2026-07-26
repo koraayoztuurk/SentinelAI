@@ -1,9 +1,9 @@
 ---
 title: Environment Architecture
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-28
+last_updated: 2026-07-26
 ---
 
 # Environment Architecture
@@ -555,8 +555,18 @@ Environment Architecture should continue to evolve together with the platform wh
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Development, staging and production exist as definitions; the Test environment is the verification suite, not a deployed environment.** Live-store verification runs against ephemeral service containers in CI rather than a persistent test environment.
+- **No environment is hosted.** Environment targets are recorded (`infrastructure/README.md`) and their overlays validated, but nothing runs continuously; environment readiness is therefore verified by definition, not by operation.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial Environment Architecture specification created |
+| 1.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the definition-only environments and the unhosted state recorded explicitly |

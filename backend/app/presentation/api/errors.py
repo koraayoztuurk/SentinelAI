@@ -56,3 +56,20 @@ class InvalidPayloadError(SentinelAIError):
     (for example, empty). Translated to HTTP 422."""
 
     code = "api.invalid_payload"
+
+
+class RateLimitedError(SentinelAIError):
+    """Raised when an identity exceeds its request budget for an operation.
+
+    The traffic-protection contract (api-design §10/§13, ES-068): translated to
+    HTTP 429 and carrying the retry hint that becomes the ``Retry-After``
+    response header, so a client knows *when* to come back rather than having
+    to guess. The condition is transient by construction — nothing about the
+    request itself is wrong.
+    """
+
+    code = "api.rate_limited"
+
+    def __init__(self, message: str, *, retry_after_seconds: int) -> None:
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds

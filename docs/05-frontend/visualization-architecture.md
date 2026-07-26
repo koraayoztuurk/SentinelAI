@@ -1,9 +1,9 @@
 ---
 title: Visualization Architecture
-version: 1.1.0
-status: Draft
+version: 1.2.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-02
+last_updated: 2026-07-26
 ---
 
 # Visualization Architecture
@@ -366,9 +366,19 @@ Future implementations may introduce new visualization techniques and analytical
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **The graph renders as a deterministic radial ego-graph.** Force-directed layout, zoom and pan, node dragging and multi-hop expansion are not implemented; the view is a seeded neighbourhood rather than an explorable canvas.
+- **Saved layouts and relationship-type/confidence filters do not exist**; they follow interactive layout rather than preceding it.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Visualization Architecture specification created |
 | 1.1.0 | 2026-07-02 | Clarified the graph as an entity-seeded neighbourhood (seeded from investigation-scoped entities) |
+| 1.2.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the deterministic layout and absent exploration affordances stated as open |

@@ -8,8 +8,13 @@ model is MiniMax-M3 (owner decision; ``NVIDIA_MODEL`` is configuration).
 
 Contract realization (ADR-013), mirroring the Gemini adapter (ES-043):
 
-- **Bounded execution time** — every call runs under ``asyncio.timeout`` with
-  the configured bound (httpx gets the same value as its network timeout).
+- **Bounded execution time** — every attempt runs under ``asyncio.timeout``
+  with the configured bound (httpx gets the same value as its network timeout).
+- **Resilience (ES-067)** — the call goes through
+  :class:`~app.infrastructure.ai.resilience.ResilientHttpCaller`: bounded retry
+  with backoff for transient failures behind a process-wide circuit breaker
+  (ADR-013 §4). The bound here is wide (180s), so the attempt count is the
+  binding cost — see ``AIResilienceSettings``.
 - **Total error mapping** — transport failures, non-success HTTP statuses
   (quota/rate-limit included), choice-less or malformed payloads all map to
   ``LLMProviderError`` with a bounded, key-free message.
@@ -26,7 +31,6 @@ consuming agents (strict-JSON transformations) must never have to parse
 provider-specific reasoning artifacts.
 """
 
-import asyncio
 import logging
 import re
 
@@ -35,7 +39,16 @@ import httpx
 from app.ai.errors import LLMProviderError
 from app.ai.providers.llm import LLMRequest, LLMResponse
 from app.application.secrets import SecretName, SecretProvider
-from app.config.ai import NvidiaSettings
+from app.config.ai import (
+    AIResilienceSettings,
+    NvidiaSettings,
+    get_ai_resilience_settings,
+)
+from app.infrastructure.ai.resilience import (
+    ProviderCallError,
+    ResilientHttpCaller,
+    breaker_for,
+)
 from app.shared.secret import Secret
 
 logger = logging.getLogger(__name__)
@@ -46,6 +59,8 @@ _BASE_URL = "https://integrate.api.nvidia.com/v1"
 # Bound on provider-supplied text quoted into error messages.
 _ERROR_DETAIL_LIMIT = 200
 _THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
+# Breaker registry key: one shared health signal per provider, process-wide.
+PROVIDER_NAME = "nvidia"
 
 
 class NvidiaLLMProvider:
@@ -56,6 +71,7 @@ class NvidiaLLMProvider:
         settings: NvidiaSettings,
         secrets: SecretProvider,
         transport: httpx.AsyncBaseTransport | None = None,
+        resilience: AIResilienceSettings | None = None,
     ) -> None:
         self._settings = settings
         # Resolved eagerly: a missing key is a configuration error at
@@ -64,23 +80,23 @@ class NvidiaLLMProvider:
         # Injectable transport keeps the contract tests deterministic
         # (httpx.MockTransport); None means the real network.
         self._transport = transport
+        policy = resilience or get_ai_resilience_settings()
+        self._caller = ResilientHttpCaller(
+            PROVIDER_NAME,
+            settings.timeout_seconds,
+            policy,
+            breaker_for(PROVIDER_NAME, policy),
+        )
 
     async def generate(self, request: LLMRequest) -> LLMResponse:
         """Generate text for the request within the configured time bound."""
 
         try:
-            async with asyncio.timeout(self._settings.timeout_seconds):
-                response = await self._post(request)
-        except TimeoutError as exc:
-            raise LLMProviderError(
-                f"NVIDIA call exceeded the {self._settings.timeout_seconds}s "
-                f"execution bound."
-            ) from exc
-        except httpx.HTTPError as exc:
-            # Transport-level failure (connect/read/write, DNS, TLS...).
-            raise LLMProviderError(
-                f"NVIDIA transport failure: {type(exc).__name__}."
-            ) from exc
+            response = await self._caller.run(lambda: self._post(request))
+        except ProviderCallError as exc:
+            # Timeout, transport failure or an open circuit — all already
+            # bounded and key-free (ES-067).
+            raise LLMProviderError(exc.detail) from exc
 
         if response.status_code != 200:
             raise LLMProviderError(

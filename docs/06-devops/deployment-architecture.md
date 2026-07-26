@@ -1,9 +1,9 @@
 ---
 title: Deployment Architecture
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-28
+last_updated: 2026-07-26
 ---
 
 # Deployment Architecture
@@ -574,8 +574,19 @@ Deployment Architecture should continue to evolve together with the platform whi
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Deployment is single-instance per unit.** Horizontal scale-out — multiple backend instances, projector leader election, shared rate-limit state, sweep coordination — is deliberately post-release; the delivered artifacts are single-instance by design, not by omission.
+- **Promotion between environments is not defined here.** CI publishes signed, scanned, versioned images; the decision to deploy one is release governance (release-management.md), which is where the promotion path is being specified.
+- **No hosted environment exists.** The staging and production overlays are validated deployment definitions, not running deployments.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial Deployment Architecture specification created |
+| 1.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the single-instance posture, the undefined promotion path and the absence of a hosted environment stated as open |

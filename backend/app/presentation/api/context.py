@@ -18,6 +18,7 @@ from time import perf_counter
 from uuid import uuid4
 
 from fastapi import Request
+from fastapi.routing import APIRoute
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
@@ -82,6 +83,35 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             return response
         finally:
             reset(token)
+
+
+def route_template(request: Request) -> str:
+    """Return the matched route's full path template, or the raw path.
+
+    The template — not the concrete URL — is what identifies an *operation*:
+    two investigations are the same operation, two endpoints are not. Callers
+    use it wherever a stable, bounded operation identity is needed (traffic
+    budgets, metric labels, audit action classification).
+
+    A matched route only knows its *router-local* template (FastAPI no longer
+    flattens included routers into one table), so the router prefixes are
+    recovered from the concrete path: the template covers the request path's
+    trailing segments, and everything before them is the prefix. That is exact
+    — unlike substituting parameter *values* back into the path, which would
+    mistake a literal segment for a parameter whenever an identifier happens to
+    equal one.
+    """
+
+    route = request.scope.get("route")
+    path = request.url.path
+    template = route.path_format if isinstance(route, APIRoute) else ""
+    if not template:
+        return path
+    segments = path.split("/")
+    depth = template.count("/")  # segments the template contributes
+    if depth >= len(segments):
+        return template
+    return "/".join(segments[: len(segments) - depth]) + template
 
 
 def get_request_context(request: Request) -> RequestContext:

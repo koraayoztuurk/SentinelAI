@@ -16,8 +16,15 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
+from app.config.ai import LLMProviderChoice, get_llm_selection
 from app.domain.trace import TraceEntryKind
+from app.infrastructure.ai.resilience import reset_breakers
 from app.main import create_app
+from app.presentation.api.auth import (
+    AuthenticatedIdentity,
+    IdentityKind,
+    require_identity,
+)
 from app.presentation.api.authorization import require_authorization
 from tests.live.support import ensure_schema, live_engine, truncate_tables
 from tests.live.test_gemini_smoke import load_google_api_key
@@ -47,9 +54,25 @@ def _reset_database() -> None:
     asyncio.run(scenario())
 
 
+def _configured_provider_key() -> str:
+    """The secret name the active LLM adapter actually consumes."""
+
+    if get_llm_selection().provider is LLMProviderChoice.NVIDIA:
+        return "NVIDIA_API_KEY"
+    return "GOOGLE_API_KEY"
+
+
 def _client() -> TestClient:
     app = create_app()
+    # Both gates are bypassed the same way test_live_api.py does (ES-062):
+    # create_investigation resolves require_identity directly to derive the
+    # owner from the verified subject, not only through require_authorization,
+    # so overriding authorization alone leaves every request at 401. This
+    # suite exercises the AI run path, not the auth boundary.
     app.dependency_overrides[require_authorization] = lambda: None
+    app.dependency_overrides[require_identity] = lambda: AuthenticatedIdentity(
+        subject="analyst-1", kind=IdentityKind.HUMAN
+    )
     return TestClient(app)
 
 
@@ -112,8 +135,12 @@ def test_invalid_provider_key_escalates_without_breaking_anything() -> None:
     ensure_schema()
     _reset_database()
 
-    saved = os.environ.get("GOOGLE_API_KEY")
-    os.environ["GOOGLE_API_KEY"] = "invalid-key-for-escalation-test"
+    # Poison the key of the **configured** provider (ES-054 made the adapter
+    # selectable; poisoning GOOGLE_API_KEY under LLM_PROVIDER=nvidia left the
+    # run perfectly healthy and this assertion vacuous).
+    key_name = _configured_provider_key()
+    saved = os.environ.get(key_name)
+    os.environ[key_name] = "invalid-key-for-escalation-test"
     try:
         with _client() as client:
             investigation_id = _create_investigation(client)
@@ -131,6 +158,10 @@ def test_invalid_provider_key_escalates_without_breaking_anything() -> None:
             assert fetched.json()["data"]["status"] == "created"
     finally:
         if saved is None:
-            os.environ.pop("GOOGLE_API_KEY", None)
+            os.environ.pop(key_name, None)
         else:
-            os.environ["GOOGLE_API_KEY"] = saved
+            os.environ[key_name] = saved
+        # The rejected credential produced real failures against the live
+        # provider; clear the process-wide breaker so a later test in the same
+        # process does not inherit an unhealthy verdict (ES-067).
+        reset_breakers()

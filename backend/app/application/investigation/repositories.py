@@ -8,6 +8,7 @@ domain model untouched while preserving the inward dependency direction:
 infrastructure depends on these application-defined ports, not the reverse.
 """
 
+from datetime import datetime
 from typing import Protocol
 
 from app.domain.evidence import Evidence
@@ -30,6 +31,21 @@ class InvestigationRepository(Repository, Protocol):
     ) -> Investigation | None: ...
 
     async def update(self, investigation: Investigation) -> None: ...
+
+    async def list_expired(
+        self, created_before: datetime, limit: int
+    ) -> tuple[Investigation, ...]:
+        """Investigations created before ``created_before`` and not yet erased.
+
+        The query the retention sweep drives (ES-070, data-lifecycle §3). The
+        *cutoff* is caller-supplied, not derived here: retention duration is
+        deployment policy, and the no-clock rule keeps the reading of "now"
+        outside the domain and services.
+
+        Already-erased investigations are excluded so a sweep converges
+        instead of revisiting its own tombstones forever.
+        """
+        ...
 
 
 class EvidenceRepository(Repository, Protocol):

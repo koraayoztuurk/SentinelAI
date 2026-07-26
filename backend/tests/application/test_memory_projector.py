@@ -1,10 +1,11 @@
-"""Tests for the memory embedding projector (ES-050, ADR-012).
+"""Tests for the memory embedding projector (ES-050, ADR-012; ES-067 retry).
 
 Deterministic, in-memory validation of the projector's contract with fake
-ports (no Postgres/Qdrant): pending records are embedded and upserted then
-marked processed; an embedding failure is isolated (record marked failed, the
-Memory Item untouched); the embed text comes from ``content`` with a type
-fallback; idempotence is exercised through the deterministic upsert key.
+ports (no Postgres/Qdrant): due records are embedded and upserted then
+marked processed; an embedding failure is isolated (the Memory Item untouched)
+and rescheduled with backoff until the budget is spent, when the record is
+dead-lettered; the embed text comes from ``content`` with a type fallback;
+idempotence is exercised through the deterministic upsert key.
 """
 
 import asyncio
@@ -12,6 +13,8 @@ import asyncio
 from app.application.memory import MemoryEmbeddingError, OutboxRecord
 from app.application.memory.projector import (
     MemoryEmbeddingProjector,
+    ProjectionOutcome,
+    ProjectionRetryPolicy,
     embedding_text,
 )
 from app.domain.enums import MemoryStatus
@@ -25,16 +28,22 @@ class _FakeOutbox:
     def __init__(self, records: list[OutboxRecord]) -> None:
         self._records = records
         self.processed: list[int] = []
-        self.failed: list[tuple[int, str]] = []
+        self.retried: list[tuple[int, str, float]] = []
+        self.dead_lettered: list[tuple[int, str]] = []
 
-    async def list_pending(self, limit: int) -> tuple[OutboxRecord, ...]:
+    async def list_due(self, limit: int) -> tuple[OutboxRecord, ...]:
         return tuple(self._records[:limit])
 
     async def mark_processed(self, seq: int) -> None:
         self.processed.append(seq)
 
-    async def mark_failed(self, seq: int, error: str) -> None:
-        self.failed.append((seq, error))
+    async def mark_retry(
+        self, seq: int, error: str, delay_seconds: float
+    ) -> None:
+        self.retried.append((seq, error, delay_seconds))
+
+    async def mark_dead_letter(self, seq: int, error: str) -> None:
+        self.dead_lettered.append((seq, error))
 
 
 class _FakeMemory:
@@ -82,8 +91,9 @@ def _projector(
     memory: _FakeMemory,
     embedder: _FakeEmbedder,
     store: _FakeVectorStore,
+    retry: ProjectionRetryPolicy | None = None,
 ) -> MemoryEmbeddingProjector:
-    return MemoryEmbeddingProjector(outbox, memory, embedder, store)
+    return MemoryEmbeddingProjector(outbox, memory, embedder, store, retry)
 
 
 def test_embedding_text_prefers_content_then_type() -> None:
@@ -100,13 +110,13 @@ def test_project_pending_embeds_upserts_and_marks_processed() -> None:
     store = _FakeVectorStore()
     projector = _projector(outbox, _FakeMemory({"m1": item}), embedder, store)
 
-    count = asyncio.run(projector.project_pending())
+    outcome = asyncio.run(projector.project_pending())
 
-    assert count == 1
+    assert outcome == ProjectionOutcome(processed=1)
     assert embedder.calls == ["ransomware playbook"]
     assert store.points["m1"] == (0.1, 0.2, 0.3)
     assert outbox.processed == [1]
-    assert outbox.failed == []
+    assert outbox.retried == []
 
 
 def test_erased_memory_item_deletes_its_point_instead_of_embedding() -> None:
@@ -122,15 +132,15 @@ def test_erased_memory_item_deletes_its_point_instead_of_embedding() -> None:
     store.points["m1"] = (0.5, 0.5, 0.5)
     projector = _projector(outbox, _FakeMemory({"m1": erased}), embedder, store)
 
-    count = asyncio.run(projector.project_pending())
+    outcome = asyncio.run(projector.project_pending())
 
-    assert count == 1
+    assert outcome == ProjectionOutcome(processed=1)
     assert store.deleted == ["m1"]
     assert "m1" not in store.points
     # The redacted text is never sent to the embedding provider.
     assert embedder.calls == []
     assert outbox.processed == [3]
-    assert outbox.failed == []
+    assert outbox.retried == []
 
 
 def test_erasure_projection_is_idempotent() -> None:
@@ -145,7 +155,9 @@ def test_erasure_projection_is_idempotent() -> None:
         projector = _projector(
             outbox, _FakeMemory({"m1": erased}), _FakeEmbedder(), store
         )
-        assert asyncio.run(projector.project_pending()) == 1
+        assert asyncio.run(projector.project_pending()) == ProjectionOutcome(
+            processed=1
+        )
         assert outbox.processed == [seq]
 
     # Re-running settles the same way; the point stays gone.
@@ -153,7 +165,7 @@ def test_erasure_projection_is_idempotent() -> None:
     assert store.points == {}
 
 
-def test_embedding_failure_is_isolated_record_marked_failed() -> None:
+def test_embedding_failure_is_isolated_and_rescheduled() -> None:
     item = build_memory_item("m1", content="x")
     outbox = _FakeOutbox([OutboxRecord(seq=7, memory_id="m1", memory_version=1)])
     store = _FakeVectorStore()
@@ -161,10 +173,11 @@ def test_embedding_failure_is_isolated_record_marked_failed() -> None:
         outbox, _FakeMemory({"m1": item}), _FakeEmbedder(fail=True), store
     )
 
-    count = asyncio.run(projector.project_pending())
+    outcome = asyncio.run(projector.project_pending())
 
-    assert count == 0
-    assert outbox.failed and outbox.failed[0][0] == 7
+    assert outcome == ProjectionOutcome(retried=1)
+    assert outbox.retried and outbox.retried[0][0] == 7
+    assert outbox.dead_lettered == []
     assert outbox.processed == []
     # The vector store was never written (Memory Item derived state untouched).
     assert store.points == {}
@@ -193,8 +206,109 @@ def test_missing_memory_item_settles_the_record() -> None:
     store = _FakeVectorStore()
     projector = _projector(outbox, _FakeMemory({}), _FakeEmbedder(), store)
 
-    count = asyncio.run(projector.project_pending())
+    outcome = asyncio.run(projector.project_pending())
 
-    assert count == 1
+    assert outcome == ProjectionOutcome(processed=1)
     assert outbox.processed == [3]
     assert store.points == {}
+
+
+# --------------------------------------------------- retry & dead-letter (ES-067)
+
+
+def test_retry_backoff_grows_with_attempts_and_is_capped() -> None:
+    policy = ProjectionRetryPolicy(
+        max_attempts=10, backoff_base_seconds=5.0, backoff_max_seconds=20.0
+    )
+
+    # 1st failure waits the base delay, then it doubles per attempt...
+    assert policy.delay_for(1) == 5.0
+    assert policy.delay_for(2) == 10.0
+    assert policy.delay_for(3) == 20.0
+    # ...and never exceeds the ceiling, so a long outage cannot push the next
+    # attempt beyond a bounded horizon.
+    assert policy.delay_for(9) == 20.0
+
+
+def test_failure_carries_the_policy_delay_for_the_next_attempt() -> None:
+    item = build_memory_item("m1", content="x")
+    outbox = _FakeOutbox(
+        # One failure already recorded: the next delay is the second step.
+        [OutboxRecord(seq=7, memory_id="m1", memory_version=1, attempts=1)]
+    )
+    policy = ProjectionRetryPolicy(
+        max_attempts=5, backoff_base_seconds=5.0, backoff_max_seconds=300.0
+    )
+    projector = _projector(
+        outbox,
+        _FakeMemory({"m1": item}),
+        _FakeEmbedder(fail=True),
+        _FakeVectorStore(),
+        policy,
+    )
+
+    assert asyncio.run(projector.project_pending()) == ProjectionOutcome(retried=1)
+    (seq, _error, delay) = outbox.retried[0]
+    assert seq == 7
+    assert delay == 10.0
+
+
+def test_record_is_dead_lettered_once_the_budget_is_spent() -> None:
+    item = build_memory_item("m1", content="x")
+    outbox = _FakeOutbox(
+        # Two failures already; with a budget of three, this attempt is the last.
+        [OutboxRecord(seq=9, memory_id="m1", memory_version=1, attempts=2)]
+    )
+    projector = _projector(
+        outbox,
+        _FakeMemory({"m1": item}),
+        _FakeEmbedder(fail=True),
+        _FakeVectorStore(),
+        ProjectionRetryPolicy(max_attempts=3),
+    )
+
+    outcome = asyncio.run(projector.project_pending())
+
+    assert outcome == ProjectionOutcome(dead_lettered=1)
+    assert outbox.dead_lettered and outbox.dead_lettered[0][0] == 9
+    # Retired, not rescheduled: the record leaves the working set.
+    assert outbox.retried == []
+
+
+def test_dead_lettering_leaves_the_memory_item_untouched() -> None:
+    # ADR-012: the derived representation is disposable, the Memory Item is not.
+    # Giving up on the embedding must never damage the authoritative record.
+    item = build_memory_item("m1", content="authoritative knowledge")
+    outbox = _FakeOutbox(
+        [OutboxRecord(seq=11, memory_id="m1", memory_version=1, attempts=4)]
+    )
+    memory = _FakeMemory({"m1": item})
+    store = _FakeVectorStore()
+    projector = _projector(
+        outbox, memory, _FakeEmbedder(fail=True), store, ProjectionRetryPolicy()
+    )
+
+    asyncio.run(projector.project_pending())
+
+    assert outbox.dead_lettered
+    assert store.points == {}
+    assert asyncio.run(memory.get(MemoryItemId("m1"))) is item
+
+
+def test_a_recovered_provider_projects_a_previously_failed_record() -> None:
+    # Retry is only worth having if it converges: the same record, once the
+    # provider recovers, projects normally (projection is idempotent).
+    item = build_memory_item("m1", content="late but projected")
+    outbox = _FakeOutbox(
+        [OutboxRecord(seq=13, memory_id="m1", memory_version=1, attempts=2)]
+    )
+    store = _FakeVectorStore()
+    projector = _projector(
+        outbox, _FakeMemory({"m1": item}), _FakeEmbedder(), store
+    )
+
+    assert asyncio.run(projector.project_pending()) == ProjectionOutcome(
+        processed=1
+    )
+    assert outbox.processed == [13]
+    assert store.points["m1"] == (0.1, 0.2, 0.3)

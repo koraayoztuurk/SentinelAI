@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Domain Model
-version: 1.2.0
-status: Draft
+version: 1.3.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Domain Model
@@ -997,6 +997,18 @@ Protecting domain stability is essential for long-term architectural consistency
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Investigation Summary is undefined.** The concept is referenced as an investigation-level artifact but has no owner, no lifecycle and no production rule; the platform delivers the synthesized Outcome instead. Defining it changes domain semantics and is therefore above the ADR-014 threshold.
+- **Investigation and Finding have no type dimension.** Both are modelled without a classification attribute; categorization is expressed through content and relationships today. A type vocabulary is a domain-semantics decision.
+- **Task has no owning service.** Task is modelled here as a unit of investigation work, but no backend service owns its lifecycle: the Planner Service owns orchestration only (ADR-010) and the Investigation Service does not manage tasks. Investigation work is driven through the Investigation Loop and recorded in the Trace. Assigning ownership is a service-boundary decision (ADR-004) and requires an RFC.
+- **There is no canonical investigation-event concept.** The workspace timeline is reconstructed from the timestamps of investigation artifacts; first-class events would be a new domain object.
+- **Outcome revision is unmodelled.** An investigation keeps its first synthesized Outcome (0..1); the REVIEWED and ACCEPTED states exist in the model but nothing writes them — an analyst-review capability would.
+
+---
+
 # Version History
 
 | Version | Date | Description |
@@ -1004,3 +1016,4 @@ Protecting domain stability is essential for long-term architectural consistency
 | 1.0.0 | 2026-06-26 | Initial Domain Model specification created |
 | 1.1.0 | 2026-07-03 | Finding lifecycle list aligned with §15 (Accepted added); Investigation lifecycle diagram completed with Suspended transitions (Active ↔ Suspended, Suspended → Archived) and reopen (Completed → Active, per Planner Agent §10) |
 | 1.2.0 | 2026-07-03 | Trace Entry added (§11b) — the append-only Investigation Trace (explainability journal) owned by the Investigation Service and produced by the AI Runtime compositions (audit finding M-01/E-07) |
+| 1.3.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the Investigation Summary, the missing type dimension, Task service ownership, the absent canonical event concept and outcome revision are now stated in the document that owns them rather than only in the maintainer's register |

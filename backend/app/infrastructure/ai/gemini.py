@@ -7,9 +7,17 @@ JSON shape, explicit error mapping).
 
 Contract realization (ADR-013):
 
-- **Bounded execution time** — every call runs under ``asyncio.timeout`` with
-  the configured bound (httpx gets the same value as its network timeout);
-  exceeding it raises :class:`~app.ai.errors.LLMProviderError`, never hangs.
+- **Bounded execution time** — every attempt runs under ``asyncio.timeout``
+  with the configured bound (httpx gets the same value as its network
+  timeout); exceeding it raises :class:`~app.ai.errors.LLMProviderError`,
+  never hangs.
+- **Resilience (ES-067)** — the call goes through
+  :class:`~app.infrastructure.ai.resilience.ResilientHttpCaller`: a bounded
+  retry with exponential backoff for transient failures (timeout, transport,
+  429/5xx — Gemini's documented quota and its observed 503 windows) behind a
+  process-wide circuit breaker (ADR-013 §4). Exhausting either budget still
+  surfaces as ``LLMProviderError``, so the loop's degrade-to-escalation
+  behavior is unchanged.
 - **Total error mapping** — network/transport failures, non-success HTTP
   statuses (including Gemini quota/rate-limit responses), safety-blocked or
   candidate-less responses and malformed payloads all map to
@@ -21,7 +29,6 @@ Contract realization (ADR-013):
   explicit configuration failure, distinct from runtime provider failures.
 """
 
-import asyncio
 import logging
 
 import httpx
@@ -29,7 +36,16 @@ import httpx
 from app.ai.errors import LLMProviderError
 from app.ai.providers.llm import LLMRequest, LLMResponse
 from app.application.secrets import SecretName, SecretProvider
-from app.config.ai import GeminiSettings
+from app.config.ai import (
+    AIResilienceSettings,
+    GeminiSettings,
+    get_ai_resilience_settings,
+)
+from app.infrastructure.ai.resilience import (
+    ProviderCallError,
+    ResilientHttpCaller,
+    breaker_for,
+)
 from app.shared.secret import Secret
 
 logger = logging.getLogger(__name__)
@@ -39,6 +55,8 @@ GOOGLE_API_KEY = SecretName("GOOGLE_API_KEY")
 _BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 # Bound on provider-supplied text quoted into error messages.
 _ERROR_DETAIL_LIMIT = 200
+# Breaker registry key: one shared health signal per provider, process-wide.
+PROVIDER_NAME = "gemini"
 
 
 class GeminiLLMProvider:
@@ -49,6 +67,7 @@ class GeminiLLMProvider:
         settings: GeminiSettings,
         secrets: SecretProvider,
         transport: httpx.AsyncBaseTransport | None = None,
+        resilience: AIResilienceSettings | None = None,
     ) -> None:
         self._settings = settings
         # Resolved eagerly: a missing key is a configuration error at
@@ -57,23 +76,23 @@ class GeminiLLMProvider:
         # Injectable transport keeps the contract tests deterministic
         # (httpx.MockTransport); None means the real network.
         self._transport = transport
+        policy = resilience or get_ai_resilience_settings()
+        self._caller = ResilientHttpCaller(
+            PROVIDER_NAME,
+            settings.timeout_seconds,
+            policy,
+            breaker_for(PROVIDER_NAME, policy),
+        )
 
     async def generate(self, request: LLMRequest) -> LLMResponse:
         """Generate text for the request within the configured time bound."""
 
         try:
-            async with asyncio.timeout(self._settings.timeout_seconds):
-                response = await self._post(request)
-        except TimeoutError as exc:
-            raise LLMProviderError(
-                f"Gemini call exceeded the {self._settings.timeout_seconds}s "
-                f"execution bound."
-            ) from exc
-        except httpx.HTTPError as exc:
-            # Transport-level failure (connect/read/write, DNS, TLS...).
-            raise LLMProviderError(
-                f"Gemini transport failure: {type(exc).__name__}."
-            ) from exc
+            response = await self._caller.run(lambda: self._post(request))
+        except ProviderCallError as exc:
+            # Timeout, transport failure or an open circuit — all already
+            # bounded and key-free (ES-067).
+            raise LLMProviderError(exc.detail) from exc
 
         if response.status_code != 200:
             raise LLMProviderError(

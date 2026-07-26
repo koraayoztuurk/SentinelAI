@@ -1,9 +1,9 @@
 ---
 title: AI Validation
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-28
+last_updated: 2026-07-26
 ---
 
 # AI Validation
@@ -563,8 +563,18 @@ AI Validation should continue to evolve together with the platform while preserv
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Behavioural evaluation of live models is out of scope by design** (§3): datasets, benchmarks and decision-quality measurement wait for a real evaluation need. What is verified is the platform's *handling* of AI behaviour — bounded execution, total error mapping, degradation — not the quality of a model's answers.
+- **The live-AI lane covers the configured provider only**, and its gating is shaped around a single provider's key; a provider-parameterized lane would exercise both adapters.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial AI Validation specification created |
+| 1.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the deliberate exclusion of behavioural evaluation and the single-provider live lane stated explicitly |

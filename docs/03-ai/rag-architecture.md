@@ -1,9 +1,9 @@
 ---
 title: SentinelAI RAG Architecture
-version: 1.2.0
-status: Draft
+version: 1.3.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # SentinelAI RAG Architecture
@@ -960,6 +960,16 @@ The success of the RAG Architecture depends not on retrieving the largest amount
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Context engineering depth is partial.** Conflict detection is exact-duplicate based; context compression, an explicit context budget and relevance prioritization/ranking (§9/§16) are specified but not implemented.
+- **External knowledge breadth is two adapters.** The bundled MITRE ATT&CK catalog and live NVD CVE lookups realize the EXTERNAL strategy; IOC and malware intelligence feeds, and a catalog refresh cadence, remain unowned.
+- **Per-run intelligence caching does not exist.** Repeated external lookups within a run are re-issued; a cache would enter through the ADR-011 demand-driven path.
+
+---
+
 # Version History
 
 | Version | Date | Description |
@@ -967,3 +977,4 @@ The success of the RAG Architecture depends not on retrieving the largest amount
 | 1.0.0 | 2026-06-26 | Initial RAG Architecture document created |
 | 1.1.0 | 2026-07-03 | Memory Agent aligned with the strategy-selector model (produces a Retrieval Plan; retrieval/coordination/assembly belong to the pipeline); Retrieval Flow composition ownership referenced (ADR-010) |
 | 1.2.0 | 2026-07-03 | External retrieval bound to the provider-neutral External Knowledge port (audit finding M-03/E-04) |
+| 1.3.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): context engineering depth, external breadth and per-run caching stated as open |

@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Planner Service
-version: 2.0.0
-status: Draft
+version: 2.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Planner Service
@@ -237,9 +237,19 @@ By executing exactly one Planner Action per request and leaving all multi-step b
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **The action catalogue is not specified**, so planner-selected agent dispatch cannot be realized; the specialized agents run as fixed loop phases (agent-architecture.md).
+- **The Planner Action Resource is transitional** (api-design.md): publicly reachable, with no compatibility commitment, and not part of the stable API.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Planner Service specification created |
 | 2.0.0 | 2026-07-03 | Rewritten around the single-action control model (ADR-010); stateful multi-step workflow orchestration content removed; caller and composition ownership defined |
+| 2.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the unspecified action catalogue and the transitional public resource stated as open |

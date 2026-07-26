@@ -45,6 +45,39 @@ class AuthSelectionSettings(BaseSettings):
     provider: AuthProviderChoice = AuthProviderChoice.DEV
 
 
+class DevAuthSettings(BaseSettings):
+    """Development-grade authenticator configuration (ES-070, ADR-019 §6).
+
+    The dev provider gates entry on possession of a shared secret and lets the
+    caller declare its own subject, so it has no identity provider to assert
+    capabilities. A local deployment still needs a way to exercise a
+    capability-gated operation, so the granted set is configuration —
+    **empty by default**, keeping the dev provider closed like every other.
+
+    ``AUTH_DEV_CAPABILITIES`` is a comma-separated list, e.g.
+    ``knowledge:erase``. This is a development convenience and must not reach
+    production; the production selector (``AUTH_PROVIDER=jwt``) is the guard,
+    since the JWT verifier reads capabilities from the credential instead.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="AUTH_DEV_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    capabilities: str = ""
+
+    def granted(self) -> frozenset[str]:
+        """Return the configured capabilities as a set."""
+
+        return frozenset(
+            item.strip() for item in self.capabilities.split(",") if item.strip()
+        )
+
+
 class JwtSettings(BaseSettings):
     """Production JWT verifier configuration (ES-062).
 
@@ -75,6 +108,13 @@ def get_auth_selection() -> AuthSelectionSettings:
     """Return the cached authenticator selection."""
 
     return AuthSelectionSettings()
+
+
+@lru_cache
+def get_dev_auth_settings() -> DevAuthSettings:
+    """Return the cached development authenticator settings instance."""
+
+    return DevAuthSettings()
 
 
 @lru_cache

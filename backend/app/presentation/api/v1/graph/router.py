@@ -60,6 +60,29 @@ async def get_entity(
     return build_success(EntityResponse.from_domain(entity), context)
 
 
+@graph_router.delete(
+    "/entities/{entity_id}",
+    response_model=ApiResponse[EntityResponse],
+)
+async def erase_entity(
+    entity_id: str,
+    service: GraphService = Depends(get_graph_service),
+    context: RequestContext = Depends(get_request_context),
+) -> ApiResponse[EntityResponse]:
+    """Erase a person-linked entity — the right-to-be-forgotten path.
+
+    Requires the ``knowledge:erase`` capability (ADR-019), enforced by the
+    authorization seam before this endpoint runs.
+
+    *Which* entities are person-linked is never inferred from data content:
+    the caller names the entity. The node keeps its identifier so incident
+    relationships still resolve to an explicit erased node. Idempotent.
+    """
+
+    entity = await service.erase_entity(EntityId(entity_id))
+    return build_success(EntityResponse.from_domain(entity), context)
+
+
 @graph_router.post(
     "/entities/{entity_id}/attributes",
     response_model=ApiResponse[EntityResponse],

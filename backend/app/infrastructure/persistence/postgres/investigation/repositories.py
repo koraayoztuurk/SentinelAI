@@ -9,6 +9,8 @@ one local transaction whose boundary (commit/rollback) is owned by the caller
 database constraint violations surface inside the owning operation.
 """
 
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -70,6 +72,23 @@ class PostgresInvestigationRepository:
     async def update(self, investigation: Investigation) -> None:
         await self._session.merge(investigation_to_row(investigation))
         await self._session.flush()
+
+    async def list_expired(
+        self, created_before: datetime, limit: int
+    ) -> tuple[Investigation, ...]:
+        rows = await self._session.scalars(
+            select(InvestigationRow)
+            .where(
+                InvestigationRow.created_at < created_before,
+                # Already-erased investigations are done; excluding them is
+                # what lets a sweep converge instead of revisiting its own
+                # tombstones every cycle.
+                InvestigationRow.erased_at.is_(None),
+            )
+            .order_by(InvestigationRow.created_at)
+            .limit(limit)
+        )
+        return tuple(investigation_to_domain(row) for row in rows)
 
 
 class PostgresEvidenceRepository:

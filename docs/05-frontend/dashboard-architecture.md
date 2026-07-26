@@ -1,9 +1,9 @@
 ---
 title: Dashboard Architecture
-version: 1.1.0
-status: Draft
+version: 1.2.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # Dashboard Architecture
@@ -423,9 +423,19 @@ Future implementations may introduce additional dashboard capabilities and visua
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **There is no investigation list.** The dashboard creates and navigates; returning to an earlier investigation requires its URL, because the platform exposes no list endpoint (api-design.md).
+- **Dashboard metrics are computed per investigation**, not aggregated across the platform; a cross-investigation analytics surface is unspecified.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Dashboard Architecture specification created |
 | 1.1.0 | 2026-07-03 | "Confirmed finding" defined normatively (Validated or Accepted) with explicit ownership: a presentation filter over domain lifecycle states, realized in the frontend communication layer |
+| 1.2.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the missing investigation list and the absence of cross-investigation aggregation stated as open |

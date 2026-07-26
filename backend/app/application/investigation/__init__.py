@@ -6,6 +6,7 @@ the infrastructure adapters that implement them.
 """
 
 from app.application.investigation.erasure_projector import (
+    ErasureProjectionOutcome,
     EvidencePayloadErasureProjector,
 )
 from app.application.investigation.errors import (
@@ -36,6 +37,7 @@ from app.application.investigation.service import InvestigationService
 
 __all__ = [
     "InvestigationService",
+    "ErasureProjectionOutcome",
     "EvidencePayloadErasureProjector",
     "InvestigationServiceError",
     "InvestigationNotFoundError",

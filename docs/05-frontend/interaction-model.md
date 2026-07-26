@@ -1,9 +1,9 @@
 ---
 title: Interaction Model
-version: 1.0.0
-status: Draft
+version: 1.1.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-27
+last_updated: 2026-07-26
 ---
 
 # Interaction Model
@@ -351,8 +351,18 @@ Future implementations may introduce additional interaction capabilities while p
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Interaction feedback is synchronous.** The run interaction blocks on a synchronous request with a client-side budget; progressive or streamed feedback during a run depends on the asynchronous run surface (api-design.md).
+- **Keyboard and assistive-technology interaction is unaudited** — see frontend-architecture.md.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Interaction Model specification created |
+| 1.1.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): synchronous run feedback and unaudited assistive interaction stated as open |

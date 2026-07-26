@@ -54,3 +54,13 @@ export async function loadInvestigationMemory(
   );
   return toMemoryViewModel(items);
 }
+
+// Person-linked erasure of shared knowledge (ES-070, ADR-019). Requires the
+// `knowledge:erase` capability; the backend decides, this only calls.
+export function eraseMemoryItem(
+  memoryId: string,
+): Promise<MemoryItemDto> {
+  return apiClient.delete<MemoryItemDto>(
+    `/api/v1/memory/${encodeURIComponent(memoryId)}`,
+  );
+}

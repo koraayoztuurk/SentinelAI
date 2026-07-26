@@ -1,9 +1,9 @@
 ---
 title: Release Management
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-28
+last_updated: 2026-07-26
 ---
 
 # Release Management
@@ -560,8 +560,20 @@ Release Management should continue to evolve together with the platform while pr
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **A release has no identity.** The document defines release stages, ownership and readiness, but not what a version *is*: the deployment units carry unrelated version numbers, and no policy states what a version change promises.
+- **No compatibility policy exists.** The committed API contract (`docs/api/openapi.json`) is the platform's compatibility surface and is kept current by constraint (AC-15), but nothing states which changes to it are breaking, or what a major/minor/patch release commits to.
+- **Promotion is undefined.** CI produces signed, scanned, versioned images; the governed path by which a Candidate becomes an Operational release — who approves, what is verified before deployment, and how a release is recorded — is not specified.
+- **There is no human-readable release record** (a changelog): the git history and the maintainer's tracker are the only account of what a release contains.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-28 | Initial Release Management specification created |
+| 1.1.0 | 2026-07-26 | Known Gaps section added (ADR-020 §3). The document **stays Draft** by the promotion rule (§2): release identity, the compatibility policy and the promotion path are normative content this document is missing rather than deferring, and they are the subject of the next engineering specification |

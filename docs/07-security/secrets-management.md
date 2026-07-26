@@ -1,9 +1,9 @@
 ---
 title: Secrets Management
-version: 1.0.0
-status: Draft
+version: 1.2.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-27
+last_updated: 2026-07-26
 ---
 
 # Secrets Management
@@ -242,6 +242,23 @@ Architectural components should consume secrets only for their intended responsi
 Possession of a secret should not imply authority beyond the capability the secret was created to support.
 
 Secrets should never be reused for unrelated architectural purposes.
+
+---
+
+## Secret Availability
+
+A capability that requires a secret is unavailable without it. **When that unavailability is discovered is an architectural choice.**
+
+An absent secret discovered at the moment of use surfaces as a runtime failure of an operation the user has already requested — indistinguishable, from the outside, from an unreachable provider. An absent secret discovered at startup is a **configuration** failure, which is what it actually is.
+
+The architecture therefore distinguishes by operational environment:
+
+- In **operationally critical environments**, a deployment declares which capabilities it is configured to provide, and the absence of a required secret **prevents startup**. A deployment that cannot perform its declared responsibilities should not enter service claiming it can.
+- In **development environments**, secrets remain resolved lazily at the point of use, so a partially configured environment stays workable and a developer may exercise the capabilities they have configured without providing the ones they have not.
+
+Fail-fast reporting should name the **missing secret's identity**, never its value, and never a partial value.
+
+This distinction is a consequence of environment responsibility (Environment Architecture §5) rather than of the secret model: the same secret is equally required in both cases; only the moment of discovery differs.
 
 ---
 
@@ -550,8 +567,20 @@ Secrets should remain governed as architectural security assets throughout the l
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **No concrete vault adapter exists.** Secrets are resolved from the process environment through the provider port; a managed secret store slots in behind that port without changing any consumer.
+- **Rotation and revocation have no runtime lifecycle.** A rotated secret takes effect on restart; the platform neither detects nor reacts to rotation while running.
+- **Resolution is synchronous** — an asynchronous variant would be needed by a remote secret store — and **secret usage is not individually traceable**: the audit record shows the operation, not which secret it consumed.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Secrets Management specification created |
+| 1.1.0 | 2026-07-26 | **Secret Availability** specified (§6): an absent secret is a configuration failure, not a runtime one, so in operationally critical environments a deployment declares the capabilities it provides and a missing required secret **prevents startup**, while development keeps lazy resolution so a partially configured environment stays workable. Fail-fast reporting names the missing secret's identity, never its value. Realized by ES-069 |
+| 1.2.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): the absent vault adapter, rotation lifecycle, synchronous resolution and untraceable usage stated as open |

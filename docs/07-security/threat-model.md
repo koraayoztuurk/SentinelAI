@@ -1,9 +1,9 @@
 ---
 title: Threat Model
-version: 1.0.0
+version: 1.1.0
 status: Draft
 owner: SentinelAI Team
-last_updated: 2026-06-27
+last_updated: 2026-07-26
 ---
 
 # Threat Model
@@ -1145,8 +1145,19 @@ Threat modeling should remain a continuous architectural activity that evolves t
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **The model predates three delivered capability areas.** It was written before multi-tenancy (ADR-016), the erasure lifecycle (ADR-017) and granted capabilities (ADR-019) existed, so tenant-boundary violation, erasure abuse (destruction as an attack) and capability mis-issuance are not analysed here even though the platform now has all three.
+- **Trust boundaries are stated qualitatively.** There is no ranked risk register, no likelihood/impact model and no mapping from threat to the control that mitigates it — the controls exist and are documented in security-architecture.md, but the correspondence is not written down.
+- **No adversarial testing has been performed.** Nothing in the platform's verification exercises an attacker's path; the security claims rest on design and unit-level enforcement.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Threat Model specification created |
+| 1.1.0 | 2026-07-26 | Known Gaps section added (ADR-020 §3). The document **stays Draft** by the promotion rule (§2): its coverage predates multi-tenancy, erasure and granted capabilities, so a re-analysis is owed rather than a deferral being recorded — a threat model that silently omits three delivered attack surfaces would be the worst kind of Accepted |

@@ -17,6 +17,7 @@ from app.core.logging import configure_logging
 from app.dependencies.services import bind_live_services
 from app.lifespan import lifespan
 from app.presentation.api.audit import AuditMiddleware
+from app.presentation.api.caching import CacheControlMiddleware
 from app.presentation.api.context import RequestContextMiddleware
 from app.presentation.api.v1 import api_v1_router
 from app.presentation.exception_handlers import register_exception_handlers
@@ -42,6 +43,9 @@ def create_app() -> FastAPI:
 
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(AuditMiddleware)
+    # Outermost of the three: the cache policy must reach every response,
+    # including the error envelopes produced by the handlers below (ES-068).
+    app.add_middleware(CacheControlMiddleware)
     register_exception_handlers(app)
     app.include_router(health_router)
     app.include_router(observability_router)

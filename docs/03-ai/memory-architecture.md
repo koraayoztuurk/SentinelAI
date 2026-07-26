@@ -1,9 +1,9 @@
 ---
 title: SentinelAI Memory Architecture
-version: 1.1.0
-status: Draft
+version: 1.2.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-03
+last_updated: 2026-07-26
 ---
 
 # SentinelAI Memory Architecture
@@ -984,9 +984,20 @@ Knowledge should become more valuable over time through validation, refinement a
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **Embedding lifecycle on model change is unmodelled.** Embeddings are produced once per memory version through the outbox projection; regeneration on an embedding-model upgrade, embedding versioning and stale-vector collection are not implemented. The derived store is rebuildable by construction (ADR-011/012), which is what makes the gap survivable.
+- **Embedding production is single-text.** No batch path exists; the projector embeds one memory item per record.
+- **Retrieval quality is not instrumented.** Hit provenance is visible in the Investigation Trace per run, but no aggregate retrieval-quality signal is collected; an evaluation harness is deliberately out of scope (ai-validation.md).
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-26 | Initial Memory Architecture document created |
 | 1.1.0 | 2026-07-03 | Memory Agent aligned with the strategy-selector model (consistent with the §11 steward role and RAG Architecture §14); retrieval execution and context assembly assigned to the pipeline |
+| 1.2.0 | 2026-07-26 | Status Draft → **Accepted** (ADR-020 §2) with a Known Gaps section (§3): embedding lifecycle, batch embedding and retrieval-quality instrumentation stated as open |

@@ -1,9 +1,9 @@
 ---
 title: Audit and Observability
-version: 1.0.0
-status: Draft
+version: 1.2.0
+status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-06-27
+last_updated: 2026-07-26
 ---
 
 # Audit and Observability
@@ -339,6 +339,8 @@ The AI Runtime should contribute audit evidence without becoming the authoritati
 
 AI-generated audit information should remain distinguishable from human-initiated audit activities.
 
+The AI Runtime discharges this responsibility through the **Investigation Trace**, the explainability journal that records every analytical decision, execution and outcome within its investigation. Analytical steps are therefore *not* duplicated into the security audit record: the Trace is investigation-scoped and follows the investigation's erasure, while audit records are retention-bound and survive it (§7a, Data Lifecycle §5). Two records with opposite lifecycles must not be merged into one. The AI Runtime's activity reaches the security audit through the operations its callers perform.
+
 ---
 
 ## Cross-Domain Responsibilities
@@ -444,6 +446,66 @@ Architectural domains should preserve:
 Audit information should support reconstruction of significant platform activities without exposing unnecessary sensitive information.
 
 Audit integrity should remain independent of the architectural component that originally produced the audit event.
+
+---
+
+# 7a. Audit Lifecycle
+
+The preceding sections define what audit records must *be*. This section defines how they come into existence, how long they live, and what their integrity guarantee concretely obliges (RFC-004 / ADR-018).
+
+---
+
+## Audit Ownership
+
+The audit record is owned by the **Platform**, not by the architectural domain whose activity it describes.
+
+Audit records are derived from nothing: they are the primary record of what occurred, and are therefore authoritative. They are stored in the platform's authoritative store, in a dedicated structure carrying **no references to business data** — an audit record outlives the data it describes, so a referential dependency on erasable records would contradict its purpose.
+
+Backend services neither read nor write audit records. The audit capability is reached only through the audit recorder boundary, which keeps the recording technology replaceable and the recording responsibility singular.
+
+---
+
+## Append-Only Recording
+
+An audit record is written once.
+
+The platform never updates a recorded audit event and never removes an individual one. The only sanctioned removal is retention expiry, which removes whole expired records from the oldest end of the record sequence and never alters a retained record.
+
+---
+
+## Integrity Model
+
+Tamper-resistance is realized as **verifiable evidence rather than an assertion**.
+
+Each audit record carries a digest over its own content together with the digest of the record preceding it, forming a chain over the record sequence. Altering, removing or reordering any record invalidates every digest that follows it.
+
+The consequences are architectural rather than incidental:
+
+- integrity is **checkable from the records alone**, satisfying the requirement that audit integrity remain independent of the component that produced the event;
+- the record sequence is **globally chronological** — one chain, one unambiguous order;
+- a truncation at the retention boundary is a **recognized** condition, not a tampering signal.
+
+The guarantee this establishes is that the stored sequence has not been altered since it was written. It does **not** by itself establish authorship to an external party: that requires signing or external notarization, each carrying its own key lifecycle (Secrets Management). The platform states the narrower guarantee it can support rather than the broader one it cannot — overstating an accountability guarantee is itself an accountability failure.
+
+---
+
+## Audit Retention
+
+**How long** audit records are retained is deployment policy — a legal and organizational decision, expressed as configuration (Data Lifecycle §3).
+
+**That a retention path exists**, that it removes only whole expired records, and that it never edits a retained record, is architecture.
+
+Audit records are outside the erasure lifecycle: they survive the erasure they document (Data Lifecycle §5). This remains defensible because of what an audit record contains — **identifiers, not content**. Subject, identity kind, operation, affected resource identifier, outcome, correlation identifier and timestamp are recorded; investigation titles, evidence bodies and knowledge text never are. Retention and erasure obligations stop competing when the retained record holds no content to erase.
+
+---
+
+## Recording Failure
+
+Audit observes the platform; it must never be able to stop it.
+
+A failure of the audit sink does not fail the activity being audited. It is, however, an **accountability gap** and must be treated as one: a recording failure is reported as an operational signal and the event is still emitted to the platform's log sink, so the record is degraded rather than lost.
+
+The audit record is written in a transaction of its own, never joined to the transaction of the activity it describes. Consequently an activity and its audit record are **not atomic with each other**. This is a deliberate trade: making them atomic would let the audit store fail an analyst's work.
 
 ---
 
@@ -595,8 +657,21 @@ Audit and Observability should continue to provide architectural accountability 
 
 ---
 
+# Known Gaps (Release 1.0)
+
+Recorded per ADR-020 §3: each item below is deliberately open. It states what the platform does today in its place and the governance path that would close it (documentation, ADR, or RFC per the ADR-014 threshold).
+
+- **There is no audit query or export surface.** The record is durable, hash-chained and verifiable, but reading it needs its own authorization model — "whoever may call the API" is not the answer — so no endpoint exists. Access is operational (database) today.
+- **Integrity is self-contained.** The chain proves the record has not been altered since it was written; it does not prove *when* it was written to a third party. Signing, external notarization and write-once media are the evolution path, deliberately outside the 1.0 claim.
+- **Chain verification is O(n)** over the log and the chain is global; a periodic verification job and per-tenant partitioning are the scale path.
+- **Audit actions are derived at the request boundary.** Per-business-operation semantic auditing inside services — where the service names what it did — remains deferred; the widened action vocabulary is what makes it possible later.
+
+---
+
 # Version History
 
 | Version | Date | Description |
 |----------|------------|--------------------------------|
 | 1.0.0 | 2026-06-27 | Initial Audit and Observability specification created |
+| 1.1.0 | 2026-07-26 | Status Draft→Accepted; **Audit Lifecycle** specified (§7a, RFC-004/ADR-018), closing the audit-lifecycle documentation gap: the audit record is a Platform-owned authoritative category with no references to business data; recording is append-only with retention expiry as the only removal; tamper-resistance is realized as a verifiable digest chain over the record sequence, with the non-repudiation claim explicitly bounded to "not altered since written" (signing/notarization deferred with their key lifecycle); retention duration is deployment policy while the retention path is architecture; audit records survive the erasure they document because they carry identifiers, not content (Data Lifecycle §5); a recording failure never fails the audited activity but is reported and degraded to the log sink rather than lost, and the audit write is its own transaction (activity and record are deliberately not atomic). §6 clarifies that the AI Runtime contributes through the Investigation Trace rather than duplicating analytical steps into audit — the two records have opposite lifecycles. Realized by ES-069 |
+| 1.2.0 | 2026-07-26 | Known Gaps section added (ADR-020 §3): the absent query/export surface, the bounded integrity claim, verification cost and boundary-derived actions stated in the document that owns them |

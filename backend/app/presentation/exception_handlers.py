@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 
 from app.presentation.api.context import current_context
 from app.presentation.api.error_status import http_status_for
+from app.presentation.api.errors import RateLimitedError
 from app.presentation.api.response import build_error
 from app.shared.exceptions import SentinelAIError
 
@@ -26,20 +27,33 @@ logger = logging.getLogger(__name__)
 
 
 def _error_response(
-    request: Request, status_code: int, code: str, message: str
+    request: Request,
+    status_code: int,
+    code: str,
+    message: str,
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     envelope = build_error(code, message, current_context(request))
     # A 401 must carry an authentication challenge (RFC 7235 §3.1); the
     # production authenticator's continuity/challenge semantics surface here,
     # at the boundary where errors become HTTP (ES-062, auth §5).
-    headers = (
-        {"WWW-Authenticate": "Bearer"} if status_code == 401 else None
-    )
+    if status_code == 401:
+        headers = {**(headers or {}), "WWW-Authenticate": "Bearer"}
     return JSONResponse(
         status_code=status_code,
         content=envelope.model_dump(mode="json"),
         headers=headers,
     )
+
+
+def _headers_for(exc: SentinelAIError) -> dict[str, str] | None:
+    """Return the response headers an error contributes beyond the envelope."""
+
+    # A 429 without Retry-After leaves the client guessing, which is how a
+    # rate limit turns into a retry storm (api-design §13, ES-068).
+    if isinstance(exc, RateLimitedError):
+        return {"Retry-After": str(exc.retry_after_seconds)}
+    return None
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -51,7 +65,11 @@ def register_exception_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         logger.warning("Application error: %s", exc.code)
         return _error_response(
-            request, http_status_for(exc), exc.code, exc.message
+            request,
+            http_status_for(exc),
+            exc.code,
+            exc.message,
+            _headers_for(exc),
         )
 
     @app.exception_handler(RequestValidationError)
