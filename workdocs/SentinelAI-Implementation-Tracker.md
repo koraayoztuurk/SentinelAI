@@ -4586,3 +4586,17 @@ because both are *verification* lessons rather than defects in the delivered beh
   remains exercised rather than operated; rollback stays deployment-level while migrations are
   forward-only. Everything else carried forward: multi-instance scale-out, S3-compatible payload
   backend, audit query surface, per-tenant shared knowledge, the remaining specialized agents.
+- **The release-preparation build failed, and AC-15 was the one that caught it.** `Backend
+  (validate)` went red on the pushed release-prep commit while every gate had been green locally.
+  Cause: the platform reports its version through the API, so `docs/api/openapi.json` carries
+  `info.version` — bumping the manifests to 1.0.0 made the committed contract artifact stale, and
+  the contract-freshness test failed exactly as designed. It passed locally only because the
+  editable install's **distribution metadata** still said 0.1.0, so the running app agreed with
+  the stale artifact; CI installs fresh and therefore saw the truth. Fixed by reinstalling the
+  package and regenerating the artifact (a **one-line** diff: `info.version` 0.1.0 → 1.0.0 — no
+  surface change). Recorded normatively in release-management **v1.3.0 §4a**: *a version change is
+  also a contract change*, and the coupling is deliberate — a release version cannot be claimed
+  anywhere the published contract does not already state it.
+- **Lesson for any future version bump**: `pip install -e .` (or an equivalent metadata refresh)
+  before regenerating the contract, otherwise the local suite validates the old version against
+  the old artifact and both agree while being wrong together.

@@ -1,9 +1,9 @@
 ---
 title: Release Management
-version: 1.2.0
+version: 1.3.0
 status: Accepted
 owner: SentinelAI Team
-last_updated: 2026-07-26
+last_updated: 2026-07-27
 ---
 
 # Release Management
@@ -182,6 +182,8 @@ SentinelAI releases as a **single platform**, not as independently versioned dep
 The units are not independently versioned because they are not independently usable: the presentation unit speaks exactly one version of the API contract, and both units are built and published from the same commit by the same pipeline. Independent version lines would advertise an independence the Deployment Architecture does not provide.
 
 Agreement between the declared versions is mechanically verified (Architecture Testing, AC-16), so a manifest left behind is a failing check rather than an operational surprise.
+
+**A version change is also a contract change.** The platform reports its version through the API, so the version appears inside the committed contract artifact (API Design §14a) — bumping the version therefore requires regenerating that artifact, and AC-15 fails the build until it is. This is a deliberate coupling rather than an inconvenience: it means a release version can never be claimed anywhere the published contract does not already state it.
 
 ## The Compatibility Surface
 
@@ -640,3 +642,4 @@ Recorded per ADR-020 §3: each item below is deliberately open. It states what t
 | 1.0.0 | 2026-06-28 | Initial Release Management specification created |
 | 1.1.0 | 2026-07-26 | Known Gaps section added (ADR-020 §3). The document **stays Draft** by the promotion rule (§2): release identity, the compatibility policy and the promotion path are normative content this document is missing rather than deferring, and they are the subject of the next engineering specification |
 | 1.2.0 | 2026-07-26 | Release identity, compatibility and promotion decided (**ADR-021**, ES-072): §4a one platform version across every deployment unit (agreement verified by AC-16) with the committed API contract named as the compatibility surface and SemVer given a subject; §5a promotion as an explicit, authorized act on an immutable artifact identity, verified before deployment and recorded; §8a the human-readable release record. Status Draft → **Accepted** (ADR-020 §2): the content ES-071 recorded as missing is now present, and the Known Gaps section states what remains open |
+| 1.3.0 | 2026-07-27 | §4a records that **a version change is also a contract change**: the platform reports its version through the API, so the committed contract artifact carries it and AC-15 fails until the artifact is regenerated. Written down because the release-preparation build discovered it the hard way — a bumped manifest with a stale artifact |
