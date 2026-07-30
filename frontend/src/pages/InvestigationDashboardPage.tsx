@@ -5,10 +5,16 @@
 // renders the six dashboard components. Loading, error and empty states preserve
 // the investigation context (Frontend Architecture §11). The page binds only to the
 // view model — never to backend DTOs.
+//
+// This page answers "where does this case stand"; the workspace answers "what do
+// I do about it". The primary action here is therefore opening the workspace,
+// not editing anything in place.
 
 import { Link, useParams } from "react-router-dom";
 import { Button } from "../ui/Button";
 import { useInvestigationDashboard } from "../state/useInvestigationDashboard";
+import { useRememberInvestigation } from "../state/useRememberInvestigation";
+import { StatusBadge } from "../components/dashboard/StatusBadge";
 import { InvestigationSummarySection } from "../sections/dashboard/InvestigationSummarySection";
 import { FindingsSection } from "../sections/dashboard/FindingsSection";
 import { PlaceholderSection } from "../sections/dashboard/DashboardSection";
@@ -17,12 +23,12 @@ function DashboardSkeleton() {
   return (
     <div role="status" className="grid gap-5">
       <span className="sr-only">Loading investigation…</span>
-      <div className="shimmer h-40 w-full" aria-hidden="true" />
-      <div className="shimmer h-56 w-full" aria-hidden="true" />
+      <div className="skeleton h-44 w-full" aria-hidden="true" />
+      <div className="skeleton h-56 w-full" aria-hidden="true" />
       <div className="grid gap-5 md:grid-cols-3" aria-hidden="true">
-        <div className="shimmer h-28" />
-        <div className="shimmer h-28" />
-        <div className="shimmer h-28" />
+        <div className="skeleton h-28" />
+        <div className="skeleton h-28" />
+        <div className="skeleton h-28" />
       </div>
     </div>
   );
@@ -31,25 +37,27 @@ function DashboardSkeleton() {
 export function InvestigationDashboardPage() {
   const { id = "" } = useParams();
   const { viewModel, loading, error, retry } = useInvestigationDashboard(id);
+  useRememberInvestigation(id, viewModel?.summary.title);
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <header className="fade-up mb-6 flex items-end justify-between gap-4">
-        <div>
-          <p className="mono-label uppercase text-faint">console / summary</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">
-            Investigation Dashboard
+    <div className="grid gap-6">
+      <header className="rise flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0">
+          <p className="eyebrow">Case summary</p>
+          <h1 className="mt-1.5 max-w-3xl text-[clamp(1.5rem,3.2vw,2.125rem)] font-bold leading-tight">
+            {viewModel ? viewModel.summary.title : "Investigation"}
           </h1>
-          <Link
-            to={`/investigations/${id}/workspace`}
-            className="btn-link mono-label mt-1 inline-block"
-          >
-            Open workspace →
-          </Link>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            {viewModel && <StatusBadge status={viewModel.summary.status} />}
+            <span className="mono-label text-ink-3">{id}</span>
+          </div>
         </div>
-        <span className="mono-label rounded-md border border-line bg-panel-2/60 px-2.5 py-1 text-muted">
-          {id}
-        </span>
+        <Link
+          to={`/investigations/${id}/workspace`}
+          className="btn no-underline"
+        >
+          Open workspace
+        </Link>
       </header>
 
       {loading && <DashboardSkeleton />}
@@ -57,24 +65,35 @@ export function InvestigationDashboardPage() {
       {error && (
         <div
           role="alert"
-          className="fade-up rounded-lg border border-danger/40 bg-danger/5 p-5"
+          className="rise rounded-card border border-coral/50 bg-coral/10 p-5"
         >
-          <p className="text-sm">Could not load the investigation ({error.code}).</p>
-          <p className="mt-1 text-xs text-muted">{error.message}</p>
-          <Button className="btn btn-ghost mt-3" onClick={retry}>
+          <p className="text-sm font-semibold text-coral-ink">
+            Could not load the investigation ({error.code}).
+          </p>
+          <p className="mt-1 text-[0.8125rem] text-ink-2">{error.message}</p>
+          <Button variant="soft" className="btn-sm mt-3" onClick={retry}>
             Retry
           </Button>
         </div>
       )}
 
       {viewModel && (
-        <div className="stagger grid gap-5">
+        <div className="rise-seq grid gap-5">
           <InvestigationSummarySection summary={viewModel.summary} />
           <FindingsSection findings={viewModel.findings} />
           <div className="grid gap-5 md:grid-cols-3">
-            <PlaceholderSection title="Active Objectives" />
-            <PlaceholderSection title="AI Insights" />
-            <PlaceholderSection title="Recent Activity" />
+            <PlaceholderSection
+              title="Active Objectives"
+              note="Objectives are derived from the case title today; a dedicated source is a later step."
+            />
+            <PlaceholderSection
+              title="AI Insights"
+              note="The agents' reasoning lives in the workspace, under AI analysis."
+            />
+            <PlaceholderSection
+              title="Recent Activity"
+              note="The full ordered history is in the workspace timeline."
+            />
           </div>
         </div>
       )}

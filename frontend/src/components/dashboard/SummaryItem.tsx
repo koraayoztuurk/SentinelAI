@@ -9,9 +9,9 @@ export interface SummaryItemProps {
 
 export function SummaryItem({ label, children }: SummaryItemProps) {
   return (
-    <div className="border-l border-line pl-3">
-      <dt className="mono-label uppercase text-faint">{label}</dt>
-      <dd className="mt-1 text-sm text-ink">{children}</dd>
+    <div className="min-w-0 rounded-input bg-paper-2 px-3 py-2.5">
+      <dt className="mono-label uppercase text-ink-3">{label}</dt>
+      <dd className="mt-1.5 text-sm font-medium text-ink">{children}</dd>
     </div>
   );
 }

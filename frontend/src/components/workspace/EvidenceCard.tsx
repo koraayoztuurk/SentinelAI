@@ -26,11 +26,7 @@ export function EvidenceCard({
   onDownload,
   downloading = false,
 }: EvidenceCardProps) {
-  const state = selected
-    ? "card-selected"
-    : highlighted
-      ? "card-highlighted"
-      : "";
+  const state = selected ? "card-selected" : highlighted ? "card-linked" : "";
   // The selection control is a button, so the download control cannot nest
   // inside it (no nested interactive elements); they are siblings in a card.
   return (
@@ -39,38 +35,39 @@ export function EvidenceCard({
         type="button"
         aria-pressed={selected}
         onClick={() => onSelect(evidence.id)}
-        className="w-full cursor-pointer p-4 text-left"
+        className="w-full cursor-pointer rounded-input p-4 text-left"
       >
         <div className="flex items-center justify-between gap-3">
-          <span
-            className="mono-label min-w-0 truncate text-faint"
-            title={evidence.id}
-          >
-            {evidence.id}
-          </span>
-          <span className="mono-label shrink-0 whitespace-nowrap rounded border border-line bg-panel-2/60 px-1.5 py-0.5 uppercase text-muted">
+          <span className="tag text-cyan-ink">
+            <span className="tag-dot" aria-hidden="true" />
             {evidence.source}
           </span>
-        </div>
-        <p className="mt-2 line-clamp-2 text-sm">{evidence.content}</p>
-        <div className="mono-label mt-2 flex items-center gap-2 text-faint">
-          <span className="truncate">{evidence.integrity}</span>
-          <span aria-hidden="true">·</span>
-          <span>{evidence.timestamp}</span>
           {highlighted && (
-            <span className="ml-auto font-semibold text-warn">
+            <span className="mono-label font-semibold text-cyan-ink">
               supports finding
             </span>
           )}
         </div>
+        <p className="mt-2.5 line-clamp-3 text-sm leading-relaxed">
+          {evidence.content}
+        </p>
+        <div className="mono-label mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-ink-3">
+          <span className="truncate" title={evidence.id}>
+            {evidence.id}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span className="truncate">{evidence.integrity}</span>
+          <span aria-hidden="true">·</span>
+          <span className="tabular-nums">{evidence.timestamp}</span>
+        </div>
       </button>
       {evidence.downloadable && onDownload && (
-        <div className="border-t border-line px-4 py-2">
+        <div className="border-t border-line px-4 py-2.5">
           <button
             type="button"
             onClick={() => onDownload(evidence.id)}
             disabled={downloading}
-            className="btn-link mono-label cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+            className="link mono-label disabled:cursor-not-allowed disabled:opacity-40"
           >
             {downloading ? "Downloading…" : "Download payload"}
           </button>

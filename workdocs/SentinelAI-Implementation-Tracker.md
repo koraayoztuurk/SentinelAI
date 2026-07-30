@@ -4600,3 +4600,206 @@ because both are *verification* lessons rather than defects in the delivered beh
 - **Lesson for any future version bump**: `pip install -e .` (or an equivalent metadata refresh)
   before regenerating the contract, otherwise the local suite validates the old version against
   the old artifact and both agree while being wrong together.
+
+
+## Release 1.0.0 — tagged and published (2026-07-27)
+
+- **`v1.0.0` tagged on `f841dc6`** and the tag run is **fully green**, including the two jobs that
+  had never executed before: `Release identity (tag matches the units)` — the tag agreed with both
+  1.0.0 manifests — and `Image (backend)` / `Image (frontend)`, which means the **Trivy gate passed
+  on its first real run** (no fixable CRITICAL/HIGH in either image).
+- **Published artifacts** (`ghcr.io/koraayoztuurk/…`):
+  - `sentinelai-backend:1.0.0` → `sha256:702e9db0cd28…` — SBOM 3.18 MB, provenance 56 KB,
+    signature artifact present.
+  - `sentinelai-frontend:1.0.0` → `sha256:566c34f40ff2…` — SBOM 1.32 MB, provenance 48 KB,
+    signature artifact present.
+- **The released artifact was interrogated, not assumed**: pulled by tag, it reports
+  `metadata.version('sentinelai-backend') == 1.0.0` (so the version identity chain — manifest →
+  contract artifact → image → runtime — holds end to end), and on a **fresh volume** it initializes
+  `/data/evidence-payloads` as `10001:10001` with `WRITE_OK` — the ES-073 rehearsal defect is fixed
+  in the shipped image, not only in the tree.
+- **Repository settings** completed and verified through the API: `staging` **and** `production`
+  environments both carry `required_reviewers: koraayoztuurk` (production was created in this
+  session — the promotion gate had no production side until now), and private vulnerability
+  reporting is **enabled**, so the channel `SECURITY.md` advertises exists.
+- **Still not exercised** (unchanged from ES-073): `cosign verify` and the environment approval
+  gate — the first `promote.yml` dispatch closes both, and it now has a reviewer on both
+  environments to prove the gate with. No GitHub Release object was created; the tag is the release
+  identity, the Release page is presentation.
+
+## UI-R2 (ad-hoc, 2026-07-30): "Hum" frontend rewrite — warm, tabbed, self-explaining
+
+- **Scope**: full presentation-layer rewrite (user request; no ES), superseding UI-R1's SOC-console
+  theme. `communication/` and the server-state hooks are untouched, so **AC-10 stays green** and no
+  API contract, route, DTO or service behaviour changed. Two files outside presentation were
+  touched deliberately: `state/sessionReducer.ts` (default theme dark → light) and two new Session
+  State modules (below).
+- **Theme — Hum at a professional dose** (Hallmark skill, `genre: playful`,
+  `macrostructure: Workbench`, `nav: N9`, `footer: Ft2`). Kept from the theme: cream paper (never
+  pure white), Plus Jakarta Sans + JetBrains Mono, generous radii, multi-accent surfaces, the push
+  button (lifts on hover, **depresses** on `:active` — no scale, no spring), ink modified by
+  opacity rather than by new hexes. Dropped: the celebration layer — star-burst, mascot, streak
+  counters. **Confirming a breach is not a moment to congratulate anyone**, and a mascot costs
+  credibility with the buyer this tool is for.
+- **Accent semantics are load-bearing, not decorative** (`src/tokens.css`, the single palette
+  definition): pear = primary action, cyan = evidence/links/info, **lavender = AI activity**,
+  mint = confirmed/healthy, amber = attention/escalated/degraded, **coral = danger only**. Hum
+  uses coral as its high-energy "pop"; in a security console red means critical severity, so the
+  pop role was reassigned to lavender — which is also the colour AI surfaces already wanted.
+- **Dark mode rebuilt inside Hum**: a warm dark ground carrying the same pear hue pull, not a slate
+  console and never pure black. **Light is now the default** (`defaultSessionState.theme`): the
+  dark console was precisely the intimidating face, and the demo/first-run should not open on it.
+- **Workspace restructured from one 8-region scroll into 6 tabs** (Overview · Evidence · AI
+  analysis · Graph view · Knowledge · Platform). Panels stay **mounted** and inactive ones carry
+  `hidden`, so a graph exploration and a selected finding survive a tab change and the
+  cross-region highlighting (ES-025) keeps working, while an inactive panel is correctly absent
+  from the accessibility tree. Findings and Evidence deliberately share one tab — that pairing is
+  what makes the finding→evidence highlight observable in a single view.
+- **Every region states what it is.** `ui/Region.tsx` carries a plain-language `note` per region
+  ("Evidence is never edited — a correction is new evidence, so the original record always
+  survives"), and the workspace opens with a collapsible primer. This is the redesign's actual
+  thesis: the platform's explainability claim is worth nothing if the console needs prior
+  knowledge of the platform to read.
+- **The Trace is now legible.** `TraceEntryKind` is machine-shaped (`planner_decision`,
+  `outcome_synthesis`) and meaningless on first contact, so each entry is titled in plain language
+  ("Planner chose the next step", "Checked threat intelligence") with the raw kind kept beside it —
+  verifiable without being cryptic. Terminal conditions are explained rather than named: `escalated`
+  reads "The run stopped safely and handed the case back to you. Nothing was lost." — the ADR-013
+  degrade-to-escalation guarantee, said out loud to the analyst.
+- **Graph visualization reworked** (`communication/graph.ts`, `EntityGraph`, `GraphNode`,
+  `GraphSection`). Four defects fixed, all present since ES-026:
+  1. **Edges were drawn centre-to-centre**, so every arrowhead was hidden underneath the node it
+     pointed at — the direction of a relationship, the entire reason to draw it, was invisible.
+     `calculateEdgeGeometry` now also returns `drawX1..drawY2`: the segment trimmed back to each
+     node's boundary (rounded rect approximated by its inscribing ellipse). The documented
+     `x1/y1/x2/y2` centre contract is unchanged, so the pure-geometry test still holds.
+  2. **Nodes were circles with captions underneath**, and adjacent captions overlapped as soon as
+     the neighbourhood grew. Nodes are now **pills carrying their own name** — the label lives in
+     space the node already occupies, so it cannot collide with a neighbour's.
+  3. **The canvas was fixed at 480×360** regardless of node count. `layoutFor(neighbourCount)`
+     grows the ring and the canvas together; the default is returned unchanged for small graphs.
+     Default aspect widened to 620×380 (a 4:3 canvas scaled to a wide panel was mostly empty), and
+     the drawing is capped at `max-w-3xl` and centred.
+  4. **Nodes were `role="button"` with a click handler and no keyboard path** — a stated affordance
+     the keyboard could not reach. They are now real focus stops answering Enter and Space.
+  Added: entity-type colour encoding with a **named legend** (an unexplained colour is decoration),
+  a focus readout showing the focused entity's **id** (the picture already carries the name; the id
+  is what you look it up with), type and confidence, and a "back to seed" control after drilling.
+  Colour groups *related kinds* (ip and domain share one) and the legend says so rather than
+  implying a 1:1 type map.
+- **Platform gap found — no investigation-list endpoint.** `GET /api/v1/investigations` answers
+  **405**: the route exists for POST only, so there is no server-side answer to "which cases
+  exist", and the address bar was the only route back into a case. Closing it properly is a REST
+  surface addition (new endpoint + owner/tenant-scoped listing + pagination + AC-15 regen) and is
+  therefore **out of a presentation-layer change** — recorded here as debt, not smuggled in.
+  Mitigated in the UI without touching the contract: `state/recentInvestigations.ts` (Session
+  State, localStorage, same shape as `devAuth`) remembers what this browser opened, and the home
+  page offers that list plus an open-by-identifier field. It documents its own limits — per-device,
+  not the full list, and a remembered case can legitimately 404/403 since it is a shortcut and
+  never a permission.
+- **Test-suite changes (5 tests across 4 files)**, all because they asserted the *old information
+  architecture*, none because behaviour changed: the workspace test now activates the tab it is
+  probing (an inactive panel is correctly invisible to `getByRole`), the evidence test opens the
+  disclosure the write forms now live behind, and the two theme tests follow the light default.
+  Suite grew 89 → 90.
+- **Verification**: frontend 4-gate green (lint, `tsc -b` strict, **90/90** tests, build).
+  Hallmark slop test 58/58 after fixing five real defects it caught: a `width` transition on the
+  confidence meter (layout on every frame → `transform: scaleX`), a three-signal card hover,
+  input/button heights that disagreed by 2px with no 44px touch floor, the faintest ink failing
+  4.5:1 at 11px, and the emphasis highlighter sitting mid-glyph like a strikethrough.
+- **Mobile**: horizontal overflow fixed at 320/375/414/768 and verified by measurement, not by eye.
+  Root cause was structural and worth recording — **a flex/grid item defaults to `min-width: auto`**,
+  so one wide descendant (the tab rail, a 32-char identifier) pushed the whole page sideways instead
+  of scrolling inside its own box. Fixed once at the component level (`min-width: 0` on `.surface`
+  and `.card`, plus `main`), not per-page.
+- **Gotcha for future visual verification**: the Claude Browser pane could not composite frames in
+  this session (`screenshot` times out with "pane is not displayed"), and its preview tunnel still
+  strips `Authorization`. Headless Chrome over CDP remains the working path — `Page.navigate` +
+  `Emulation.setDeviceMetricsOverride`, real-time capture, and a JS pass that reports every element
+  whose `getBoundingClientRect().right` exceeds the viewport is far more reliable than eyeballing a
+  screenshot for overflow.
+- **Still open**: the investigation-list endpoint above; the graph remains entity-seeded (no
+  investigation→graph endpoint, unchanged since ES-026); Hum's colour encoding groups entity
+  categories rather than exact types, which is stated in the legend rather than resolved.
+
+
+## UI-R3 (ad-hoc, 2026-07-30): end-to-end demo audit — three missing write surfaces closed
+
+Follow-up to UI-R2. The whole demo path was driven in a real browser (headless Chrome over CDP,
+live stack, no mocks), asserting each step and collecting console errors and failed requests, so a
+silent breakage could not pass as a pass. First pass: **4/11 steps**. After the fixes below and the
+new steps they enable: **8/12**, with the two remaining "failures" explained as test-harness
+timeouts rather than defects (below).
+
+### What the audit found
+
+- **The platform's own loop could not be completed from the browser.** There was no way to record a
+  finding: `POST …/findings` existed and nothing in the UI called it, and no Planner Action creates
+  one either, so findings could only ever arrive through curl. The consequences cascaded — the graph
+  is seeded from findings' related entities (so it was empty), and the Decision Engine synthesizes
+  only from **confirmed** findings (so it always skipped). The headline claim
+  *evidence → finding → run → recommendation* was not reachable by a user.
+- **The investigation lifecycle was unreachable.** `POST …/status` existed with no caller, so every
+  investigation stayed `created` for ever and the documented business lifecycle was invisible.
+- **Nothing in the product wrote organizational memory.** The Memory region could only ever be empty
+  outside `seed_demo.py` — the knowledge layer that the whole RAG story rests on had no way in.
+- **`favicon.ico` 404'd** on every page load (visible in the browser tab, and noise in the console).
+
+### What was added (presentation only; no contract, route or service change)
+
+- **Record a finding** (Findings region): pick the supporting evidence, set confidence, optionally
+  name related entities. Recorded as `validated` — the analyst weighed the evidence and is recording
+  the conclusion (domain-model §6: findings come from agents *or* analysts); `proposed` remains the
+  state for findings produced *for* review. Domain Rule 2 is mirrored in the control (no evidence →
+  no submit) while the service stays the authority. This is what re-seeds the graph and gives the
+  Decision Engine something to synthesize.
+- **Investigation state** (Overview region): the transitions of domain-model §15, offered as
+  affordances. The map decides which buttons appear; the Investigation Service still refuses
+  anything it does not permit, so drift costs an error message, never a bad write.
+- **Promote knowledge to memory** (Memory region): write what a colleague should know next time,
+  citing the confirmed findings it came from (Domain Rule 5 — only validated knowledge becomes
+  organizational memory). Created `verified`; the embedding that makes it semantically retrievable
+  follows asynchronously through the outbox projector.
+- **Favicon** as an SVG drawn from the brandmark, so the tab icon and the in-app mark cannot drift.
+- **Run progress panel**: elapsed time, the steps in order, and an explicit "you can leave this tab".
+  A bare spinner for the duration a run actually takes reads as a hang.
+
+### Measured: a run takes ~10.5 minutes
+
+Timed from the backend log for one complete run: memory-agent 45 s, graph-analysis-agent 89 s,
+threat-intel-agent 246 s (including contained NVD 503 retries), planner-agent 58 s, validation-agent
+90 s, decision-engine 98 s — **six sequential provider calls, ~630 s end to end**. Nothing is wrong;
+MiniMax-M3 is a reasoning model and the compositions are sequential by design (ADR-010). Two
+consequences worth stating plainly:
+
+1. The run holds one request and therefore one transaction, so **the trace is invisible until the
+   run commits** — mid-run polling legitimately returns zero entries. The two E2E failures
+   ("Run completes", "Trace records the run") were the harness giving up at 700 s, not defects: the
+   same investigation was verified afterwards with **all eight trace kinds**
+   (`retrieval → graph_analysis → threat_intel → planner_decision → action_execution → validation →
+   outcome_synthesis → loop_outcome`) and a synthesized outcome at confidence 0.55.
+2. Live-running during a short demo is impractical; running ahead and showing the completed trace is
+   the honest presentation choice, not a workaround.
+
+### Defect found and **not** fixed (owner decision): the Gemini fallback is dead by default
+
+`GeminiSettings.model` defaults to **`gemini-3.5-flash`**, and that model id returns **HTTP 503**.
+Measured side by side against the same key: `gemini-3.5-flash` → 503 in 806 ms; `gemini-2.5-flash`
+→ **200 in 1.4 s**. So the documented second LLM provider (ES-054's whole point — provider
+neutrality with a real alternative) would fail immediately if selected, and the alternative that
+does work is ~60× faster per call than the current primary. Left alone deliberately: the concrete
+model id is recorded as an owner decision, and changing a provider default is a configuration
+choice with a cost/latency/quality trade-off that is not a presentation-layer call. The fix is one
+line (`GEMINI_MODEL` in the environment, or the default in `config/ai.py`) plus a re-verification
+of the live AI suite.
+
+### Still open
+
+- **No investigation-list endpoint** (unchanged from UI-R2): `GET /api/v1/investigations` → 405.
+- The Planner Agent's action vocabulary is read-only (complete/escalate, get_investigation,
+  get_memory, find_neighbors) — agents cannot create findings, entities or memory even though the
+  Planner Service supports those actions. Whether they should is an agent-authority question, above
+  a UI change.
+- The dashboard's Active Objectives / AI Insights / Recent Activity remain declared-but-unconnected
+  placeholders.
+

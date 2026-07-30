@@ -16,19 +16,23 @@ export function InvestigationSummarySection({
   summary,
 }: InvestigationSummarySectionProps) {
   return (
-    <DashboardSection title="Investigation Summary">
-      <h3 className="text-lg font-semibold">{summary.title}</h3>
-      <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+    <DashboardSection
+      title="Investigation Summary"
+      note="Who owns this case, how urgent it is, and where it sits in its lifecycle."
+    >
+      <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         <SummaryItem label="Status">
           <StatusBadge status={summary.status} />
         </SummaryItem>
         <SummaryItem label="Priority">{summary.priority}</SummaryItem>
         <SummaryItem label="Owner">{summary.owner}</SummaryItem>
         <SummaryItem label="Tenant">{summary.tenant}</SummaryItem>
-        <SummaryItem label="Identifier">
-          <span className="font-mono text-xs">{summary.id}</span>
+        <SummaryItem label="Created">
+          <span className="tabular-nums">{summary.createdAt}</span>
         </SummaryItem>
-        <SummaryItem label="Created">{summary.createdAt}</SummaryItem>
+        <SummaryItem label="Identifier">
+          <span className="mono-label break-all">{summary.id}</span>
+        </SummaryItem>
       </dl>
     </DashboardSection>
   );

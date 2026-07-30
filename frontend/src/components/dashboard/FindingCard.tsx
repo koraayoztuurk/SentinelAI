@@ -15,7 +15,10 @@ export function FindingCard({ finding }: FindingCardProps) {
   return (
     <article className="card p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="mono-label min-w-0 truncate text-faint" title={finding.id}>
+        <span
+          className="mono-label min-w-0 truncate text-ink-3"
+          title={finding.id}
+        >
           {finding.id}
         </span>
         <StatusBadge status={finding.status} />
@@ -23,7 +26,9 @@ export function FindingCard({ finding }: FindingCardProps) {
       <div className="mt-3">
         <ConfidenceIndicator value={finding.confidence} />
       </div>
-      <p className="mono-label mt-3 text-faint">by {finding.creator}</p>
+      <p className="mono-label mt-3 truncate text-ink-3" title={finding.creator}>
+        by {finding.creator}
+      </p>
     </article>
   );
 }

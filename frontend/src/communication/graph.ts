@@ -151,15 +151,71 @@ export interface GraphLayoutOptions {
   readonly radius: number;
 }
 
+// Wider than tall: the region it draws into is a wide panel, and a 4:3 canvas
+// scaled to that width became mostly empty vertical space.
 export const DEFAULT_GRAPH_LAYOUT: GraphLayoutOptions = {
-  width: 480,
-  height: 360,
+  width: 620,
+  height: 380,
   radius: 140,
 };
+
+// A node is drawn as a pill carrying its own display name, rather than a circle
+// with a caption underneath. Two reasons: the name is always legible, and there
+// is no separate label to collide with a neighbour's label — the crowding that
+// made the previous ego-graph unreadable past a handful of nodes.
+const LABEL_CHAR_WIDTH = 6.7; // JetBrains Mono at 11px
+const LABEL_PADDING = 30; // type dot + inner padding
+const MIN_NODE_WIDTH = 74;
+const MAX_NODE_WIDTH = 190;
+const NODE_HEIGHT = 32;
+const SEED_NODE_HEIGHT = 38;
+const LABEL_LIMIT = 22;
+
+/** Pure: the label a node shows, elided to keep pills a workable width. */
+export function nodeLabel(node: GraphNodeViewModel): string {
+  const name = node.displayName.trim() || node.id;
+  return name.length > LABEL_LIMIT ? `${name.slice(0, LABEL_LIMIT - 1)}…` : name;
+}
+
+/** Pure: pill geometry for a node, derived from its elided label. */
+export function nodeSize(node: GraphNodeViewModel): {
+  readonly width: number;
+  readonly height: number;
+} {
+  const estimated = nodeLabel(node).length * LABEL_CHAR_WIDTH + LABEL_PADDING;
+  return {
+    width: Math.min(MAX_NODE_WIDTH, Math.max(MIN_NODE_WIDTH, estimated)),
+    height: node.isSeed ? SEED_NODE_HEIGHT : NODE_HEIGHT,
+  };
+}
+
+/**
+ * Pure: a layout sized for the neighbourhood it has to hold.
+ *
+ * The fixed 480×360 canvas worked for three neighbours and overlapped at ten.
+ * The ring grows with the count and the canvas grows with the ring, so a dense
+ * neighbourhood spreads instead of stacking. The default is returned unchanged
+ * for small graphs, which keeps the documented default meaningful.
+ */
+export function layoutFor(neighbourCount: number): GraphLayoutOptions {
+  if (neighbourCount <= 3) {
+    return DEFAULT_GRAPH_LAYOUT;
+  }
+  // Enough arc per neighbour that pills clear each other at the ring.
+  const radius = Math.min(300, Math.round((neighbourCount * 74) / (2 * Math.PI)) + 96);
+  return {
+    width: (radius + MAX_NODE_WIDTH / 2 + 16) * 2,
+    height: (radius + NODE_HEIGHT + 20) * 2,
+    radius,
+  };
+}
 
 export interface PositionedNode extends GraphNodeViewModel {
   readonly x: number;
   readonly y: number;
+  /** Pill width/height, so the renderer draws no geometry of its own. */
+  readonly width: number;
+  readonly height: number;
 }
 
 export interface PositionedEdge extends GraphEdgeViewModel {
@@ -169,6 +225,15 @@ export interface PositionedEdge extends GraphEdgeViewModel {
   readonly y2: number;
   readonly midX: number;
   readonly midY: number;
+  /**
+   * The drawable segment: the centre-to-centre line trimmed back to each pill's
+   * boundary. Without this the arrowhead lands *under* the target node and the
+   * edge's direction — the whole point of drawing it — is invisible.
+   */
+  readonly drawX1: number;
+  readonly drawY1: number;
+  readonly drawX2: number;
+  readonly drawY2: number;
 }
 
 // Pure: deterministic radial (ego) layout — the seed sits at the centre and the
@@ -182,17 +247,35 @@ export function calculateNodePositions(
   const neighbours = graph.nodes.filter((node) => !node.isSeed);
 
   return graph.nodes.map((node) => {
+    const size = nodeSize(node);
     if (node.isSeed) {
-      return { ...node, x: centerX, y: centerY };
+      return { ...node, ...size, x: centerX, y: centerY };
     }
     const index = neighbours.indexOf(node);
     const angle = -Math.PI / 2 + (index * 2 * Math.PI) / neighbours.length;
     return {
       ...node,
+      ...size,
       x: centerX + options.radius * Math.cos(angle),
       y: centerY + options.radius * Math.sin(angle),
     };
   });
+}
+
+// Pure: the distance from a pill's centre to its boundary along `angle`,
+// approximating the rounded rectangle with its inscribing ellipse. Good enough
+// for edge trimming and far simpler than a rect intersection.
+function boundaryDistance(
+  width: number,
+  height: number,
+  angle: number,
+  margin: number,
+): number {
+  const rx = width / 2 + margin;
+  const ry = height / 2 + margin;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return (rx * ry) / Math.sqrt((ry * cos) ** 2 + (rx * sin) ** 2);
 }
 
 // Pure: resolve each edge to its endpoint coordinates using the positioned nodes.
@@ -210,6 +293,9 @@ export function calculateEdgeGeometry(
     if (source === undefined || target === undefined) {
       continue;
     }
+    const angle = Math.atan2(target.y - source.y, target.x - source.x);
+    const fromCentre = boundaryDistance(source.width, source.height, angle, 2);
+    const toCentre = boundaryDistance(target.width, target.height, angle, 6);
     geometry.push({
       ...edge,
       x1: source.x,
@@ -218,9 +304,64 @@ export function calculateEdgeGeometry(
       y2: target.y,
       midX: (source.x + target.x) / 2,
       midY: (source.y + target.y) / 2,
+      drawX1: source.x + Math.cos(angle) * fromCentre,
+      drawY1: source.y + Math.sin(angle) * fromCentre,
+      drawX2: target.x - Math.cos(angle) * toCentre,
+      drawY2: target.y - Math.sin(angle) * toCentre,
     });
   }
   return geometry;
+}
+
+// ------------------------------------------------------------- type encoding
+
+/**
+ * Which accent carries which kind of entity.
+ *
+ * The vocabulary is an open string in the domain (entity types are not a closed
+ * enum), so this is a presentation-side reading with an explicit fallback — an
+ * unknown type renders neutrally rather than being dropped or mis-coloured.
+ */
+export type EntityTone = "cyan" | "lav" | "mint" | "amber" | "coral" | "neutral";
+
+const TONE_BY_TYPE: Record<string, EntityTone> = {
+  endpoint: "cyan",
+  host: "cyan",
+  server: "cyan",
+  device: "cyan",
+  ip: "amber",
+  ip_address: "amber",
+  domain: "amber",
+  url: "amber",
+  user: "lav",
+  account: "lav",
+  identity: "lav",
+  process: "mint",
+  file: "mint",
+  service: "mint",
+  malware: "coral",
+  vulnerability: "coral",
+  threat_actor: "coral",
+};
+
+export function entityTone(type: string): EntityTone {
+  return TONE_BY_TYPE[type.trim().toLowerCase()] ?? "neutral";
+}
+
+/** Pure: the entity types present in a graph, in first-seen order (legend). */
+export function graphLegend(
+  graph: GraphViewModel,
+): readonly { readonly type: string; readonly tone: EntityTone }[] {
+  const seen = new Set<string>();
+  const legend: { type: string; tone: EntityTone }[] = [];
+  for (const node of graph.nodes) {
+    const type = node.type.trim().toLowerCase();
+    if (type !== "" && !seen.has(type)) {
+      seen.add(type);
+      legend.push({ type, tone: entityTone(type) });
+    }
+  }
+  return legend;
 }
 
 // ----------------------------------------------------------------------- loader

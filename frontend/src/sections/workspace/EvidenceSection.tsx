@@ -7,12 +7,13 @@
 // never stored (Derived State, ui-state-management §5).
 //
 // ES-047 adds the first write interaction: a minimal attach form so the live
-// create→evidence→run flow is completable from the browser. Submission goes
-// through the server-state mutation hook; the region keeps no data of its own.
+// create→evidence→run flow is completable from the browser. ES-061 adds raw
+// payloads: a file upload stores the bytes in the content-addressed payload
+// store and attaches evidence referencing the returned address.
 //
-// ES-061 adds raw evidence payloads: a file upload stores the bytes in the
-// content-addressed payload store and attaches evidence referencing the
-// returned address, and downloadable evidence exposes a verified download.
+// Both write forms live behind a disclosure. Reading the evidence is the common
+// case; adding to it is the occasional one, and a permanently open pair of
+// forms makes the region look like data entry rather than a case file.
 
 import { useMemo, useRef, useState } from "react";
 import type {
@@ -26,6 +27,8 @@ import { useUploadEvidencePayload } from "../../state/useUploadEvidencePayload";
 import { useDownloadEvidencePayload } from "../../state/useDownloadEvidencePayload";
 import { EvidenceCard } from "../../components/workspace/EvidenceCard";
 import { Button } from "../../ui/Button";
+import { Disclosure } from "../../ui/Disclosure";
+import { Empty } from "../../ui/Region";
 import { WorkspaceRegion } from "./WorkspaceRegion";
 
 export interface EvidenceSectionProps {
@@ -47,38 +50,45 @@ function AttachEvidenceForm({
     if (source.trim().length === 0 || content.trim().length === 0) {
       return;
     }
-    attach({ source: source.trim(), integrity: "unverified", content: content.trim() });
+    attach({
+      source: source.trim(),
+      integrity: "unverified",
+      content: content.trim(),
+    });
     setSource("");
     setContent("");
   };
 
   return (
-    <div className="mt-4 grid gap-2 border-t border-line pt-3">
-      <div className="flex gap-2">
+    <div className="grid gap-2">
+      <p className="text-xs text-ink-2">
+        Write down something you observed. Where it came from matters as much as
+        what it says.
+      </p>
+      <div className="flex flex-wrap gap-2">
         <input
           aria-label="Evidence source"
           placeholder="Source (e.g. edr)"
           value={source}
-          className="input w-32 px-2 py-1"
+          className="input w-36"
           onChange={(event) => setSource(event.target.value)}
         />
         <input
           aria-label="Evidence content"
           placeholder="What was observed?"
           value={content}
-          className="input flex-1 px-2 py-1"
+          className="input min-w-40 flex-1"
           onChange={(event) => setContent(event.target.value)}
         />
-        <Button
-          className="btn btn-primary"
-          onClick={submit}
-          disabled={attaching}
-        >
+        <Button variant="soft" onClick={submit} busy={attaching}>
           {attaching ? "Adding…" : "Add evidence"}
         </Button>
       </div>
       {error && (
-        <p role="alert" className="text-xs text-danger">
+        <p
+          role="alert"
+          className="rounded-input border border-coral/50 bg-coral/10 px-3 py-2 text-xs text-coral-ink"
+        >
           Could not attach evidence ({error.code}).
         </p>
       )}
@@ -109,35 +119,40 @@ function UploadEvidenceForm({
   };
 
   return (
-    <div className="mt-3 grid gap-2 border-t border-line pt-3">
-      <p className="text-xs text-muted">
-        Upload a raw evidence file (stored content-addressed, referenced by hash).
+    <div className="grid gap-2">
+      <p className="text-xs text-ink-2">
+        The file is stored under a hash of its own contents, and the hash is
+        checked again on download — so you can prove the bytes never changed.
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <input
           aria-label="Payload evidence source"
           placeholder="Source (e.g. upload)"
           value={source}
-          className="input w-32 px-2 py-1"
+          className="input w-36"
           onChange={(event) => setSource(event.target.value)}
         />
         <input
           ref={inputRef}
           type="file"
           aria-label="Evidence payload file"
-          className="file-input mono-label flex-1 text-muted"
+          className="file-input mono-label min-w-40 flex-1 text-ink-2"
           onChange={(event) => setFile(event.target.files?.[0] ?? null)}
         />
         <Button
-          className="btn btn-ghost"
+          variant="soft"
           onClick={submit}
-          disabled={uploading || file === null}
+          busy={uploading}
+          disabled={file === null}
         >
           {uploading ? "Uploading…" : "Upload file"}
         </Button>
       </div>
       {error && (
-        <p role="alert" className="text-xs text-danger">
+        <p
+          role="alert"
+          className="rounded-input border border-coral/50 bg-coral/10 px-3 py-2 text-xs text-coral-ink"
+        >
           Could not upload payload ({error.code}).
         </p>
       )}
@@ -160,11 +175,14 @@ export function EvidenceSection({
   );
 
   return (
-    <WorkspaceRegion title="Evidence">
+    <WorkspaceRegion
+      title="Evidence"
+      note="The raw observations this case rests on. Evidence is never edited — a correction is new evidence, so the original record always survives."
+    >
       {evidence.length === 0 ? (
-        <p className="text-sm text-faint">No evidence collected yet.</p>
+        <Empty>Nothing collected yet. Add the first observation below.</Empty>
       ) : (
-        <div className="stagger grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           {evidence.map((item) => (
             <EvidenceCard
               key={item.id}
@@ -180,13 +198,24 @@ export function EvidenceSection({
           ))}
         </div>
       )}
+
       {downloadError && (
-        <p role="alert" className="mt-2 text-xs text-danger">
+        <p
+          role="alert"
+          className="mt-3 rounded-input border border-coral/50 bg-coral/10 px-3 py-2 text-xs text-coral-ink"
+        >
           Could not download payload ({downloadError.code}).
         </p>
       )}
-      <AttachEvidenceForm investigationId={investigationId} />
-      <UploadEvidenceForm investigationId={investigationId} />
+
+      <div className="mt-5 grid gap-4 border-t border-line pt-4">
+        <Disclosure summary="Add an observation" defaultOpen={evidence.length === 0}>
+          <AttachEvidenceForm investigationId={investigationId} />
+        </Disclosure>
+        <Disclosure summary="Upload a file as evidence">
+          <UploadEvidenceForm investigationId={investigationId} />
+        </Disclosure>
+      </div>
     </WorkspaceRegion>
   );
 }

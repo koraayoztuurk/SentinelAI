@@ -21,12 +21,9 @@ export function EntitySeedChip({
       type="button"
       aria-pressed={active}
       onClick={() => onSelect(entityId)}
-      className={`mono-label cursor-pointer rounded-full border px-3 py-1 transition-all duration-200 ${
-        active
-          ? "border-accent/70 bg-accent/10 text-accent shadow-[0_0_16px_-6px_var(--color-accent)]"
-          : "border-line-strong bg-panel-2/60 text-muted hover:border-accent/40 hover:text-ink"
-      }`}
+      className="chip"
     >
+      {active && <span className="tag-dot" aria-hidden="true" />}
       {entityId}
     </button>
   );

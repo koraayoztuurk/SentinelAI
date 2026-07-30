@@ -9,6 +9,7 @@ import type { TimelineEventViewModel } from "../../communication/workspace";
 import { useWorkspaceContext } from "../../state/workspaceContext";
 import { selectIsTimelineEventEmphasized } from "../../state/workspaceSelectors";
 import { TimelineEntry } from "../../components/workspace/TimelineEntry";
+import { Empty } from "../../ui/Region";
 import { WorkspaceRegion } from "./WorkspaceRegion";
 
 export interface TimelineSectionProps {
@@ -19,11 +20,14 @@ export function TimelineSection({ timeline }: TimelineSectionProps) {
   const { state } = useWorkspaceContext();
 
   return (
-    <WorkspaceRegion title="Timeline">
+    <WorkspaceRegion
+      title="Timeline"
+      note="The same evidence and findings, ordered by when they happened. Whatever you selected elsewhere is highlighted here too."
+    >
       {timeline.length === 0 ? (
-        <p className="text-sm text-faint">No investigation activity yet.</p>
+        <Empty>Nothing on the timeline yet.</Empty>
       ) : (
-        <ol className="stagger flex flex-col gap-1">
+        <ol className="flex flex-col">
           {timeline.map((event) => (
             <TimelineEntry
               key={event.id}

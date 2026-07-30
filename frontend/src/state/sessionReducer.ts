@@ -16,8 +16,10 @@ export type SessionAction =
   | { readonly type: "SET_THEME"; readonly theme: Theme }
   | { readonly type: "TOGGLE_THEME" };
 
+// Light is the default: the console's warm, legible face is the one an analyst
+// should meet first. Dark remains a first-class preference for night shifts.
 export const defaultSessionState: SessionState = {
-  theme: "dark",
+  theme: "light",
 };
 
 export function sessionReducer(

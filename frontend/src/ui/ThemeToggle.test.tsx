@@ -13,14 +13,14 @@ function renderToggle() {
 }
 
 describe("ThemeToggle", () => {
-  it("defaults to dark and toggles to light, applying the DOM attribute", async () => {
+  it("defaults to light and toggles to dark, applying the DOM attribute", async () => {
     renderToggle();
     const button = screen.getByRole("button");
-    expect(button).toHaveTextContent("Theme: dark");
+    expect(button).toHaveTextContent("Theme: light");
 
     await userEvent.click(button);
 
-    expect(button).toHaveTextContent("Theme: light");
-    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    expect(button).toHaveTextContent("Theme: dark");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 });

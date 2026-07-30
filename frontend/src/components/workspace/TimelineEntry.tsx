@@ -17,40 +17,44 @@ const KIND_LABEL: Record<TimelineEventViewModel["kind"], string> = {
   finding: "Finding",
 };
 
-const KIND_DOT: Record<TimelineEventViewModel["kind"], string> = {
-  evidence: "bg-info",
-  finding: "bg-accent",
+const KIND_TONE: Record<TimelineEventViewModel["kind"], string> = {
+  evidence: "text-cyan-ink",
+  finding: "text-mint-ink",
 };
 
 export function TimelineEntry({ event, emphasized }: TimelineEntryProps) {
   return (
     <li
-      className={`relative flex items-baseline gap-3 rounded-md py-1.5 pl-6 pr-2 transition-colors duration-200 ${
-        emphasized ? "bg-raise/70" : "hover:bg-panel-2/50"
+      className={`relative grid grid-cols-[minmax(0,1fr)] gap-1 rounded-input py-2.5 pl-7 pr-3 transition-colors duration-200 sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-baseline sm:gap-3 ${
+        emphasized ? "bg-paper-3" : "hover:bg-paper-2"
       }`}
     >
       {/* Rail + event node */}
       <span
         aria-hidden="true"
-        className="absolute left-2 top-0 bottom-0 w-px bg-line"
+        className="absolute bottom-0 left-2.5 top-0 w-px bg-line"
       />
       <span
         aria-hidden="true"
-        className={`absolute left-2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full ${KIND_DOT[event.kind]} ${
-          emphasized ? "glow-breathe" : ""
+        className={`absolute left-2.5 top-4 h-2 w-2 -translate-x-1/2 rounded-pill ring-4 ring-paper ${
+          event.kind === "evidence" ? "bg-cyan" : "bg-mint"
         }`}
       />
       <span
-        className="mono-label w-48 shrink-0 truncate whitespace-nowrap tabular-nums text-faint"
+        className="mono-label truncate tabular-nums text-ink-3"
         title={event.occurredAt}
       >
         {event.occurredAt}
       </span>
-      <span className="mono-label uppercase text-muted">
-        {KIND_LABEL[event.kind]}
+      <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className={`mono-label font-semibold ${KIND_TONE[event.kind]}`}>
+          {KIND_LABEL[event.kind]}
+        </span>
+        <span className="min-w-0 truncate text-sm">{event.label}</span>
+        <span className="mono-label ml-auto shrink-0 text-ink-3">
+          {event.reference}
+        </span>
       </span>
-      <span className="text-sm">{event.label}</span>
-      <span className="mono-label ml-auto text-faint">{event.reference}</span>
     </li>
   );
 }

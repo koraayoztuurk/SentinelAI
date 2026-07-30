@@ -72,6 +72,48 @@ export function attachEvidence(
   );
 }
 
+// Findings the analyst records themselves.
+//
+// The status is deliberately part of the input rather than assumed: a finding
+// an analyst writes after weighing the evidence is `validated` by the act of
+// recording it (domain-model §6 — findings are produced by agents *or*
+// analysts), whereas a finding produced for review would be `proposed`. The
+// caller states which it is.
+export interface FindingCreateInput {
+  readonly supporting_evidence: readonly string[];
+  readonly creator: string;
+  readonly confidence: number;
+  readonly status: string;
+  readonly related_entities?: readonly string[];
+}
+
+export function createFinding(
+  investigationId: string,
+  input: FindingCreateInput,
+): Promise<FindingDto> {
+  return apiClient.post<FindingDto>(
+    `/api/v1/investigations/${encodeURIComponent(investigationId)}/findings`,
+    input,
+  );
+}
+
+// Investigation lifecycle (created → active → completed → archived, with
+// suspension reversible). The permitted transitions are the owning service's
+// business rule; the client offers them and the service refuses the rest.
+export interface InvestigationStatusChangeInput {
+  readonly status: string;
+}
+
+export function changeInvestigationStatus(
+  investigationId: string,
+  input: InvestigationStatusChangeInput,
+): Promise<InvestigationDto> {
+  return apiClient.post<InvestigationDto>(
+    `/api/v1/investigations/${encodeURIComponent(investigationId)}/status`,
+    input,
+  );
+}
+
 // Evidence payload store (ES-060/061): raw bytes up (returns the content
 // address the evidence record carries as its integrity value) and verified
 // bytes down. Payloads travel as octet-streams, never JSON (api-design §8).

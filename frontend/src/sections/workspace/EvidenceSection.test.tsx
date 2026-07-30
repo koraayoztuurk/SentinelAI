@@ -88,6 +88,12 @@ describe("EvidenceSection payloads (ES-061)", () => {
     });
     renderSection([]);
 
+    // The write forms live behind a disclosure: reading evidence is the common
+    // case, adding to it the occasional one.
+    await userEvent.click(
+      screen.getByRole("button", { name: /Upload a file as evidence/ }),
+    );
+
     await userEvent.type(
       screen.getByLabelText("Payload evidence source"),
       "upload",

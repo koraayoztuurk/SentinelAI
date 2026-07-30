@@ -10,10 +10,14 @@ describe("sessionReducer", () => {
     expect(next.theme).toBe("light");
   });
 
-  it("toggles between dark and light", () => {
-    const light = sessionReducer(defaultSessionState, { type: "TOGGLE_THEME" });
-    expect(light.theme).toBe("light");
-    const dark = sessionReducer(light, { type: "TOGGLE_THEME" });
+  it("defaults to the light console", () => {
+    expect(defaultSessionState.theme).toBe("light");
+  });
+
+  it("toggles between light and dark", () => {
+    const dark = sessionReducer(defaultSessionState, { type: "TOGGLE_THEME" });
     expect(dark.theme).toBe("dark");
+    const light = sessionReducer(dark, { type: "TOGGLE_THEME" });
+    expect(light.theme).toBe("light");
   });
 });

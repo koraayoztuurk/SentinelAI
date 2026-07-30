@@ -5,6 +5,7 @@
 
 import type { ConfirmedFindingViewModel } from "../../communication/dashboard";
 import { FindingCard } from "../../components/dashboard/FindingCard";
+import { Empty } from "../../ui/Region";
 import { DashboardSection } from "./DashboardSection";
 
 export interface FindingsSectionProps {
@@ -13,11 +14,14 @@ export interface FindingsSectionProps {
 
 export function FindingsSection({ findings }: FindingsSectionProps) {
   return (
-    <DashboardSection title="Findings">
+    <DashboardSection
+      title="Findings"
+      note="Only confirmed conclusions appear here. Proposed and rejected ones stay in the workspace."
+    >
       {findings.length === 0 ? (
-        <p className="text-sm text-faint">No confirmed findings yet.</p>
+        <Empty>No confirmed findings yet.</Empty>
       ) : (
-        <div className="stagger grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {findings.map((finding) => (
             <FindingCard key={finding.id} finding={finding} />
           ))}

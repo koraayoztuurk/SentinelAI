@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The console's brandmark: the pear disc with its dark centre. Drawn, not
+       imported, so the tab icon and the in-app mark cannot drift apart. -->
+  <rect width="32" height="32" rx="8" fill="#f7f4ea" />
+  <circle cx="16" cy="16" r="10" fill="#f2d648" />
+  <circle cx="16" cy="16" r="3.4" fill="#22201c" />
+</svg>

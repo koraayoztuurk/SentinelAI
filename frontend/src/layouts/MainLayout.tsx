@@ -1,9 +1,9 @@
 // Main application layout.
 //
-// Establishes consistent page organization (Frontend Architecture §7): an
-// ambient background, a frosted sticky header with the brand mark and session
-// controls, the main content region and a slim status footer. Structure only —
-// pages own their content.
+// Establishes consistent page organization (Frontend Architecture §7): a single
+// warm wash anchored to the top of the page, an edge-aligned sticky header
+// carrying the wordmark and session controls, the main content region and one
+// inline footer line. Structure only — pages own their content.
 
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
@@ -17,48 +17,42 @@ export interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col">
-      <div className="ambient" aria-hidden="true" />
+      <div className="wash" aria-hidden="true" />
 
-      <header className="app-header">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-3">
+      <header className="topbar">
+        <div className="shell flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3">
           <Link
             to="/"
-            className="group flex items-center gap-2.5 no-underline"
+            className="flex min-w-0 items-center gap-2.5 no-underline"
             aria-label="SentinelAI home"
           >
-            <span className="status-dot" aria-hidden="true" />
-            <span className="text-sm font-bold tracking-[0.22em] uppercase">
-              Sentinel
-              <span className="text-accent transition-colors group-hover:text-ink">
-                AI
-              </span>
+            <span className="brandmark" aria-hidden="true" />
+            <span className="text-[0.95rem] font-bold tracking-tight text-ink">
+              SentinelAI
             </span>
-            <span className="mono-label hidden text-faint sm:inline">
-              // investigation console
+            <span className="mono-label hidden text-ink-3 sm:inline">
+              investigation console
             </span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2">
             <DevTokenField />
             <ThemeToggle />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-        {children}
-      </main>
+      {/* `min-w-0`: a flex item defaults to `min-width: auto`, which lets a
+          wide descendant (the tab rail, a long identifier) push the whole page
+          past the viewport instead of scrolling inside its own box. */}
+      <main className="shell min-w-0 flex-1 py-8 sm:py-10">{children}</main>
 
-      <footer className="border-t border-line">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
-          <span className="mono-label text-faint">
-            SentinelAI · AI-assisted cyber investigations
+      <footer className="mt-8 border-t border-line">
+        <div className="shell flex flex-wrap items-center gap-x-3 gap-y-1 py-4">
+          <span className="text-xs text-ink-2">
+            SentinelAI — AI-assisted cyber investigations.
           </span>
-          <span className="mono-label flex items-center gap-2 text-faint">
-            <span
-              className="inline-block h-1.5 w-1.5 rounded-full bg-ok"
-              aria-hidden="true"
-            />
-            console ready
+          <span className="text-xs text-ink-3">
+            Recommendations are advisory; the analyst decides.
           </span>
         </div>
       </footer>

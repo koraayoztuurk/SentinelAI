@@ -106,19 +106,28 @@ describe("InvestigationWorkspacePage", () => {
     expect(
       await screen.findByText("Suspicious lateral movement on finance subnet"),
     ).toBeInTheDocument();
+    // Every region is mounted across the tab set, so each heading is present
+    // in the document even while its panel is inactive.
     expect(screen.getByText("Graph")).toBeInTheDocument();
     // AI Insights is a live region since ES-047 (run + trace).
     expect(screen.getByText("AI Insights")).toBeInTheDocument();
+    expect(screen.getByText("Memory")).toBeInTheDocument();
+
+    // The run control is reachable once its tab is active (an inactive panel
+    // is `hidden`, so it is correctly absent from the accessibility tree).
+    await userEvent.click(screen.getByRole("tab", { name: "AI analysis" }));
     expect(
       screen.getByRole("button", { name: "Run investigation" }),
     ).toBeInTheDocument();
-    // The Memory region remains a placeholder (no backend source yet).
-    expect(screen.getByText("Memory")).toBeInTheDocument();
   });
 
   it("highlights supporting evidence when a finding is selected", async () => {
     mockedLoad.mockResolvedValue(viewModel);
     renderAt("/investigations/inv-001/workspace");
+
+    // Findings and evidence share one tab, which is what makes the
+    // cross-region highlight observable in a single view.
+    await userEvent.click(await screen.findByRole("tab", { name: /Evidence/ }));
 
     // The finding id also appears in the Timeline, so target the finding card
     // button specifically (its accessible name includes the id).

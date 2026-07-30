@@ -38,9 +38,15 @@ export class ErrorBoundary extends Component<
       return (
         <div
           role="alert"
-          className="fade-up m-6 rounded-lg border border-danger/40 bg-danger/5 p-5 text-sm"
+          className="rise m-6 rounded-card border border-coral/50 bg-coral/10 p-5"
         >
-          Something went wrong. Please reload the affected view.
+          <p className="text-sm font-semibold text-coral-ink">
+            Something went wrong in this view.
+          </p>
+          <p className="mt-1 text-[0.8125rem] text-ink-2">
+            Reloading the page will restore it. The investigation itself is not
+            affected — nothing is stored in the browser.
+          </p>
         </div>
       );
     }

@@ -26,12 +26,13 @@ export function WorkspaceFindingCard({
       type="button"
       aria-pressed={selected}
       onClick={() => onSelect(finding.id)}
-      className={`card w-full cursor-pointer p-4 text-left ${
-        selected ? "card-selected" : ""
-      }`}
+      className={`card w-full cursor-pointer p-4 ${selected ? "card-selected" : ""}`}
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="mono-label min-w-0 truncate text-faint" title={finding.id}>
+        <span
+          className="mono-label min-w-0 truncate text-ink-3"
+          title={finding.id}
+        >
           {finding.id}
         </span>
         <StatusBadge status={finding.status} />
@@ -39,7 +40,12 @@ export function WorkspaceFindingCard({
       <div className="mt-3">
         <ConfidenceIndicator value={finding.confidence} />
       </div>
-      <p className="mono-label mt-3 text-faint">by {finding.creator}</p>
+      <p className="mono-label mt-3 truncate text-ink-3" title={finding.creator}>
+        by {finding.creator}
+      </p>
+      <p className="mt-2 text-xs text-ink-3">
+        {selected ? "Showing its evidence below." : "Select to see its evidence."}
+      </p>
     </button>
   );
 }
