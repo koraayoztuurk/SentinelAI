@@ -4803,3 +4803,90 @@ of the live AI suite.
 - The dashboard's Active Objectives / AI Insights / Recent Activity remain declared-but-unconnected
   placeholders.
 
+
+## Correction to UI-R3 + provider selection changed (2026-07-30)
+
+### Correction: the "dead Gemini default" finding in UI-R3 was wrong
+
+UI-R3 recorded that `GeminiSettings.model` defaults to `gemini-3.5-flash` and that this model id
+returns 503, concluding the second LLM provider was "dead by default". **That conclusion was
+incorrect and is retracted.**
+
+What actually happened: the 503 was observed once, during one of the multi-hour `generateContent`
+capacity windows this project has already documented (environment gotcha #3, and the very outage
+class ES-067's failover chain was built for). Re-checked afterwards:
+
+- `ListModels` for the configured key returns **`gemini-3.5-flash` among 42 generateContent
+  models** — the id is valid, not stale.
+- Two consecutive calls: **HTTP 200 in 1857 ms and 1398 ms**.
+
+The lesson is the one the gotcha already stated and this entry failed to apply: **a single 503 from
+Gemini is not evidence of a configuration defect.** A provider-availability claim needs either the
+model list or a repeat measurement, and preferably both. The original UI-R3 paragraph stays in place
+(append-only); this entry is its correction.
+
+### Also missed in UI-R3: the failover chain already existed
+
+UI-R3 discussed "connecting" a second provider as if it were unbuilt. It was built in **ES-067**:
+`FallbackLLMProvider` composes primary + secondary behind the same provider-neutral port, sits above
+the per-adapter retry/breaker layer, counts every failover on `/metrics`, and degrades to the
+documented ESCALATED path only when both providers fail. It is selected by configuration
+(`LLM_FALLBACK_PROVIDER`), and was simply never configured — `llm_fallbacks: 0` on the platform
+surface meant *never engaged*, not *not implemented*.
+
+### Provider selection changed (configuration only)
+
+`LLM_PROVIDER=nvidia` → **`LLM_PROVIDER=gemini`**, with **`LLM_FALLBACK_PROVIDER=nvidia`**.
+
+Measured, per call and end to end over a full run:
+
+| Provider | per call | full run (6 sequential calls) |
+|---|---|---|
+| NVIDIA MiniMax-M3 (previous primary) | 45–100 s | **~630 s** (timed from the run log) |
+| Gemini 3.5-flash | ~1.4–1.9 s | model time in the tens of seconds |
+
+Rationale:
+
+- A ten-minute run is not a usable interaction, and the latency is not a defect to fix in code —
+  MiniMax-M3 is a reasoning model and the compositions are sequential by design (ADR-010).
+- The change **engages ES-067 for the first time**. Gemini's 503 windows are exactly the outage
+  class the chain was written for, and MiniMax-M3 now stands behind it rather than in front of it.
+- It adds **no new single point of failure**: embedding is bound to the Gemini adapter regardless
+  (the Qdrant collection's vector dimension, ES-050), so Gemini availability was already required.
+  Putting the LLM behind a two-provider chain makes the AI path *more* redundant than before, not
+  less.
+
+Trade-off recorded rather than hidden: a flash-class model may produce less considered planner and
+synthesis output than a reasoning model. No A/B was run — the owner judged the latency decisive for
+now, and reverting is a one-line configuration change in either direction.
+
+### One live test had to be corrected — the fallback made its premise false
+
+`test_invalid_provider_key_escalates_without_breaking_anything` poisoned **the configured
+provider's** key and asserted the run ends `escalated` with `ai.llm_provider_error`. With a fallback
+configured that premise no longer holds: the chain is *supposed* to serve the call from the
+secondary, so the run completed and the test failed. The failure was the feature working.
+
+The test now poisons **every provider in the composed chain** (`_configured_provider_keys()`), which
+is what its own intent requires — ADR-013's guarantee is that a rejected credential is an *outcome*
+rather than a crash, and reaching that outcome means every provider must refuse. This is the second
+time this test has been vacuous in a different configuration (the first: poisoning `GOOGLE_API_KEY`
+while `LLM_PROVIDER=nvidia`), so it now derives the key set from configuration instead of assuming
+one.
+
+### Verified live
+
+- `pytest -m live_ai` — **2 passed in 41 s**. The same two tests took **713 s** on the previous
+  configuration: the suite is ~17× faster.
+- A full run through the REST surface, on a fresh investigation with one evidence item and one
+  analyst-recorded finding: **`completed` in 54 s over 3 planner cycles**, versus ~630 s for a
+  1-cycle run before. It did *more* work in a twelfth of the time.
+- Trace: **12 entries**, the complete chain with three decide→execute cycles —
+  `retrieval → graph_analysis → threat_intel → (planner_decision → action_execution) ×3 →
+  validation → outcome_synthesis → loop_outcome`.
+- Outcome synthesized at **confidence 0.86**, naming the specific entities the graph walk surfaced
+  (HOST-1, rundll32.exe, svc_backup, 203.0.113.7, evil-cdn.example) rather than generic advice.
+  Observation only — one sample is not a quality comparison.
+- Platform status after the run: `gemini` closed, `gemini-embedding` closed, `nvd` closed,
+  **`llm_fallbacks: 0`** — the secondary stayed on standby, which is the correct resting state.
+

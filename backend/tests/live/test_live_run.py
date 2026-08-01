@@ -54,12 +54,31 @@ def _reset_database() -> None:
     asyncio.run(scenario())
 
 
-def _configured_provider_key() -> str:
-    """The secret name the active LLM adapter actually consumes."""
+def _provider_key(choice: LLMProviderChoice) -> str:
+    """The secret name a given LLM adapter actually consumes."""
 
-    if get_llm_selection().provider is LLMProviderChoice.NVIDIA:
+    if choice is LLMProviderChoice.NVIDIA:
         return "NVIDIA_API_KEY"
     return "GOOGLE_API_KEY"
+
+
+def _configured_provider_keys() -> tuple[str, ...]:
+    """Every secret the composed LLM chain can serve a call from.
+
+    With a fallback configured (ES-067) the chain survives a rejected
+    credential on the primary — that is the whole point of it — so poisoning
+    only the primary no longer produces an escalation. To keep proving what
+    this test exists to prove (ADR-013: a rejected credential is an *outcome*,
+    not a crash), every provider in the chain has to be refused.
+    """
+
+    selection = get_llm_selection()
+    keys = [_provider_key(selection.provider)]
+    if selection.fallback_provider is not None:
+        fallback_key = _provider_key(selection.fallback_provider)
+        if fallback_key not in keys:
+            keys.append(fallback_key)
+    return tuple(keys)
 
 
 def _client() -> TestClient:
@@ -135,12 +154,16 @@ def test_invalid_provider_key_escalates_without_breaking_anything() -> None:
     ensure_schema()
     _reset_database()
 
-    # Poison the key of the **configured** provider (ES-054 made the adapter
-    # selectable; poisoning GOOGLE_API_KEY under LLM_PROVIDER=nvidia left the
-    # run perfectly healthy and this assertion vacuous).
-    key_name = _configured_provider_key()
-    saved = os.environ.get(key_name)
-    os.environ[key_name] = "invalid-key-for-escalation-test"
+    # Poison the key of **every** provider in the composed chain (ES-054 made
+    # the adapter selectable, ES-067 added a fallback behind it). Poisoning
+    # only one leaves the assertion vacuous in a different way each time:
+    # GOOGLE_API_KEY under LLM_PROVIDER=nvidia never touched the run at all,
+    # and poisoning the primary while a healthy fallback stands behind it is
+    # served successfully by design.
+    key_names = _configured_provider_keys()
+    saved = {name: os.environ.get(name) for name in key_names}
+    for name in key_names:
+        os.environ[name] = "invalid-key-for-escalation-test"
     try:
         with _client() as client:
             investigation_id = _create_investigation(client)
@@ -157,11 +180,12 @@ def test_invalid_provider_key_escalates_without_breaking_anything() -> None:
             assert fetched.status_code == 200
             assert fetched.json()["data"]["status"] == "created"
     finally:
-        if saved is None:
-            os.environ.pop(key_name, None)
-        else:
-            os.environ[key_name] = saved
-        # The rejected credential produced real failures against the live
-        # provider; clear the process-wide breaker so a later test in the same
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+        # The rejected credentials produced real failures against the live
+        # providers; clear the process-wide breakers so a later test in the same
         # process does not inherit an unhealthy verdict (ES-067).
         reset_breakers()
