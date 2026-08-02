@@ -4890,3 +4890,128 @@ one.
 - Platform status after the run: `gemini` closed, `gemini-embedding` closed, `nvd` closed,
   **`llm_fallbacks: 0`** — the secondary stayed on standby, which is the correct resting state.
 
+
+
+## Demo readiness audit + provider quota finding (ad-hoc, 2026-08-01)
+
+Pre-video check requested by the owner: "is anything missing, broken or worth improving before we
+record". No code changed. Both verification gate sets were run first and were **green**: backend
+`ruff` clean, `mypy app` strict clean (200 files), **690 passed / 38 deselected**; frontend lint,
+`tsc -b`, **90/90**, build. The audit then drove the whole product loop live through the public REST
+surface and rendered every result in a real browser.
+
+### The platform works end to end — verified, not assumed
+
+One investigation built entirely through the REST surface (every call is one a user could make from
+the console) and read back in headless Chrome across all six workspace tabs: create → 3 evidence
+items (one an uploaded 615-byte payload, stored at its content address and retrievable) → 2
+analyst-recorded findings citing five graph entities → lifecycle `created → active` → run →
+trace → synthesized outcome → memory promotion. The memory item's embedding was projected through
+the outbox to Qdrant in **2 s**. No console errors, no horizontal overflow at 1600px.
+
+Two behaviours confirmed as **designed, not defective**, both of which had looked like faults:
+
+- A `sha256:`-shaped `integrity` value on an evidence record must resolve to a stored payload —
+  posting a fabricated one is correctly rejected `investigation.evidence_payload_missing` (422).
+  Non-payload evidence carries an opaque value (`verified`), as `seed_demo.py` already does.
+- **Re-running an investigation that already has an outcome does not re-synthesize.** The loop's
+  `_synthesize_best_effort` documents it: *"a skipped synthesis (outcome exists / nothing to
+  synthesize) is log-only"*. The second run's trace therefore legitimately has no
+  `outcome_synthesis` entry.
+
+### The finding that mattered: the Gemini free tier is metered per model **per day**
+
+The fast path recorded in the previous entry (54 s per run) was gone: a run took **~8.5 minutes**.
+The cause was not latency drift and not a 503 window — it was **HTTP 429**, and the quota detail is
+the durable part:
+
+```
+quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier
+quotaMetric: generativelanguage.googleapis.com/generate_content_free_tier_requests
+model: gemini-3.5-flash        quotaValue: 20
+```
+
+**20 generateContent requests per model per day.** One SentinelAI run costs ~8 LLM calls, so the free
+tier affords roughly **two runs per day per model**. The `Please retry in 59s` string in the error
+body is misleading — the violation is the per-day quota, not a per-minute one.
+
+What the platform did with it is the part worth stating plainly: **ES-067's failover chain carried
+every single call.** Each LLM call spent two Gemini 429s, opened the breaker, failed over to NVIDIA
+MiniMax-M3 and completed. The run finished `completed` with a full trace and a 0.82-confidence
+outcome naming the specific entities. Nothing was lost, nothing crashed, and the Platform surface
+reported it honestly: `gemini` circuit **open**, `4 failovers`. The outage class the chain was
+written for arrived, and the chain worked — this is the second time it has been engaged for real.
+
+### Configuration changed (owner decision): `GEMINI_MODEL=gemini-2.5-flash`
+
+Measured side by side against the same key on the same minute: `gemini-3.5-flash` → 429 (day quota
+exhausted); `gemini-2.5-flash` → **200 in 1.09 s** with its own untouched allowance;
+`gemini-3-flash-preview` → 200 in 1.31 s; `gemini-2.0-flash` → 429; `gemini-2.5-flash-lite` → 404.
+The override was applied in `.env` (gitignored, one line, reversible) and verified **through the real
+adapter** rather than by a full run — `GeminiLLMProvider.generate` returned in **1.31 s** — precisely
+so the check did not spend the day's remaining quota.
+
+Applying the gotcha this project has now learned twice: a provider verdict needs a *repeat*
+measurement and the quota metadata, never a single response code. The previous entry's retraction
+was about reading one 503 as a defect; this entry avoids the mirror-image error of reading one 200
+as sustained capacity.
+
+**Consequence for operations, recorded rather than fixed:** on the free tier the fast path is
+rate-limited, not merely fast. A deployment that expects more than ~2 runs/day per model needs
+billing enabled or the NVIDIA path as primary. The failover chain makes this degrade in latency
+rather than in availability, which is the correct shape, but it is a capacity fact and not a
+configuration one.
+
+**Circuit-breaker state is per-process and in memory.** After the model change, the already-running
+host backend still reported `gemini=open · 4 failovers` while a freshly started one reported all
+circuits `closed · 0 failovers`. Correct (the breaker is a runtime object, ADR-013 scope) and worth
+knowing before demonstrating the Platform surface.
+
+### Report surface: exists in the backend, deliberately absent from the UI
+
+`POST/GET /investigations/{id}/reports` are live and `Report` is persisted, but the entity is
+**identifying metadata only** — `domain/report.py`: *"report body composition is owned by a later
+specification"*. So there is no report body to render and the missing UI is a consequence of an open
+specification, not an oversight. Recorded here because it reads as a gap from the REST surface alone,
+and because the demo must not claim reporting as a feature.
+
+### README Sprint 3 filled in
+
+`## Sprint 3` had been a placeholder (*"Bu bölüm Sprint 3 sonunda doldurulacaktır."*) while Sprints 1
+and 2 were detailed — the jury reads the repository. Written in the established structure (sprint
+notes, completed work, daily scrum, board, product-status table, screenshots, review,
+retrospective) covering ES-064–073, Milestones F/G/H, Release 1.0.0, and the post-release UI-R2/R3
+work. Four real screenshots of the current Hum-themed console were added
+(`assets/sp3_home.png`, `sp3_ai_insights.png`, `sp3_evidence.png`, `sp3_graph.png`) — the README's
+product face was still the superseded dark SOC console. **Open for the owner:** the four Jira board
+screenshots (`assets/sp3_1.png` … `sp3_4.png`) are referenced but not yet captured.
+
+### Demo asset
+
+`c8778375c88d4e9a90daa7c098733fac` — built for recording on the restored fast path: **84 s**, 2
+planner cycles, **10 trace entries** (the full chain, one run, no duplicates), outcome at **0.82**
+with one detected conflict and four open questions, plus a promoted memory item. The conflict is
+worth keeping: the engine noticed that the evidence does not directly tie the observed process to
+the observed connections, which demonstrates the validation claim better than a clean answer would.
+Shot list and narration in `workdocs/demo-video-script.md` (gitignored, like HANDOVER).
+
+### Still open (unchanged)
+
+No investigation-list endpoint (`GET /api/v1/investigations` → 405); the Planner Agent's action
+vocabulary remains read-only; findings carry no human-readable label because the domain gives them
+none, so the console shows their identifier.
+
+
+### Follow-up the same session (2026-08-02)
+
+The four Jira screenshots are captured and in place, so the item this entry left open for the owner
+is closed. Two corrections to what was written above: the Sprint 3 section had its **Pano/Liste
+captions swapped** — Sprints 1 and 2 name `_1/_2` the list view and `_3/_4` the board, and the new
+files follow that convention, so the README now matches the images rather than the other way round.
+And the board capture (`sp3_2.png`) happens to show **SEN-47…52**, which is the better evidence: the
+post-release work and the one deliberately open item are both visible in the artifact a reviewer sees.
+
+Recorded because it is the kind of claim that ages badly: **the Jira link in the README answers 200
+to an anonymous fetch but renders a login wall** — the project is private, so a reviewer clicking it
+sees nothing. The screenshots carry the evidence; making the board publicly visible is an account
+setting and the owner's decision, not a documentation fix.

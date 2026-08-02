@@ -68,8 +68,8 @@ Amaç analistin yerini almak değil; tekrarlayan korelasyon işlerini azaltarak 
 - **Bilgi Grafiği Akıl Yürütmesi:** Birbirinden izole kanıtların anlamlı bir araştırma bağlamına bağlanması.
 - **Retrieval-Augmented Generation (RAG) ve Semantik Hafıza:** Qdrant üzerinde embedding tabanlı semantik arama ile ilgili doküman, prosedür ve geçmiş bilgiye araştırma sırasında erişim.
 - **Uzun Süreli Araştırma Hafızası:** Versiyonlanmış `MemoryItem` modeliyle oturumlar arası bağlamın korunması, sürekli akıl yürütmeye izin verilmesi.
-- **Çoklu-Ajan Mimarisi:** Planlama, akıl yürütme ve araştırma desteğinden sorumlu, birbirinden ayrık sorumluluklara sahip uzman AI ajanlarının (Planner Agent, Agent Runtime) koordinasyonu.
-- **Tehdit İstihbaratı Korelasyonu:** Göstergelerin, tehdit aktörlerinin ve araştırma bulgularının bağlamsal analiz yoluyla ilişkilendirilmesi (port hazır, dış sağlayıcı entegrasyonu sonraki kapsamda).
+- **Çoklu-Ajan Mimarisi:** Birbirinden ayrık sorumluluklara sahip beş uzman AI ajanının (Memory, Graph Analysis, Threat Intelligence, Planner, Validation) tek bir `AgentRuntime` üzerinden koordinasyonu; sentezi ise ajan olmayan Decision Engine üstlenir.
+- **Tehdit İstihbaratı Korelasyonu:** Araştırmanın olgularının canlı dış kaynaklarla — MITRE ATT&CK teknik kataloğu ve NVD CVE aramaları — ilişkilendirilmesi; Threat Intelligence Agent korelasyonu yapar, sonuç doğrudan tavsiyeye yansır.
 - **Açıklanabilir Yapay Zeka:** Her AI kararının ve yürütme sonucunun analistin inceleyip doğrulayabileceği şeffaf bir **Investigation Trace** üzerinden izlenebilmesi; sağlayıcı hatasında akışın sessizce çökmek yerine güvenli bir "escalated" durumuna geçmesi.
 - **Mimari Yönetişim:** Mimari evrimin ADR (Architectural Decision Record) ve RFC (Request for Comments) süreçleriyle, açık sahiplik ilkesiyle yönetilmesi.
 
@@ -473,7 +473,106 @@ Sprint 2'nin son gününde, geçici/temel arayüz **modern ve animasyonlu bir "S
 <details>
 <summary><strong>Sprint 3 detaylarını görmek için tıklayın</strong></summary>
 
-*Bu bölüm Sprint 3 sonunda doldurulacaktır.*
+**Sprint tarih aralığı:** 20 Temmuz 2026 – 2 Ağustos 2026
+
+### Sprint Notları
+
+- Bu sprint yol haritasının **kalan üç milestone'unu kapattı ve ürünü sürüme çıkardı**: **Milestone F** (verinin yaşam sonu — tombstoning / crypto-shredding), **Milestone G** (production sertleştirme) ve **Milestone H** (yönetişim + sürüm kimliği). **A–H'nin tamamı kapandı** ve **Release 1.0.0** etiketlenip yayımlandı.
+- Toplam **10 iş kalemi (ES-064 – ES-073)** tamamlandı; her biri Sprint 2'deki akıştan geçti: Implementation Plan → Mimari İnceleme → Implementasyon → Doğrulama (`ruff` + `mypy --strict` + `pytest`, frontend 4-kapı) → Kod İncelemesi → Doküman Güncellemesi (ADR/RFC, `openapi.json`, roadmap Delivery Record) → Merge.
+- RFC süreci bu sprintte **dört kez daha işletildi**: RFC-003 (silme/tombstoning → ADR-017), RFC-004 (denetim kaydı yaşam döngüsü → ADR-018), RFC-005 (yetenek-kapılı paylaşılan bilgi silme → ADR-019), RFC-006 (mimari doküman yaşam döngüsü → ADR-020); ayrıca ADR-021 ile tek-platform sürüm kimliği tanımlandı.
+- **Sürüm provası ilk koşusunda bir kusur yakaladı.** Yayımlanmış, digest'e sabitlenmiş imajlardan kaldırılan staging ortamında kanıt yükleme `evidence_payload_store_unavailable` verdi: Docker adlandırılmış birimi imajdaki dizinden başlattığı ve `/data/evidence-payloads` imajda **bulunmadığı** için birim `root:root` sahipliğiyle oluşuyordu — süreç ise uid 10001. Yani her konteynerli dağıtımda kanıt yükleme yolu bozuktu; ES-060/061 yalnızca host üzerinde koşan bir backend ile kanıtlanmıştı. Provanın var oluş sebebi tam olarak bu sınıf boşluktur.
+- **Sürüm sonrası (post-release) çalışma**, jüri sunumu ve demoya hazırlık amacıyla iki başlıkta yürütüldü: frontend'in sıfırdan yeniden yazımı (UI-R2, "Hum" teması) ve uçtan uca demo denetimi (UI-R3) — ikisi de yalnızca sunum katmanı; API sözleşmesi, rota, DTO ve servis davranışı değişmedi.
+
+### Sprint İçinde Tamamlanan İşler
+
+**3 milestone kapatıldı, 10 ES teslim edildi, Release 1.0.0 yayımlandı** (Jira'da "Tamamlandı"):
+
+- **Milestone F — Verinin Yaşam Sonu:** ES-064 RFC-003/ADR-017 + Investigation ailesi tombstoning (PostgreSQL silme kaskadı + DELETE yüzeyi), ES-065 ikincil depo yayılımı (payload byte silme + embedding noktası silme + kişiye bağlı Memory/Graph silme), ES-066 workspace silme yüzeyi + tombstone gösterimi.
+- **Milestone G — Production Sertleştirme:** ES-067 her hata kenarında dayanıklılık (sağlayıcı devre kesici / retry / **cross-provider failover** + projeksiyon retry/dead-letter), ES-068 kenar & dağıtım sertleştirme (kimlik başına hız sınırı, TLS/edge overlay, imaj tedarik zinciri: tarama/SBOM/provenance/imzalama), ES-069 doğrulanabilir işletim (RFC-004/ADR-018 + **hash-zincirli kalıcı denetim kaydı** + AC-14 mekanik zorlama + hazırlık kapılama), ES-070 silmenin operasyonelleştirilmesi (retention süpürme + crypto-shred payload deposu + RFC-005/ADR-019 + platform operasyonel yüzeyi).
+- **Milestone H — Yönetişim & Sürüm:** ES-071 yönetişim uyumu (RFC-006/ADR-020 + doküman başına açık bilinen boşluklar + AC-16 makine-kontrollü yönetişim tazeliği), ES-072 sürüm kimliği & terfi (ADR-021 tek-platform sürümü + uyumluluk yüzeyi + Apache-2.0 lisansı + koordineli açıklama politikası + changelog + doğrulanmış digest-sabitli terfi iş akışı), ES-073 Release 1.0 (hazırlık kapısı kanıtla değerlendirildi + sürüm provası + sürüm 1.0.0).
+- **Release 1.0.0:** `v1.0.0` etiketlendi, etiket koşusu tamamen yeşil — daha önce hiç çalışmamış iki iş dahil: sürüm kimliği (etiket ↔ manifest uyumu) ve imaj yayımı (Trivy kapısı ilk gerçek koşusunda geçti). İmajlar GHCR'de, SBOM + provenance ile imzalı.
+- **Sürüm sonrası (UI-R2 / UI-R3):** frontend "Hum" temasıyla yeniden yazıldı (açık, sıcak, sekmeli çalışma alanı; her bölge kendini açıklıyor; graf görselleştirmesi ES-026'dan beri var olan dört kusuru giderilerek elden geçirildi) ve uçtan uca demo denetimi **üç eksik yazma yüzeyini** kapattı: bulgu kaydetme, araştırma yaşam döngüsü, hafızaya bilgi terfisi.
+
+### Daily Scrum
+
+İlerleme her gün `workdocs/SentinelAI-Implementation-Tracker.md`'ye append-only olarak işlendi (her ES için durum satırı + teknik-borç bölümü + zaman çizelgesi girdisi) ve Jira görev durumlarına yansıtıldı.
+
+### Sprint Board
+
+Backlog ve board [Jira'da (SentinalAI / SEN projesi)](https://korayozturk.atlassian.net/jira/core/projects/SEN/board) tutulmaktadır.
+
+**Jira Pano Görünümü**
+
+<p align="center">
+  <img src="assets/sp3_3.png" width="45%" alt="Jira Pano — Yapılacaklar (1) ve Tamam (10) sütunları; SEN-47 sürüm sonrası görevi 4/5 alt görevle" />
+  <img src="assets/sp3_4.png" width="45%" alt="Jira Pano — devamı: SEN-50/51 tamamlandı, SEN-52 (tanıtım videosu) yapılacaklarda" />
+</p>
+
+**Jira Liste Görünümü**
+
+<p align="center">
+  <img src="assets/sp3_1.png" width="45%" alt="Jira Liste görünümü — Faz 1/2, dikey dilimler, Milestone A–H, ES-054 ve UI-R1 tamamlandı" />
+  <img src="assets/sp3_2.png" width="45%" alt="Jira Liste görünümü — devamı: SEN-47 sürüm sonrası görevi ve SEN-48–52 alt görevleri" />
+</p>
+
+**Jira Bilet Detayı**
+
+Her bilet yalnızca bir başlık değil: ne teslim edildiğini, hangi kararın neden
+alındığını ve neyin ölçüldüğünü taşır — mühendislik defterindeki karşılığına
+referansla. Aşağıda sürüm sonrası iki kalemin açıklaması örnek olarak veriliyor.
+
+<p align="center">
+  <img src="assets/sp3_5.png" width="45%" alt="Jira bilet detayı — SEN-48 (UI-R2): frontend yeniden yazımının tema, bilgi mimarisi ve tasarım tezi gerekçeleri" />
+  <img src="assets/sp3_6.png" width="45%" alt="Jira bilet detayı — SEN-49 (UI-R3): demo denetiminin bulduğu üç eksik yazma yüzeyi ve zincirleme sonuçları" />
+</p>
+
+### Ürün Durumu
+
+| Alan | Durum |
+|---|---|
+| Milestone F — Tombstoning/silme kaskadı (ES-064), ikincil depo yayılımı (ES-065), workspace silme yüzeyi (ES-066) | ✅ Tamamlandı (2026-07-24) |
+| Milestone G — Dayanıklılık & failover (ES-067), kenar/tedarik zinciri sertleştirme (ES-068), hash-zincirli denetim kaydı (ES-069), silme operasyonelleştirme (ES-070) | ✅ Tamamlandı (2026-07-26) |
+| Milestone H — Yönetişim uyumu (ES-071), sürüm kimliği & terfi + Apache-2.0 (ES-072), Release 1.0 hazırlık kapısı + prova (ES-073) | ✅ Tamamlandı (2026-07-26) |
+| **Release 1.0.0** — `v1.0.0` etiketlendi, imzalı imajlar GHCR'de yayımlandı (SBOM + provenance) | ✅ Tamamlandı (2026-07-27) |
+| Yönetişim — RFC-003/ADR-017, RFC-004/ADR-018, RFC-005/ADR-019, RFC-006/ADR-020, ADR-021 | ✅ Tamamlandı |
+| UI-R2 — Frontend yeniden yazımı ("Hum" teması, sekmeli çalışma alanı, graf revizyonu) | ✅ Tamamlandı (2026-07-30) |
+| UI-R3 — Uçtan uca demo denetimi; üç eksik yazma yüzeyi kapatıldı | ✅ Tamamlandı (2026-07-30) |
+| Backend test durumu | ✅ 690 test yeşil, `ruff` temiz, `mypy --strict` temiz (200 dosya) |
+| Frontend test durumu | ✅ 90 test yeşil, lint/typecheck/build temiz (4-kapı) |
+| Ölçeklenme (çok-örnekli dağıtım), S3 uyumlu payload backend, denetim sorgu yüzeyi | ⏳ Sürüm sonrasına ertelendi |
+
+### Uygulama Ekran Görüntüsü
+
+Sürümden sonra arayüz, davranışa ve API sözleşmesine dokunulmadan **"Hum" temasıyla sıfırdan yeniden yazıldı** (UI-R2): koyu "SOC konsolu" yerine açık ve sıcak bir kâğıt zemin, altı adlandırılmış sekmeye bölünmüş çalışma alanı ve **kendini açıklayan bölgeler** — platformun açıklanabilirlik iddiası, konsolu okumak için platformu önceden bilmeyi gerektirdiği sürece bir işe yaramıyordu. Renkler taşıyıcıdır, dekoratif değil: lavanta yapay zekâ etkinliği, mercan yalnızca tehlike.
+
+<p align="center">
+  <img src="assets/sp3_home.png" width="90%" alt="SentinelAI ana sayfa — araştırma başlatma ve 'Run'a basınca ne olduğunu anlatan dört adım" />
+</p>
+
+<p align="center">
+  <img src="assets/sp3_ai_insights.png" width="90%" alt="AI Insights — sentezlenmiş tavsiye (güven %82), açık sorular ve düz dille yazılmış Investigation Trace" />
+</p>
+
+<p align="center">
+  <img src="assets/sp3_evidence.png" width="45%" alt="Kanıt ve bulgular — dosya olarak yüklenmiş kanıt, içerik adresi ve indirme bağlantısı" />
+  <img src="assets/sp3_graph.png" width="45%" alt="Graf görünümü — HOST-1 komşuluğu, yönlü ilişkiler ve adlandırılmış renk açıklaması" />
+</p>
+
+### Sprint Review
+
+- Ürün **1.0.0 olarak yayımlandı**: yol haritasının sekiz milestone'u da kapalı, imajlar imzalı ve digest'e sabitlenmiş olarak GHCR'de.
+- **Milestone F:** silme uçtan uca gerçek oldu — tombstone (`status=erased`, içerik redakte, `erased_at` damgalı), payload byte'larının fiziksel silinmesi ve türetilmiş embedding noktalarının kaldırılması; tekrar eden DELETE idempotent.
+- **Milestone G:** iki iddia canlı kanıtlandı — **hash-zincirli denetim kaydı** (27 kayıtta 0 kırık halka, silinen verinin ardından da yaşayan `investigation.erased` kayıtları dahil) ve **sağlayıcılar arası devretme zinciri**; kimlik başına hız sınırı `429` + `retry-after` ile standart hata zarfında yanıt verdi.
+- **Milestone H:** sürüm kimliği mekanik hale geldi — etiket, manifestler ve yayımlanmış API sözleşmesi birbirini doğruluyor. Sürüm hazırlığı iddia edilmedi, **kanıtla değerlendirildi**.
+- Backend test sayısı sprint boyunca **525 → 690**'a yükseldi; frontend **74 → 90**. Hiçbir ES doğrulama kapıları yeşil olmadan kapanmadı.
+- Sprint Review katılımcısı: Koray Öztürk.
+
+### Sprint Retrospective
+
+- **İyi giden:** Sürüm provasını planın zorunlu bir adımı yapmak, ilk koşusunda konteynerli dağıtımdaki bozuk kanıt-yükleme yolunu yakaladı — host üzerinde koşan hiçbir canlı kanıt bunu gösteremezdi. "Kanıtı üretim şekline en yakın ortamda topla" kuralı bedelini tek seferde ödedi.
+- **Dürüstlük disiplini:** Provadaki koşu `exhausted` ile bitti (sağlayıcı gecikmesi) ve bu, umulan değil **gözlemlenen** haliyle kaydedildi; başarı raporlayan bir prova değersiz olurdu. Aynı disiplin sürüm sonrası bir yanlış bulgunun (Gemini varsayılan modelinin "ölü" olduğu iddiası) takipçide açıkça geri çekilmesini de gerektirdi — tek bir 503, yapılandırma kusuru kanıtı değildir.
+- **Geliştirilecek:** Sürüm öncesi arayüz, platformun kendi döngüsünü tarayıcıdan tamamlayamıyordu — bulgu kaydetmenin UI karşılığı yoktu, dolayısıyla graf tohumsuz kalıyor ve Decision Engine hiç sentezlemiyordu. Bu, ancak demo denetimi gerçek bir tarayıcıda uçtan uca sürüldüğünde ortaya çıktı (UI-R3): **"testler yeşil" ile "ürün kullanılabilir" aynı şey değil.**
+- **Sonraki sprint için kararlaştırılanlar:** Sunum/demo çıktısı (jüri videosu), ardından sürüm sonrasına ertelenen teknik başlıklar — araştırma listesi REST yüzeyi, çok-örnekli ölçeklenme, S3 uyumlu payload backend ve denetim sorgu yüzeyi.
 
 </details>
 
